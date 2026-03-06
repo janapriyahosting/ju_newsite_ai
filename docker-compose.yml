@@ -1,0 +1,59 @@
+
+networks:
+  frontend_net:
+    driver: bridge
+  backend_net:
+    driver: bridge
+  db_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  valkey_data:
+  nginx_certs:
+  nginx_logs:
+  static_files:
+  media_files:
+
+services:
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: jpus_postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: janapriya_db
+      POSTGRES_USER: janapriya_user
+      POSTGRES_PASSWORD: DevPassword@123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - db_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U janapriya_user -d janapriya_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    container_name: jpus_valkey
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    entrypoint: ["valkey-server", "--requirepass", "DevValkey@123", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+    networks:
+      - db_net
+      - backend_net
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "DevValkey@123", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
