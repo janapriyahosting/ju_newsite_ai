@@ -22,41 +22,66 @@ async def parse_with_groq(query: str) -> dict | None:
     try:
         from groq import Groq
         client = Groq(api_key=settings.GROQ_API_KEY)
-        prompt = f"""You are a real estate search assistant for an Indian property platform.
-Extract search filters from the query and return ONLY valid JSON with these optional fields:
+        prompt = f"""You are a real estate filter extractor for an Indian property platform.
+
+Extract search filters from the query. Return ONLY valid JSON.
+
+CRITICAL PRICE RULES:
+- "budget is X", "under X", "below X", "upto X", "within X", "max X", "not more than X" → max_price
+- "above X", "minimum X", "at least X", "more than X", "starting from X" → min_price
+- "between X and Y", "X to Y" → both min_price AND max_price
+- 1 lakh = 100000, 1 crore = 10000000
+- Always convert to full rupee integer (50 lakh = 5000000)
+
+JSON fields (only include if clearly mentioned):
 {{
-  "unit_type": "1BHK/2BHK/3BHK/4BHK/villa/plot",
-  "bedrooms": <number>,
-  "min_price": <rupees>,
-  "max_price": <rupees>,
-  "min_area": <sqft>,
-  "max_area": <sqft>,
-  "max_down_payment": <rupees>,
-  "max_emi": <rupees per month>,
-  "facing": "North/South/East/West",
-  "floor_min": <number>,
-  "floor_max": <number>,
-  "message": "<friendly summary of what you understood>"
+  "unit_type": "1BHK or 2BHK or 3BHK or 4BHK or villa or plot",
+  "bedrooms": <integer>,
+  "min_price": <integer rupees>,
+  "max_price": <integer rupees>,
+  "min_area": <integer sqft>,
+  "max_area": <integer sqft>,
+  "max_down_payment": <integer rupees>,
+  "max_emi": <integer rupees per month>,
+  "facing": "North or South or East or West",
+  "floor_min": <integer>,
+  "floor_max": <integer>,
+  "message": "<one line: what you understood from the query>"
 }}
-Rules:
-- Prices in Indian Rupees (1 lakh = 100000, 1 crore = 10000000)
-- Only include fields that are clearly mentioned
-- message must always be present
+
+Examples:
+"2bhk under 60 lakhs" → {{"unit_type":"2BHK","bedrooms":2,"max_price":6000000,"message":"2BHK under ₹60L"}}
+"budget is under 50 lakh" → {{"max_price":5000000,"message":"Budget under ₹50L"}}
+"3bhk above 80 lakhs east facing" → {{"unit_type":"3BHK","bedrooms":3,"min_price":8000000,"facing":"East","message":"3BHK above ₹80L East facing"}}
+"emi under 40000" → {{"max_emi":40000,"message":"EMI under ₹40,000/month"}}
+
 Query: "{query}"
-Return only JSON."""
+Return only the JSON object, nothing else."""
 
         response = client.chat.completions.create(
             model=settings.GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=400,
+            temperature=0.0,
+            max_tokens=300,
         )
         text = response.choices[0].message.content.strip()
         if "```" in text:
             text = text.split("```")[1]
             if text.startswith("json"):
                 text = text[4:]
-        return json.loads(text.strip())
+        result = json.loads(text.strip())
+
+        # Safety check: if query has "under/below/budget/upto" → ensure no min_price only
+        q = query.lower()
+        under_words = ["under","below","upto","up to","within","budget","not more","less than","max"]
+        if any(w in q for w in under_words) and "min_price" in result and "max_price" not in result:
+            # Groq confused min/max — swap it
+            result["max_price"] = result.pop("min_price")
+            print(f"[Groq] ⚠️ Auto-corrected min_price → max_price")
+
+        print(f"[Search] Using Groq ✅ | {result.get('message','')}")
+        return result
+
     except Exception as e:
         print(f"[Groq] Error: {e}")
         return None
@@ -70,15 +95,11 @@ def parse_with_spacy(query: str) -> dict | None:
         doc = nlp(query)
         filters = {}
         hints = []
-
         q = query.lower()
 
-        # Extract cardinal numbers from spaCy entities
-        numbers = [ent.text for ent in doc.ents if ent.label_ == "CARDINAL"]
-
-        # BHK detection using spaCy tokens + regex
+        # BHK detection
         for token in doc:
-            if token.text.upper() in ["BHK", "BHK,"]:
+            if token.text.upper() == "BHK":
                 prev = doc[token.i - 1] if token.i > 0 else None
                 if prev and prev.like_num:
                     n = int(prev.text)
@@ -86,36 +107,38 @@ def parse_with_spacy(query: str) -> dict | None:
                     filters["unit_type"] = f"{n}BHK"
                     hints.append(f"{n}BHK")
 
-        # Facing via NLP
+        # Facing
         for token in doc:
             if token.text.lower() in ["east","west","north","south"]:
                 filters["facing"] = token.text.capitalize()
                 hints.append(f"{token.text.capitalize()} facing")
                 break
 
-        # Money entities → price
+        # Money → price with correct min/max detection
+        under_words = ["under","below","upto","up to","within","budget","max","less","not more"]
+        above_words = ["above","over","minimum","min","more than","atleast","at least","starting"]
+        is_max = any(w in q for w in under_words)
+        is_min = any(w in q for w in above_words)
+
         for ent in doc.ents:
             if ent.label_ == "MONEY":
                 text = ent.text.lower()
                 m = re.search(r'(\d+(?:\.\d+)?)', text)
                 if m:
                     val = float(m.group(1))
-                    if "cr" in text:
-                        val *= CRORE
-                    elif "lakh" in text or "lac" in text or " l" in text:
-                        val *= LAKH
-                    if any(w in q for w in ["under","below","upto","within","less"]):
+                    if "cr" in text: val *= CRORE
+                    elif any(x in text for x in ["lakh","lac","l"]): val *= LAKH
+                    if is_max and not is_min:
                         filters["max_price"] = int(val)
                         hints.append(f"under ₹{m.group(1)}")
-                    elif any(w in q for w in ["above","over","minimum","atleast"]):
+                    elif is_min and not is_max:
                         filters["min_price"] = int(val)
                         hints.append(f"above ₹{m.group(1)}")
 
         if not filters:
             return None
 
-        message = "Filtered by: " + ", ".join(hints) if hints else f"Showing results for: {query}"
-        filters["message"] = message
+        filters["message"] = "Filtered by: " + ", ".join(hints) if hints else f"Results for: {query}"
         return filters
     except Exception as e:
         print(f"[spaCy] Error: {e}")
@@ -130,11 +153,11 @@ def parse_with_regex(query: str) -> tuple[dict, str]:
 
     # Unit type / BHK
     for pattern, utype, beds in [
-        (r'\b4\s*bhk\b', '4BHK', 4), (r'\b3\s*bhk\b', '3BHK', 3),
-        (r'\b2\s*bhk\b', '2BHK', 2), (r'\b1\s*bhk\b', '1BHK', 1),
-        (r'\bfour\s*bhk\b', '4BHK', 4), (r'\bthree\s*bhk\b', '3BHK', 3),
-        (r'\btwo\s*bhk\b', '2BHK', 2), (r'\bone\s*bhk\b', '1BHK', 1),
-        (r'\bvilla\b', 'villa', None), (r'\bplot\b', 'plot', None),
+        (r'\b4\s*bhk\b','4BHK',4),(r'\b3\s*bhk\b','3BHK',3),
+        (r'\b2\s*bhk\b','2BHK',2),(r'\b1\s*bhk\b','1BHK',1),
+        (r'\bfour\s*bhk\b','4BHK',4),(r'\bthree\s*bhk\b','3BHK',3),
+        (r'\btwo\s*bhk\b','2BHK',2),(r'\bone\s*bhk\b','1BHK',1),
+        (r'\bvilla\b','villa',None),(r'\bplot\b','plot',None),
     ]:
         if re.search(pattern, q):
             if utype: filters['unit_type'] = utype; hints.append(utype)
@@ -144,15 +167,14 @@ def parse_with_regex(query: str) -> tuple[dict, str]:
     # Price range
     m = re.search(r'(\d+(?:\.\d+)?)\s*(?:to|-)\s*(\d+(?:\.\d+)?)\s*(lakh|lac|l\b|cr(?:ore)?)', q)
     if m:
-        lo, hi = float(m.group(1)), float(m.group(2))
         mult = CRORE if m.group(3).startswith('cr') else LAKH
-        filters['min_price'] = int(lo * mult)
-        filters['max_price'] = int(hi * mult)
-        hints.append(f"₹{lo}-{hi}{'Cr' if m.group(3).startswith('cr') else 'L'}")
+        filters['min_price'] = int(float(m.group(1)) * mult)
+        filters['max_price'] = int(float(m.group(2)) * mult)
+        hints.append(f"₹{m.group(1)}-{m.group(2)}{'Cr' if m.group(3).startswith('cr') else 'L'}")
 
-    # Max price
+    # Max price (budget/under/below)
     if 'max_price' not in filters:
-        m = re.search(r'(?:under|below|upto|up to|within|max|less than)\s*(?:rs\.?\s*|₹\s*)?(\d+(?:\.\d+)?)\s*(lakh|lac|l\b|cr(?:ore)?)', q)
+        m = re.search(r'(?:budget(?:\s+is)?|under|below|upto|up to|within|max(?:imum)?|less than|not more than)\s*(?:rs\.?\s*|₹\s*)?(\d+(?:\.\d+)?)\s*(lakh|lac|l\b|cr(?:ore)?)', q)
         if m:
             mult = CRORE if m.group(2).startswith('cr') else LAKH
             filters['max_price'] = int(float(m.group(1)) * mult)
@@ -160,7 +182,7 @@ def parse_with_regex(query: str) -> tuple[dict, str]:
 
     # Min price
     if 'min_price' not in filters:
-        m = re.search(r'(?:above|over|minimum|min|more than|atleast)\s*(?:rs\.?\s*|₹\s*)?(\d+(?:\.\d+)?)\s*(lakh|lac|l\b|cr(?:ore)?)', q)
+        m = re.search(r'(?:above|over|minimum|min|more than|atleast|at least|starting from)\s*(?:rs\.?\s*|₹\s*)?(\d+(?:\.\d+)?)\s*(lakh|lac|l\b|cr(?:ore)?)', q)
         if m:
             mult = CRORE if m.group(2).startswith('cr') else LAKH
             filters['min_price'] = int(float(m.group(1)) * mult)
@@ -168,8 +190,8 @@ def parse_with_regex(query: str) -> tuple[dict, str]:
 
     # EMI
     m = re.search(r'emi\s*(?:under|below|upto|max|less than)?\s*(?:rs\.?\s*|₹\s*)?(\d+(?:,\d+)?)\s*(k|thousand)?', q)
-    if m:
-        val = int(m.group(1).replace(',', ''))
+    if m and 'emi' in q:
+        val = int(m.group(1).replace(',',''))
         if m.group(2): val *= 1000
         filters['max_emi'] = val
         hints.append(f"EMI ≤ ₹{val:,}")
@@ -183,15 +205,11 @@ def parse_with_regex(query: str) -> tuple[dict, str]:
 
     # Facing
     for pat, facing in [
-        (r'\beast[\s-]?facing|\beast\b', 'East'),
-        (r'\bwest[\s-]?facing|\bwest\b', 'West'),
-        (r'\bnorth[\s-]?facing|\bnorth\b', 'North'),
-        (r'\bsouth[\s-]?facing|\bsouth\b', 'South'),
+        (r'\beast[\s-]?facing|\beast\b','East'),(r'\bwest[\s-]?facing|\bwest\b','West'),
+        (r'\bnorth[\s-]?facing|\bnorth\b','North'),(r'\bsouth[\s-]?facing|\bsouth\b','South'),
     ]:
         if re.search(pat, q):
-            filters['facing'] = facing
-            hints.append(f"{facing} facing")
-            break
+            filters['facing'] = facing; hints.append(f"{facing} facing"); break
 
     # Floor
     m = re.search(r'(?:above|from)\s*(\d+)(?:st|nd|rd|th)?\s*floor', q)
@@ -206,32 +224,27 @@ def parse_with_regex(query: str) -> tuple[dict, str]:
     # Area
     m = re.search(r'(\d+)\s*(?:to|-)\s*(\d+)\s*(?:sqft|sq\.?\s*ft|sft)', q)
     if m:
-        filters['min_area'] = int(m.group(1))
-        filters['max_area'] = int(m.group(2))
+        filters['min_area'] = int(m.group(1)); filters['max_area'] = int(m.group(2))
         hints.append(f"{m.group(1)}-{m.group(2)} sqft")
 
     msg = "Filtered by: " + ", ".join(hints) if hints else f"Showing all available units for: {query}"
     return filters, msg
 
 
-# ── Main parser: tries Groq → spaCy → Regex ──────────────────────────────────
+# ── Main parser ───────────────────────────────────────────────────────────────
 async def parse_query(query: str) -> tuple[dict, str]:
-    # Try Groq first
     result = await parse_with_groq(query)
     if result:
         msg = result.pop("message", f"AI understood: {query}")
-        print(f"[Search] Using Groq ✅")
         return result, msg
 
-    # Try spaCy
     result = parse_with_spacy(query)
     if result:
         msg = result.pop("message", f"Showing results for: {query}")
         print(f"[Search] Using spaCy ✅")
         return result, msg
 
-    # Regex fallback
-    print(f"[Search] Using Regex fallback ✅")
+    print(f"[Search] Using Regex ✅")
     return parse_with_regex(query)
 
 
@@ -241,38 +254,24 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
     filters_dict, message = await parse_query(data.query)
 
     conditions = [Unit.status == "available"]
-    if filters_dict.get("unit_type"):
-        conditions.append(Unit.unit_type.ilike(f"%{filters_dict['unit_type']}%"))
-    if filters_dict.get("bedrooms"):
-        conditions.append(Unit.bedrooms == filters_dict["bedrooms"])
-    if filters_dict.get("min_price"):
-        conditions.append(Unit.base_price >= filters_dict["min_price"])
-    if filters_dict.get("max_price"):
-        conditions.append(Unit.base_price <= filters_dict["max_price"])
-    if filters_dict.get("min_area"):
-        conditions.append(Unit.area_sqft >= filters_dict["min_area"])
-    if filters_dict.get("max_area"):
-        conditions.append(Unit.area_sqft <= filters_dict["max_area"])
-    if filters_dict.get("max_down_payment"):
-        conditions.append(Unit.down_payment <= filters_dict["max_down_payment"])
-    if filters_dict.get("max_emi"):
-        conditions.append(Unit.emi_estimate <= filters_dict["max_emi"])
-    if filters_dict.get("facing"):
-        conditions.append(Unit.facing.ilike(f"%{filters_dict['facing']}%"))
-    if filters_dict.get("floor_min"):
-        conditions.append(Unit.floor_number >= filters_dict["floor_min"])
-    if filters_dict.get("floor_max"):
-        conditions.append(Unit.floor_number <= filters_dict["floor_max"])
+    if filters_dict.get("unit_type"):    conditions.append(Unit.unit_type.ilike(f"%{filters_dict['unit_type']}%"))
+    if filters_dict.get("bedrooms"):     conditions.append(Unit.bedrooms == filters_dict["bedrooms"])
+    if filters_dict.get("min_price"):    conditions.append(Unit.base_price >= filters_dict["min_price"])
+    if filters_dict.get("max_price"):    conditions.append(Unit.base_price <= filters_dict["max_price"])
+    if filters_dict.get("min_area"):     conditions.append(Unit.area_sqft >= filters_dict["min_area"])
+    if filters_dict.get("max_area"):     conditions.append(Unit.area_sqft <= filters_dict["max_area"])
+    if filters_dict.get("max_down_payment"): conditions.append(Unit.down_payment <= filters_dict["max_down_payment"])
+    if filters_dict.get("max_emi"):      conditions.append(Unit.emi_estimate <= filters_dict["max_emi"])
+    if filters_dict.get("facing"):       conditions.append(Unit.facing.ilike(f"%{filters_dict['facing']}%"))
+    if filters_dict.get("floor_min"):    conditions.append(Unit.floor_number >= filters_dict["floor_min"])
+    if filters_dict.get("floor_max"):    conditions.append(Unit.floor_number <= filters_dict["floor_max"])
 
     q = select(Unit).where(and_(*conditions))
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar()
     result = await db.execute(q.order_by(Unit.is_trending.desc()).limit(20))
     units = result.scalars().all()
 
-    db.add(SearchLog(
-        query=data.query, filters=filters_dict,
-        results_count=total, session_id=data.session_id,
-    ))
+    db.add(SearchLog(query=data.query, filters=filters_dict, results_count=total, session_id=data.session_id))
     await db.flush()
 
     return SearchResponse(
