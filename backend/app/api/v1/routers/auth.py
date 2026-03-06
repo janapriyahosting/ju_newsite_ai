@@ -4,6 +4,9 @@ from sqlalchemy import select
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+import warnings
+warnings.filterwarnings("ignore", ".*bcrypt.*")
+
 from backend.app.core.database import get_db
 from backend.app.core.config import settings
 from backend.app.models.customer import Customer
@@ -35,7 +38,6 @@ def create_token(customer_id: str) -> str:
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
 async def register(data: CustomerRegister, db: AsyncSession = Depends(get_db)):
-    # Check existing
     result = await db.execute(
         select(Customer).where(Customer.email == data.email)
     )
@@ -63,7 +65,12 @@ async def login(data: CustomerLogin, db: AsyncSession = Depends(get_db)):
     )
     customer = result.scalar_one_or_none()
 
-    if not customer or not verify_password(data.password, customer.password_hash):
+    if not customer or not customer.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+    if not verify_password(data.password, customer.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
