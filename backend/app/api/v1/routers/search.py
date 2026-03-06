@@ -83,11 +83,17 @@ Return only the JSON object, nothing else."""
         return result
 
     except Exception as e:
-        print(f"[Groq] Error: {e}")
+        err = str(e).lower()
+        if "rate_limit" in err or "429" in err or "quota" in err or "exceeded" in err:
+            print(f"[Groq] ⚠️ Rate limit hit — falling back to spaCy")
+        elif "invalid_api_key" in err or "401" in err:
+            print(f"[Groq] ⚠️ Invalid API key — falling back to spaCy")
+        else:
+            print(f"[Groq] ⚠️ Error: {e} — falling back to spaCy")
         return None
 
 
-# ── Layer 2: spaCy NER ────────────────────────────────────────────────────────
+# ── Layer 2: spaCy NER (token-based, tuned for Indian real estate) ────────────
 def parse_with_spacy(query: str) -> dict | None:
     try:
         import spacy
@@ -96,49 +102,83 @@ def parse_with_spacy(query: str) -> dict | None:
         filters = {}
         hints = []
         q = query.lower()
+        tokens = [t.text.lower() for t in doc]
 
-        # BHK detection
-        for token in doc:
-            if token.text.upper() == "BHK":
-                prev = doc[token.i - 1] if token.i > 0 else None
-                if prev and prev.like_num:
-                    n = int(prev.text)
-                    filters["bedrooms"] = n
-                    filters["unit_type"] = f"{n}BHK"
-                    hints.append(f"{n}BHK")
+        # BHK: "4bhk", "4 bhk", "2BHK" — spaCy sees these as CARDINAL or NOUN
+        bhk_match = re.search(r'(\d)\s*bhk', q)
+        if bhk_match:
+            n = int(bhk_match.group(1))
+            filters["bedrooms"] = n
+            filters["unit_type"] = f"{n}BHK"
+            hints.append(f"{n}BHK")
 
-        # Facing
+        # Unit type: villa, plot
+        if "villa" in tokens: filters["unit_type"] = "villa"; hints.append("villa")
+        elif "plot" in tokens: filters["unit_type"] = "plot"; hints.append("plot")
+
+        # Facing — spaCy sees north/south/east/west as NOUN
         for token in doc:
             if token.text.lower() in ["east","west","north","south"]:
-                filters["facing"] = token.text.capitalize()
-                hints.append(f"{token.text.capitalize()} facing")
-                break
+                # Make sure it\'s not part of a location like "lakhs east"
+                if token.i == 0 or doc[token.i-1].text.lower() not in ["lakhs","lakh","lac","crore","cr"]:
+                    filters["facing"] = token.text.capitalize()
+                    hints.append(f"{token.text.capitalize()} facing")
+                    break
 
-        # Money → price with correct min/max detection
-        under_words = ["under","below","upto","up to","within","budget","max","less","not more"]
-        above_words = ["above","over","minimum","min","more than","atleast","at least","starting"]
+        # Price: find NUM tokens near lakh/crore/l keywords
+        under_words = ["under","below","upto","within","budget","max","less"]
+        above_words = ["above","over","minimum","min","atleast","starting"]
         is_max = any(w in q for w in under_words)
         is_min = any(w in q for w in above_words)
 
-        for ent in doc.ents:
-            if ent.label_ == "MONEY":
-                text = ent.text.lower()
-                m = re.search(r'(\d+(?:\.\d+)?)', text)
-                if m:
-                    val = float(m.group(1))
-                    if "cr" in text: val *= CRORE
-                    elif any(x in text for x in ["lakh","lac","l"]): val *= LAKH
-                    if is_max and not is_min:
-                        filters["max_price"] = int(val)
-                        hints.append(f"under ₹{m.group(1)}")
-                    elif is_min and not is_max:
-                        filters["min_price"] = int(val)
-                        hints.append(f"above ₹{m.group(1)}")
+        # Find number + unit pairs: "60 lakhs", "50 lakh", "1.5 cr"
+        for i, token in enumerate(doc):
+            if token.like_num or (token.is_digit):
+                # Look ahead for unit
+                next_tokens = [doc[j].text.lower() for j in range(i+1, min(i+3, len(doc)))]
+                unit_found = None
+                for nt in next_tokens:
+                    if nt in ["lakh","lakhs","lac","l"]: unit_found = "lakh"; break
+                    if nt in ["crore","crores","cr"]:    unit_found = "crore"; break
+
+                if unit_found:
+                    try:
+                        val = float(token.text.replace(",",""))
+                        mult = CRORE if unit_found == "crore" else LAKH
+                        price = int(val * mult)
+                        if is_max and not is_min:
+                            filters["max_price"] = price
+                            hints.append(f"under ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                        elif is_min and not is_max:
+                            filters["min_price"] = price
+                            hints.append(f"above ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                        else:
+                            # ambiguous — treat as max with buffer
+                            filters["max_price"] = int(price * 1.05)
+                            filters["min_price"] = int(price * 0.95)
+                            hints.append(f"~₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                    except: pass
+
+        # EMI detection
+        if "emi" in q:
+            m = re.search(r'emi\s*(?:under|below|upto|max)?\s*(?:rs\.?\s*|₹\s*)?(\d+(?:,\d+)?)\s*(k|thousand)?', q)
+            if m:
+                val = int(m.group(1).replace(",",""))
+                if m.group(2): val *= 1000
+                filters["max_emi"] = val
+                hints.append(f"EMI ≤ ₹{val:,}")
+
+        # Floor
+        if re.search(r'high(?:er)?\s*floor|top\s*floor', q):
+            filters["floor_min"] = 5; hints.append("high floor")
+        if re.search(r'ground\s*floor|low(?:er)?\s*floor', q):
+            filters["floor_max"] = 3; hints.append("low floor")
 
         if not filters:
             return None
 
         filters["message"] = "Filtered by: " + ", ".join(hints) if hints else f"Results for: {query}"
+        print(f"[Search] Using spaCy ✅ | {filters.get('message','')}")
         return filters
     except Exception as e:
         print(f"[spaCy] Error: {e}")
