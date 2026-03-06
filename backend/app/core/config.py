@@ -54,6 +54,11 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRY_MINUTES: int = 60
 
+    # Admin
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "Admin@Janapriya2026"
+    ADMIN_SECRET_KEY: str = "admin-jwt-secret-janapriya-2026!!"
+
     # Anthropic
     ANTHROPIC_API_KEY: str = ""
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"

@@ -8,6 +8,11 @@ from backend.app.api.v1.routers.auth import router as auth_router
 from backend.app.api.v1.routers.search import router as search_router
 from backend.app.api.v1.routers.cart import router as cart_router
 from backend.app.api.v1.routers.bookings import router as bookings_router
+from backend.app.api.v1.routers.admin_auth import router as admin_auth_router
+from backend.app.api.v1.routers.admin_stats import router as admin_stats_router
+from backend.app.api.v1.routers.admin_leads import router as admin_leads_router
+from backend.app.api.v1.routers.admin_visits import router as admin_visits_router
+from backend.app.api.v1.routers.admin_units import router as admin_units_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health_router)
@@ -19,3 +24,8 @@ api_router.include_router(auth_router)
 api_router.include_router(search_router)
 api_router.include_router(cart_router)
 api_router.include_router(bookings_router)
+api_router.include_router(admin_auth_router)
+api_router.include_router(admin_stats_router)
+api_router.include_router(admin_leads_router)
+api_router.include_router(admin_visits_router)
+api_router.include_router(admin_units_router)
