@@ -29,7 +29,7 @@ export default function HomePage() {
         body: JSON.stringify({ query }),
       });
       const d = await res.json();
-      setResults(d.results || d || []);
+      setResults(d.items || d.results || []);
     } catch { setResults([]); }
     finally { setSearching(false); setSearched(true); }
   }
@@ -120,11 +120,11 @@ export default function HomePage() {
             {/* Results */}
             {searched && (
               <div className="mt-4 text-left space-y-2 max-h-64 overflow-y-auto">
-                {results.length === 0 ? (
+                {(Array.isArray(results) ? results : []).length === 0 ? (
                   <div className="rounded-xl p-4 text-center text-sm" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
                     No results. <Link href="/store" style={{ color: "#29A9DF" }} className="underline">Browse all →</Link>
                   </div>
-                ) : results.map((r: any, i: number) => (
+                ) : (Array.isArray(results) ? results : []).map((r: any, i: number) => (
                   <Link key={i} href={`/units/${r.id}`}
                     className="flex items-center gap-4 rounded-xl p-4 transition-all"
                     style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>

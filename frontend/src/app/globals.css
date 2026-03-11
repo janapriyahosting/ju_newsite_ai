@@ -43,3 +43,21 @@
   --jp-muted: #555A5C;
   --jp-bg: #F8F9FB;
 }
+
+/* Range slider thumb */
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #2A3887;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(42,56,135,0.3);
+  cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #2A3887;
+  border: 2px solid white;
+  cursor: pointer;
+}
