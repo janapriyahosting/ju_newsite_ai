@@ -10,8 +10,15 @@ export default function HomePage() {
   const [results, setResults] = useState<any[]>([]);
   const [searched, setSearched] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
+  const [trending, setTrending] = useState<any[]>([]);
 
   useEffect(() => {
+    // Fetch trending units
+    fetch("http://173.168.0.81:8000/api/v1/units/trending?limit=8")
+      .then(r => r.json() as Promise<any>)
+      .then(d => setTrending(Array.isArray(d) ? d : (d.items || [])))
+      .catch(() => {});
+
     fetch("http://173.168.0.81:8000/api/v1/projects")
       .then(r => r.json())
       .then(d => setProjects(Array.isArray(d) ? d.slice(0,3) : (d.items||[]).slice(0,3)))
@@ -162,6 +169,80 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+
+      {/* ── Trending Units ───────────────────────────────────────────────────── */}
+      {trending.length > 0 && (
+        <section className="py-20" style={{ background: "#F8F9FB" }}>
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-2">Hot Properties</p>
+                <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Trending Now</h2>
+              </div>
+              <Link href="/store" className="hidden md:flex items-center gap-2 font-bold text-sm"
+                style={{ color: "#2A3887" }}>View All <span>→</span></Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+              {trending.map((u: any) => (
+                <Link key={u.id} href={`/units/${u.id}`}
+                  className="bg-white rounded-2xl overflow-hidden group transition-all duration-200 hover:-translate-y-1"
+                  style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
+                  {/* Card top */}
+                  <div className="h-36 relative flex flex-col justify-between p-4"
+                    style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                    <div className="flex justify-between items-center">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white" style={{ color: "#22c55e" }}>
+                        ● Available
+                      </span>
+                      <span className="px-2 py-1 rounded-full text-xs font-bold"
+                        style={{ background: "rgba(255,255,255,0.15)", color: "white" }}>
+                        🔥 Trending
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
+                        {u.unit_type}{u.bedrooms ? ` · ${u.bedrooms} BHK` : ""}
+                      </p>
+                      <p className="text-white font-black text-base">{u.unit_number}</p>
+                    </div>
+                  </div>
+                  {/* Card body */}
+                  <div className="p-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex gap-3 text-xs" style={{ color: "#555" }}>
+                        {u.bedrooms && <span>🛏 {u.bedrooms} BHK</span>}
+                        {u.area_sqft && <span>📐 {parseFloat(u.area_sqft).toFixed(0)} sqft</span>}
+                        {u.floor_number != null && <span>🏢 Fl {u.floor_number}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-black text-base" style={{ color: "#2A3887" }}>{formatPrice(u.base_price)}</p>
+                        {u.area_sqft && u.base_price && (
+                          <p className="text-xs" style={{ color: "#999" }}>
+                            ₹{Math.round(parseFloat(u.base_price)/parseFloat(u.area_sqft)).toLocaleString()}/sqft
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white group-hover:scale-105 transition-all"
+                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                        View →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="text-center mt-8 md:hidden">
+              <Link href="/store" className="inline-block px-8 py-3 font-bold rounded-full text-white"
+                style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                View All Units →
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Featured Projects ──────────────────────────────────────────────── */}
       <section className="py-20" style={{ background: "#F8F9FB" }}>
