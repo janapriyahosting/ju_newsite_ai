@@ -211,7 +211,7 @@ export default function StorePage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/units?limit=200`);
+      const res = await fetch(`${API}/units?page_size=200`);
       const d = await res.json() as any;
       setUnits(Array.isArray(d) ? d : (d.items || []));
     } catch {}

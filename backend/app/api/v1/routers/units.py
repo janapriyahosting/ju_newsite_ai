@@ -18,7 +18,7 @@ router = APIRouter(prefix="/units", tags=["units"])
 @router.get("", response_model=UnitListResponse)
 async def list_units(
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=200),
     unit_type: Optional[str] = None,
     bedrooms: Optional[int] = None,
     min_price: Optional[Decimal] = None,
