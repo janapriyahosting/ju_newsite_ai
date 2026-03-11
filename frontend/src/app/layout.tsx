@@ -1,24 +1,18 @@
-import type { Metadata } from 'next'
-import './globals.css'
-import { Toaster } from 'react-hot-toast'
+import type { Metadata } from "next";
+import { Lato } from "next/font/google";
+import "./globals.css";
+
+const lato = Lato({ weight: ["300","400","700","900"], subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
-  title: 'Janapriya Upscale — Premium Real Estate',
-  description: 'Find your dream home — Premium 1BHK, 2BHK, 3BHK apartments and villas in Hyderabad',
-  keywords: 'real estate, apartments, Hyderabad, 2BHK, 3BHK, villas, plots',
-}
+  title: { default: "Janapriya Upscale — Ask More of Life", template: "%s — Janapriya Upscale" },
+  description: "Premium residential projects in Hyderabad. RERA registered. Ask More of Life.",
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        {children}
-        <Toaster position="top-right" />
-      </body>
+      <body className={lato.className}>{children}</body>
     </html>
-  )
+  );
 }

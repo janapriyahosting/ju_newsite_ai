@@ -13,6 +13,10 @@ from backend.app.api.v1.routers.admin_stats import router as admin_stats_router
 from backend.app.api.v1.routers.admin_leads import router as admin_leads_router
 from backend.app.api.v1.routers.admin_visits import router as admin_visits_router
 from backend.app.api.v1.routers.admin_units import router as admin_units_router
+from backend.app.api.v1.routers.admin_fields import router as admin_fields_router
+from backend.app.api.v1.routers.admin_crud import router as admin_crud_router
+from backend.app.api.v1.routers.admin_cms import router as admin_cms_router
+from backend.app.api.v1.routers.admin_customers import router as admin_customers_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health_router)
@@ -29,3 +33,7 @@ api_router.include_router(admin_stats_router)
 api_router.include_router(admin_leads_router)
 api_router.include_router(admin_visits_router)
 api_router.include_router(admin_units_router)
+api_router.include_router(admin_fields_router)
+api_router.include_router(admin_crud_router)
+api_router.include_router(admin_cms_router, prefix="/admin")
+api_router.include_router(admin_customers_router)

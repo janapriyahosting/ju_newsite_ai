@@ -80,3 +80,41 @@ async def login(data: CustomerLogin, db: AsyncSession = Depends(get_db)):
 
     token = create_token(str(customer.id))
     return TokenResponse(access_token=token, customer=customer)
+
+from fastapi import Header
+from jose import JWTError
+import uuid
+
+async def get_current_customer(authorization: str = Header(None), db: AsyncSession = Depends(get_db)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        customer_id = payload.get("sub")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = await db.execute(select(Customer).where(Customer.id == uuid.UUID(customer_id)))
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+@router.get("/me", response_model=CustomerResponse)
+async def get_me(customer: Customer = Depends(get_current_customer)):
+    return customer
+
+@router.post("/change-password")
+async def change_password(
+    data: dict,
+    customer: Customer = Depends(get_current_customer),
+    db: AsyncSession = Depends(get_db)
+):
+    if not verify_password(data.get("current_password",""), customer.password_hash or ""):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    new_pw = data.get("new_password","")
+    if len(new_pw) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    customer.password_hash = hash_password(new_pw)
+    await db.flush()
+    return {"message": "Password updated successfully"}

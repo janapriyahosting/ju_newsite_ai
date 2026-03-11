@@ -1,294 +1,286 @@
-'use client'
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import api from '@/lib/api'
-import { Unit, Project } from '@/types'
-
-function formatPrice(price: string | undefined) {
-  if (!price) return 'Price on request'
-  const num = parseFloat(price)
-  if (num >= 10000000) return `₹${(num/10000000).toFixed(1)} Cr`
-  if (num >= 100000) return `₹${(num/100000).toFixed(1)} L`
-  return `₹${num.toLocaleString()}`
-}
-
-function UnitCard({ unit }: { unit: Unit }) {
-  return (
-    <Link href={`/units/${unit.id}`}>
-      <div className="card p-5 cursor-pointer group">
-        <div className="relative bg-gray-100 rounded-xl h-44 mb-4 overflow-hidden">
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <div className="absolute top-3 left-3 flex gap-2">
-            {unit.is_trending && <span className="badge-trending">🔥 Trending</span>}
-            <span className="badge-available">{unit.status}</span>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <div className="flex justify-between items-start">
-            <h3 className="font-semibold text-gray-900">{unit.unit_type} — {unit.unit_number}</h3>
-            <span className="text-brand-gold font-bold">{formatPrice(unit.base_price)}</span>
-          </div>
-          <div className="flex gap-4 text-sm text-gray-500">
-            {unit.bedrooms && <span>🛏 {unit.bedrooms} Bed</span>}
-            {unit.bathrooms && <span>🚿 {unit.bathrooms} Bath</span>}
-            {unit.area_sqft && <span>📐 {unit.area_sqft} sqft</span>}
-          </div>
-          {unit.facing && (
-            <p className="text-xs text-gray-400">{unit.facing} facing · Floor {unit.floor_number}</p>
-          )}
-          <div className="pt-2 border-t border-gray-100 flex justify-between text-xs text-gray-500">
-            <span>Down payment: {formatPrice(unit.down_payment)}</span>
-            <span>EMI: {formatPrice(unit.emi_estimate)}/mo</span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  )
-}
-
-function ProjectCard({ project }: { project: Project }) {
-  return (
-    <Link href={`/projects/${project.id}`}>
-      <div className="card overflow-hidden cursor-pointer group">
-        <div className="bg-gray-100 h-48 flex items-center justify-center text-gray-300">
-          <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        </div>
-        <div className="p-5">
-          <h3 className="font-semibold text-lg text-gray-900 mb-1">{project.name}</h3>
-          <p className="text-gray-500 text-sm mb-3">{project.location}</p>
-          <div className="flex flex-wrap gap-1 mb-2">
-            {project.amenities?.slice(0, 3).map((a) => (
-              <span key={a} className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded">{a}</span>
-            ))}
-          </div>
-          {project.rera_number && (
-            <p className="text-xs text-gray-400">RERA: {project.rera_number}</p>
-          )}
-        </div>
-      </div>
-    </Link>
-  )
-}
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 export default function HomePage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [trending, setTrending] = useState<Unit[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<Unit[] | null>(null)
-  const [searchMessage, setSearchMessage] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [query, setQuery] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [p, u] = await Promise.all([
-          api.get('/projects'),
-          api.get('/units/trending?limit=6'),
-        ])
-        setProjects(p.data.items || [])
-        setTrending(u.data.items || [])
-      } catch (err) {
-        console.error('Failed to load data:', err)
-        setError(true)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [])
+    fetch("http://173.168.0.81:8000/api/v1/projects")
+      .then(r => r.json())
+      .then(d => setProjects(Array.isArray(d) ? d.slice(0,3) : (d.items||[]).slice(0,3)))
+      .catch(() => {});
+  }, []);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!searchQuery.trim()) return
-    setSearching(true)
+  async function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!query.trim()) return;
+    setSearching(true); setSearched(false);
     try {
-      const res = await api.post('/search/nlp', { query: searchQuery })
-      setSearchResults(res.data.items || [])
-      setSearchMessage(res.data.message || `Found ${res.data.total} units`)
-    } catch {
-      setSearchMessage('Search failed. Please try again.')
-      setSearchResults([])
-    } finally {
-      setSearching(false)
-    }
+      const res = await fetch(`http://173.168.0.81:8000/api/v1/search/nlp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const d = await res.json();
+      setResults(d.results || d || []);
+    } catch { setResults([]); }
+    finally { setSearching(false); setSearched(true); }
   }
 
+  function formatPrice(p: any) {
+    if (!p) return "Price on request";
+    const n = parseFloat(p);
+    if (n >= 10000000) return `₹${(n/10000000).toFixed(1)} Cr`;
+    if (n >= 100000) return `₹${(n/100000).toFixed(0)} L`;
+    return `₹${n.toLocaleString()}`;
+  }
+
+  const PROJECTS = [
+    {name:"Janapriya Heights",loc:"Gachibowli",type:"2 & 3 BHK",price:"From ₹45L",status:"Ready to Move",statusColor:"#22c55e"},
+    {name:"Janapriya Meadows",loc:"Kompally",type:"Villas & Row Houses",price:"From ₹85L",status:"Under Construction",statusColor:"#f59e0b"},
+    {name:"Janapriya Elite",loc:"Banjara Hills",type:"Luxury Apartments",price:"From ₹1.2Cr",status:"New Launch",statusColor:"#29A9DF"},
+  ];
+
+  const WHYUS = [
+    {icon:"🏆",title:"40 Years of Trust",desc:"Four decades of delivering quality homes on time"},
+    {icon:"🔒",title:"RERA Registered",desc:"All projects fully RERA compliant — no legal hassles"},
+    {icon:"🌿",title:"Eco-Friendly Homes",desc:"IGBC certified green buildings with sustainability"},
+    {icon:"💎",title:"Premium Finishes",desc:"Imported marble, branded fittings throughout"},
+    {icon:"📱",title:"Smart Home Ready",desc:"Pre-wired for automation and EV charging"},
+    {icon:"🤝",title:"Transparent Pricing",desc:"Zero hidden costs — what you see is what you pay"},
+  ];
+
   return (
-    <main className="min-h-screen">
-      {/* Header */}
-      <header className="bg-brand-dark text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-serif font-bold text-brand-gold">
-            Janapriya Upscale
-          </Link>
-          <nav className="hidden md:flex gap-6 text-sm">
-            <Link href="/projects" className="hover:text-brand-gold transition-colors">Projects</Link>
-            <Link href="/units" className="hover:text-brand-gold transition-colors">Units</Link>
-            <Link href="/search" className="hover:text-brand-gold transition-colors">Search</Link>
-            <Link href="/contact" className="hover:text-brand-gold transition-colors">Contact</Link>
-          </nav>
-          <div className="flex gap-3">
-            <Link href="/login" className="btn-outline text-sm py-2 px-4">Login</Link>
-            <Link href="/site-visit" className="btn-primary text-sm py-2 px-4">Book Visit</Link>
+    <main style={{ fontFamily: "'Lato', sans-serif" }} className="min-h-screen bg-white">
+      <Navbar />
+
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #262262 0%, #2A3887 50%, #1a5f8a 100%)" }}>
+        {/* Decorative circles */}
+        <div className="absolute top-20 right-20 w-96 h-96 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #29A9DF, transparent)" }} />
+        <div className="absolute bottom-20 left-10 w-72 h-72 rounded-full opacity-10"
+          style={{ background: "radial-gradient(circle, #00C2FF, transparent)" }} />
+        {/* Grid */}
+        <div className="absolute inset-0 opacity-5"
+          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.3) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.3) 1px,transparent 1px)", backgroundSize: "50px 50px" }} />
+
+        <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-8 border"
+            style={{ background: "rgba(41,169,223,0.15)", borderColor: "rgba(41,169,223,0.4)", color: "#29A9DF" }}>
+            ✦ RERA Registered · 40 Years of Excellence · Hyderabad
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-4">
+            Ask More<br />
+            <span style={{ color: "#29A9DF" }}>of Life.</span>
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.75)" }} className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            Premium apartments, villas and plots crafted for families who believe home is more than just a place — it's where life truly begins.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            <Link href="/projects"
+              className="px-8 py-4 text-white font-bold rounded-full text-sm tracking-wide transition-all hover:scale-105 hover:shadow-2xl"
+              style={{ background: "linear-gradient(135deg, #29A9DF, #00C2FF)", boxShadow: "0 8px 30px rgba(41,169,223,0.4)" }}>
+              Explore Projects →
+            </Link>
+            <Link href="/contact"
+              className="px-8 py-4 font-bold rounded-full text-sm tracking-wide transition-all hover:bg-white"
+              style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "2px solid rgba(255,255,255,0.3)" }}>
+              Book a Site Visit
+            </Link>
+          </div>
+
+          {/* ── AI Search ────────────────────────────────────────────────── */}
+          <div className="w-full max-w-2xl mx-auto">
+            <div className="rounded-2xl p-1.5" style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)" }}>
+              <form onSubmit={handleSearch} className="flex gap-2">
+                <div className="flex-1 relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg" style={{ color: "#29A9DF" }}>✦</span>
+                  <input value={query} onChange={e => setQuery(e.target.value)}
+                    placeholder="Try: 3BHK under 80 lakhs in Gachibowli..."
+                    className="w-full bg-transparent text-white placeholder-white/40 text-sm pl-10 pr-4 py-3.5 focus:outline-none" />
+                </div>
+                <button type="submit" disabled={searching}
+                  className="px-6 py-3 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-60 flex items-center gap-2 whitespace-nowrap"
+                  style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
+                  {searching ? "⟳" : "🔍"} AI Search
+                </button>
+              </form>
+            </div>
+            <p style={{ color: "rgba(255,255,255,0.4)" }} className="text-xs mt-2">Powered by AI · Search in plain English</p>
+
+            {/* Results */}
+            {searched && (
+              <div className="mt-4 text-left space-y-2 max-h-64 overflow-y-auto">
+                {results.length === 0 ? (
+                  <div className="rounded-xl p-4 text-center text-sm" style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" }}>
+                    No results. <Link href="/store" style={{ color: "#29A9DF" }} className="underline">Browse all →</Link>
+                  </div>
+                ) : results.map((r: any, i: number) => (
+                  <Link key={i} href={`/units/${r.id}`}
+                    className="flex items-center gap-4 rounded-xl p-4 transition-all"
+                    style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg flex-shrink-0"
+                      style={{ background: "rgba(41,169,223,0.2)", color: "#29A9DF" }}>🏠</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-bold text-sm truncate">{r.unit_number || r.name}</p>
+                      <p style={{ color: "rgba(255,255,255,0.5)" }} className="text-xs">{r.unit_type} · {r.bedrooms} BHK · {r.area_sqft} sqft</p>
+                    </div>
+                    <div className="font-bold text-sm" style={{ color: "#29A9DF" }}>{formatPrice(r.base_price)}</div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      </header>
 
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-brand-dark via-gray-900 to-brand-dark text-white py-24 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-serif font-bold mb-4">
-            Find Your <span className="text-brand-gold">Dream Home</span>
-          </h1>
-          <p className="text-gray-300 text-xl mb-10">
-            Premium apartments, villas and plots in Hyderabad
-          </p>
-          <form onSubmit={handleSearch} className="flex gap-3 max-w-2xl mx-auto">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder='Try "2BHK under 60 lakhs east facing"'
-              className="flex-1 input text-gray-900 text-sm"
-            />
-            <button type="submit" disabled={searching} className="btn-primary whitespace-nowrap">
-              {searching ? 'Searching...' : '🔍 Search'}
-            </button>
-          </form>
-          <div className="flex flex-wrap justify-center gap-3 mt-6 text-sm">
-            {['2BHK under 60L', '3BHK east facing', 'Plots in Shamshabad', '4BHK with pool'].map((s) => (
-              <button key={s} onClick={() => setSearchQuery(s)}
-                className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full transition-colors">
-                {s}
-              </button>
+        {/* Scroll */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" style={{ color: "rgba(255,255,255,0.35)" }}>
+          <span className="text-xs tracking-widest">SCROLL</span>
+          <div className="w-px h-10 bg-gradient-to-b from-white/30 to-transparent animate-pulse" />
+        </div>
+      </section>
+
+      {/* ── Stats Bar ─────────────────────────────────────────────────────── */}
+      <section className="py-12" style={{ background: "#2A3887" }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[["40+","Years of Experience"],["40K+","Dream Homes"],["70K+","Happy Families"],["20M+","Sq Ft Delivered"]].map(([v,l]) => (
+              <div key={l}>
+                <div className="text-3xl md:text-4xl font-black text-white">{v}</div>
+                <div style={{ color: "#29A9DF" }} className="text-sm font-semibold mt-1">{l}</div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-12 space-y-16">
+      {/* ── Featured Projects ──────────────────────────────────────────────── */}
+      <section className="py-20" style={{ background: "#F8F9FB" }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-3">Our Portfolio</p>
+            <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Featured Projects</h2>
+            <p style={{ color: "#555A5C" }} className="mt-3 max-w-xl mx-auto">Premium residential communities across Hyderabad — crafted to the highest standards.</p>
+          </div>
 
-        {/* Search Results */}
-        {searchResults !== null && (
-          <section>
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-serif font-bold">Search Results</h2>
-                {searchMessage && <p className="text-gray-500 text-sm mt-1">{searchMessage}</p>}
-              </div>
-              <button onClick={() => { setSearchResults(null); setSearchMessage('') }}
-                className="text-sm text-gray-400 hover:text-gray-600">Clear ✕</button>
-            </div>
-            {searchResults.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <p className="text-xl">No units found</p>
-                <p className="text-sm mt-2">Try a different search</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {searchResults.map((u) => <UnitCard key={u.id} unit={u} />)}
-              </div>
-            )}
-          </section>
-        )}
+          <div className="flex gap-3 justify-center mb-10 flex-wrap">
+            {["All","Ready to Move","Under Construction","New Launch"].map(f => (
+              <button key={f} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all`}
+                style={f==="All"?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{borderColor:"#ddd",color:"#555",background:"white"}}>
+                {f}
+              </button>
+            ))}
+          </div>
 
-        {/* Trending Units */}
-        {searchResults === null && (
-          <section>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-serif font-bold">🔥 Trending Units</h2>
-              <Link href="/units" className="text-brand-gold text-sm hover:underline">View all →</Link>
-            </div>
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="card p-5 animate-pulse">
-                    <div className="bg-gray-200 h-44 rounded-xl mb-4" />
-                    <div className="space-y-2">
-                      <div className="bg-gray-200 h-4 rounded w-3/4" />
-                      <div className="bg-gray-200 h-4 rounded w-1/2" />
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {PROJECTS.map(p => (
+              <div key={p.name} className="group bg-white rounded-2xl overflow-hidden hover:-translate-y-1 transition-all duration-300"
+                style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.1)" }}>
+                <div className="h-52 relative flex flex-col justify-between p-5"
+                  style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
+                  <span className="self-start px-3 py-1 rounded-full text-xs font-bold bg-white"
+                    style={{ color: p.statusColor }}>{p.status}</span>
+                  <div>
+                    <p style={{ color: "rgba(255,255,255,0.7)" }} className="text-xs mb-1">{p.type}</p>
+                    <h3 className="text-white font-black text-xl">{p.name}</h3>
                   </div>
-                ))}
-              </div>
-            ) : error ? (
-              <div className="text-center py-12 text-gray-400">
-                <p>Unable to load units. Please refresh.</p>
-              </div>
-            ) : trending.length === 0 ? (
-              <div className="text-center py-12 text-gray-400">
-                <p>No trending units available.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {trending.map((u) => <UnitCard key={u.id} unit={u} />)}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Projects */}
-        {searchResults === null && (
-          <section>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-serif font-bold">Our Projects</h2>
-              <Link href="/projects" className="text-brand-gold text-sm hover:underline">View all →</Link>
-            </div>
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="card animate-pulse">
-                    <div className="bg-gray-200 h-48" />
-                    <div className="p-5 space-y-2">
-                      <div className="bg-gray-200 h-4 rounded w-3/4" />
-                      <div className="bg-gray-200 h-4 rounded w-1/2" />
-                    </div>
+                </div>
+                <div className="p-6">
+                  <p style={{ color: "#555A5C" }} className="text-sm mb-4">📍 {p.loc}, Hyderabad</p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-lg" style={{ color: "#2A3887" }}>{p.price}</span>
+                    <Link href="/projects" className="text-sm font-bold transition-colors hover:underline" style={{ color: "#29A9DF" }}>View Details →</Link>
                   </div>
-                ))}
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects.map((p) => <ProjectCard key={p.id} project={p} />)}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* CTA */}
-        {searchResults === null && (
-          <section className="bg-brand-dark text-white rounded-3xl p-10 text-center">
-            <h2 className="text-3xl font-serif font-bold mb-3">
-              Can't find what you're looking for?
-            </h2>
-            <p className="text-gray-300 mb-8">
-              Tell us your requirements — our team will find the perfect unit for you
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto">
-              <Link href="/contact" className="btn-primary text-center flex-1">📞 Talk to an Expert</Link>
-              <Link href="/site-visit" className="btn-outline text-center flex-1">🏠 Book a Site Visit</Link>
-            </div>
-          </section>
-        )}
-      </div>
-
-      {/* Footer */}
-      <footer className="bg-brand-dark text-gray-400 py-10 mt-16">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="font-serif text-brand-gold text-xl mb-2">Janapriya Upscale</p>
-          <p className="text-sm">Premium Real Estate · Hyderabad</p>
-          <p className="text-xs mt-4">© 2026 Janapriya Upscale. All rights reserved.</p>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link href="/projects" className="inline-flex items-center gap-2 px-8 py-3.5 font-bold rounded-full transition-all hover:scale-105"
+              style={{ border: "2px solid #2A3887", color: "#2A3887", background: "white" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background="#2A3887"; (e.currentTarget as HTMLAnchorElement).style.color="white"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background="white"; (e.currentTarget as HTMLAnchorElement).style.color="#2A3887"; }}>
+              View All Projects →
+            </Link>
+          </div>
         </div>
-      </footer>
+      </section>
+
+      {/* ── Why Choose Us ─────────────────────────────────────────────────── */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-3">Why Choose Us</p>
+            <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Built on Trust,<br />Crafted for Life.</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+            {WHYUS.map(w => (
+              <div key={w.title} className="rounded-2xl p-6 transition-all hover:-translate-y-1 cursor-default"
+                style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor="#29A9DF"; (e.currentTarget as HTMLDivElement).style.boxShadow="0 8px 24px rgba(41,169,223,0.15)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor="#E2F1FC"; (e.currentTarget as HTMLDivElement).style.boxShadow="none"; }}>
+                <div className="text-3xl mb-3">{w.icon}</div>
+                <h4 className="font-bold text-sm mb-1" style={{ color: "#2A3887" }}>{w.title}</h4>
+                <p className="text-xs leading-relaxed" style={{ color: "#555A5C" }}>{w.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ──────────────────────────────────────────────────── */}
+      <section className="py-20" style={{ background: "#262262" }}>
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-3">Happy Families</p>
+            <h2 className="text-4xl font-black text-white">What Our Customers Say</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {name:"Rajesh Kumar",role:"Software Engineer, Hyderabad",text:"Excellent construction quality and transparent process. Janapriya delivered exactly what they promised. Highly recommended!",rating:5},
+              {name:"Priya Sharma",role:"Doctor, Secunderabad",text:"Bought a 3BHK in Janapriya Heights. The team was professional at every step. Best decision of my life!",rating:5},
+              {name:"Venkat Reddy",role:"Business Owner, Hyderabad",text:"Invested in Janapriya Meadows villa. Superb quality, premium location. Great ROI and an even better living experience.",rating:5},
+            ].map(t => (
+              <div key={t.name} className="rounded-2xl p-6 transition-colors"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                <div className="flex gap-0.5 mb-4">{Array(t.rating).fill(0).map((_,i)=><span key={i} style={{ color: "#29A9DF" }}>★</span>)}</div>
+                <p style={{ color: "rgba(255,255,255,0.75)" }} className="text-sm leading-relaxed mb-6">"{t.text}"</p>
+                <div>
+                  <div className="font-bold text-white text-sm">{t.name}</div>
+                  <div style={{ color: "rgba(255,255,255,0.4)" }} className="text-xs">{t.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CTA ───────────────────────────────────────────────────────────── */}
+      <section className="py-20" style={{ background: "linear-gradient(135deg, #29A9DF, #2A3887)" }}>
+        <div className="max-w-3xl mx-auto px-6 text-center">
+          <h2 className="text-4xl font-black text-white mb-4">Ready to Find Your Dream Home?</h2>
+          <p style={{ color: "rgba(255,255,255,0.8)" }} className="mb-8">Talk to our experts today. Site visits available 7 days a week.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/contact" className="px-8 py-4 bg-white font-bold rounded-full transition-all hover:scale-105 hover:shadow-xl"
+              style={{ color: "#2A3887" }}>Schedule a Visit</Link>
+            <Link href="/projects" className="px-8 py-4 font-bold rounded-full transition-all"
+              style={{ background: "rgba(255,255,255,0.15)", color: "white", border: "2px solid rgba(255,255,255,0.4)" }}>
+              Browse Projects
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <Footer />
     </main>
-  )
+  );
 }

@@ -1,109 +1,104 @@
-'use client'
-import { useState } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import api from '@/lib/api'
-import { useAuthStore } from '@/store/auth'
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { customerApi, saveSession, isLoggedIn } from "@/lib/customerAuth";
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const { setAuth } = useAuthStore()
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '' })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const router = useRouter();
+  const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (form.password !== form.confirm) {
-      setError('Passwords do not match')
-      return
-    }
-    setLoading(true)
-    setError('')
+  useEffect(() => {
+    if (isLoggedIn()) router.replace("/dashboard");
+  }, [router]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (form.password !== form.confirm) { setError("Passwords do not match"); return; }
+    if (form.password.length < 8) { setError("Password must be at least 8 characters"); return; }
+    setLoading(true);
     try {
-      const res = await api.post('/auth/register', {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        password: form.password,
-      })
-      setAuth(res.data.access_token, res.data.customer)
-      router.push('/')
+      const data = await customerApi("/auth/register", {
+        method: "POST",
+        body: JSON.stringify({ name: form.name, email: form.email, phone: form.phone, password: form.password }),
+      });
+      saveSession(data.access_token, data.customer);
+      router.push("/dashboard");
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed.')
-    } finally {
-      setLoading(false)
-    }
+      setError(err.message || "Registration failed. Please try again.");
+    } finally { setLoading(false); }
   }
 
+  const field = (key: keyof typeof form, label: string, type = "text", placeholder = "") => (
+    <div>
+      <label className="block text-xs font-bold mb-1.5" style={{ color: "#2A3887" }}>{label}</label>
+      <input type={type} required={key !== "phone"} value={form[key]}
+        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+        placeholder={placeholder}
+        className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-all"
+        style={{ background: "#F8F9FB", border: "1.5px solid #E2F1FC", color: "#333" }}
+        onFocus={e => e.target.style.borderColor = "#29A9DF"}
+        onBlur={e => e.target.style.borderColor = "#E2F1FC"} />
+    </div>
+  );
+
   return (
-    <main className="min-h-screen bg-brand-light flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-serif font-bold text-brand-gold">
-            Janapriya Upscale
-          </Link>
-          <p className="text-gray-500 mt-2">Create your account</p>
-        </div>
+    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+      <Navbar />
+      <div className="min-h-screen flex items-center justify-center pt-20 pb-12 px-4"
+        style={{ background: "linear-gradient(135deg, #F8F9FB 0%, #E2F1FC 100%)" }}>
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-3xl overflow-hidden" style={{ boxShadow: "0 20px 60px rgba(42,56,135,0.15)" }}>
+            {/* Header */}
+            <div className="px-8 pt-8 pb-6" style={{ background: "linear-gradient(135deg, #262262, #2A3887)" }}>
+              <Link href="/">
+                <img src="/logo-dark.png" alt="Janapriya Upscale" className="h-9 w-auto mb-6" />
+              </Link>
+              <h1 className="text-2xl font-black text-white">Create Account</h1>
+              <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-sm mt-1">Join 70,000+ happy Janapriya families</p>
+            </div>
 
-        <div className="card p-8">
-          <h1 className="text-2xl font-serif font-bold text-gray-900 mb-6">Get Started</h1>
+            {/* Form */}
+            <div className="px-8 py-8">
+              {error && (
+                <div className="mb-5 px-4 py-3 rounded-xl text-sm font-medium"
+                  style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5" }}>
+                  ⚠ {error}
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {field("name", "Full Name", "text", "Your full name")}
+                {field("email", "Email Address", "email", "you@example.com")}
+                {field("phone", "Phone Number (optional)", "tel", "+91 98765 43210")}
+                {field("password", "Password", "password", "Min. 8 characters")}
+                {field("confirm", "Confirm Password", "password", "Re-enter your password")}
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-4 text-sm">
-              {error}
-            </div>
-          )}
+                <button type="submit" disabled={loading}
+                  className="w-full py-3.5 text-white font-bold rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2"
+                  style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
+                  {loading ? <><span className="animate-spin">⟳</span> Creating account...</> : "Create Account →"}
+                </button>
+              </form>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <input required placeholder="Ravi Kumar"
-                value={form.name}
-                onChange={e => setForm(f => ({...f, name: e.target.value}))}
-                className="input" />
+              <div className="mt-6 pt-6 text-center" style={{ borderTop: "1px solid #E2F1FC" }}>
+                <p className="text-sm" style={{ color: "#555A5C" }}>
+                  Already have an account?{" "}
+                  <Link href="/login" className="font-bold hover:underline" style={{ color: "#2A3887" }}>Sign In</Link>
+                </p>
+              </div>
+              <p className="mt-4 text-xs text-center" style={{ color: "#aaa" }}>
+                By registering, you agree to our Terms of Service and Privacy Policy.
+              </p>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" required placeholder="you@example.com"
-                value={form.email}
-                onChange={e => setForm(f => ({...f, email: e.target.value}))}
-                className="input" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <input placeholder="9876543210"
-                value={form.phone}
-                onChange={e => setForm(f => ({...f, phone: e.target.value}))}
-                className="input" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input type="password" required placeholder="••••••••"
-                value={form.password}
-                onChange={e => setForm(f => ({...f, password: e.target.value}))}
-                className="input" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-              <input type="password" required placeholder="••••••••"
-                value={form.confirm}
-                onChange={e => setForm(f => ({...f, confirm: e.target.value}))}
-                className="input" />
-            </div>
-            <button type="submit" disabled={loading} className="btn-primary w-full mt-2">
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-gray-500 mt-6">
-            Already have an account?{' '}
-            <Link href="/login" className="text-brand-gold hover:underline font-medium">
-              Sign in
-            </Link>
-          </p>
+          </div>
         </div>
       </div>
+      <Footer />
     </main>
-  )
+  );
 }

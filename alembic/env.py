@@ -13,6 +13,8 @@ from backend.app.models import (
     Lead, SiteVisit, CartItem,
     Booking, Coupon, SearchLog,
 )
+from backend.app.models.admin_user import AdminUser
+from backend.app.models.field_config import FieldConfig, CustomFieldValue
 
 config = context.config
 

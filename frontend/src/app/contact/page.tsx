@@ -1,231 +1,126 @@
-'use client'
-import { useState } from 'react'
-import Link from 'next/link'
-import api from '@/lib/api'
-
-const BUDGETS = [
-  'Under ₹30 Lakhs', '₹30–50 Lakhs', '₹50–75 Lakhs',
-  '₹75L–1 Cr', '₹1–2 Cr', 'Above ₹2 Cr'
-]
-
-const INTERESTS = ['1BHK', '2BHK', '3BHK', '4BHK', 'Villa', 'Plot', 'Not sure yet']
+"use client";
+import { useState } from "react";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 export default function ContactPage() {
-  const [form, setForm] = useState({
-    name: '', phone: '', email: '',
-    interest: '', budget_min: '', budget_max: '',
-    message: '', utm_source: 'contact_page'
-  })
-  const [loading, setLoading] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [error, setError] = useState('')
-  const [selectedBudget, setSelectedBudget] = useState('')
+  const [form, setForm] = useState({name:"",email:"",phone:"",project:"",message:""});
+  const [status, setStatus] = useState<"idle"|"loading"|"success"|"error">("idle");
 
-  const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
-
-  const selectBudget = (b: string) => {
-    setSelectedBudget(b)
-    const map: Record<string, [string, string]> = {
-      'Under ₹30 Lakhs':  ['0', '3000000'],
-      '₹30–50 Lakhs':     ['3000000', '5000000'],
-      '₹50–75 Lakhs':     ['5000000', '7500000'],
-      '₹75L–1 Cr':        ['7500000', '10000000'],
-      '₹1–2 Cr':          ['10000000', '20000000'],
-      'Above ₹2 Cr':      ['20000000', ''],
-    }
-    if (map[b]) {
-      setForm(f => ({ ...f, budget_min: map[b][0], budget_max: map[b][1] }))
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("loading");
     try {
-      await api.post('/leads', form)
-      setSubmitted(true)
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Submission failed. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+      const res = await fetch("http://173.168.0.81:8000/api/v1/leads", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          name: form.name, email: form.email, phone: form.phone,
+          message: form.message, source: "contact_form",
+          project_interest: form.project || undefined,
+        }),
+      });
+      if (res.ok) setStatus("success");
+      else setStatus("error");
+    } catch { setStatus("error"); }
   }
-
-  if (submitted) return (
-    <main className="min-h-screen bg-brand-light flex items-center justify-center px-4">
-      <div className="text-center max-w-md">
-        <div className="text-6xl mb-6">✅</div>
-        <h1 className="text-3xl font-serif font-bold text-gray-900 mb-3">We'll Be in Touch!</h1>
-        <p className="text-gray-500 mb-8">
-          Thank you <strong>{form.name}</strong>! Our property expert will call you
-          on <strong>{form.phone}</strong> within 24 hours.
-        </p>
-        <div className="bg-white rounded-2xl p-6 shadow-md mb-8 text-left space-y-3">
-          {form.interest && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Interest</span>
-              <span className="font-medium">{form.interest}</span>
-            </div>
-          )}
-          {selectedBudget && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Budget</span>
-              <span className="font-medium">{selectedBudget}</span>
-            </div>
-          )}
-        </div>
-        <div className="flex gap-4 justify-center">
-          <Link href="/" className="btn-primary">Browse Properties</Link>
-          <Link href="/site-visit" className="btn-outline">Book Site Visit</Link>
-        </div>
-      </div>
-    </main>
-  )
 
   return (
-    <main className="min-h-screen bg-brand-light">
-      <header className="bg-brand-dark text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-serif font-bold text-brand-gold">
-            Janapriya Upscale
-          </Link>
-          <Link href="/" className="text-sm text-gray-300 hover:text-brand-gold">← Back to Home</Link>
+    <main className="min-h-screen bg-white">
+      <Navbar />
+      <div className="pt-20 bg-gray-950 text-white py-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <p className="text-amber-500 text-xs font-bold tracking-widest uppercase mb-3">Get in Touch</p>
+          <h1 className="text-5xl font-black" style={{fontFamily:"Georgia,serif"}}>Let's Find Your<br />Dream Home</h1>
+          <p className="text-gray-400 mt-4">Our team is ready to help you — call, email, or fill the form.</p>
         </div>
-      </header>
+      </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-
-          {/* Left Info */}
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-4xl font-serif font-bold text-gray-900 mb-3">Talk to an Expert</h1>
-              <p className="text-gray-500">
-                Our property advisors are ready to help you find the perfect home.
-              </p>
-            </div>
-
-            <div className="space-y-6">
+      <section className="py-20 max-w-7xl mx-auto px-6">
+        <div className="grid md:grid-cols-2 gap-16">
+          {/* Contact Info */}
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 mb-8">Contact Information</h2>
+            <div className="space-y-6 mb-10">
               {[
-                { icon: '📞', title: 'Call Us', info: '+91 98765 43210', sub: 'Mon–Sun, 9AM–7PM' },
-                { icon: '📧', title: 'Email Us', info: 'sales@janapriyaupscale.com', sub: 'Reply within 2 hours' },
-                { icon: '📍', title: 'Visit Us', info: 'Kondapur Main Road', sub: 'Hyderabad, Telangana 500084' },
-              ].map(item => (
-                <div key={item.title} className="flex gap-4">
-                  <div className="text-2xl">{item.icon}</div>
+                {icon:"📍",label:"Office",val:"Banjara Hills, Hyderabad — 500034"},
+                {icon:"📞",label:"Sales",val:"+91 40 1234 5678"},
+                {icon:"💬",label:"WhatsApp",val:"+91 98765 43210"},
+                {icon:"✉️",label:"Email",val:"info@janapriyaupscale.com"},
+                {icon:"🕘",label:"Hours",val:"Mon–Sat: 9AM–7PM · Sun: 10AM–5PM"},
+              ].map(c=>(
+                <div key={c.label} className="flex gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl flex-shrink-0">{c.icon}</div>
                   <div>
-                    <p className="font-semibold text-gray-900">{item.title}</p>
-                    <p className="text-gray-700 text-sm">{item.info}</p>
-                    <p className="text-gray-400 text-xs">{item.sub}</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{c.label}</p>
+                    <p className="text-gray-800 font-medium">{c.val}</p>
                   </div>
                 </div>
               ))}
             </div>
-
-            <div className="card p-5 bg-brand-dark text-white">
-              <p className="font-serif font-bold text-lg text-brand-gold mb-2">Free Consultation</p>
-              <p className="text-gray-300 text-sm">
-                No charges. No spam. Just expert guidance to help you make the right decision.
-              </p>
+            {/* Map placeholder */}
+            <div className="bg-gray-100 rounded-2xl h-48 flex items-center justify-center text-gray-400 border border-gray-200">
+              <div className="text-center">
+                <div className="text-4xl mb-2">🗺️</div>
+                <p className="text-sm">Banjara Hills, Hyderabad</p>
+              </div>
             </div>
           </div>
 
           {/* Form */}
-          <div className="lg:col-span-2 card p-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Send an Enquiry</h2>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-4 text-sm">
-                {error}
+          <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">
+            {status === "success" ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">✅</div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Thank You!</h3>
+                <p className="text-gray-600">Our team will contact you within 24 hours.</p>
+                <button onClick={() => { setStatus("idle"); setForm({name:"",email:"",phone:"",project:"",message:""}); }}
+                  className="mt-6 px-6 py-2.5 bg-amber-500 text-white font-bold rounded-full text-sm">Submit Another</button>
               </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <h3 className="text-xl font-black text-gray-900 mb-6">Enquiry Form</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Name *</label>
+                    <input required value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white" placeholder="Your name" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Phone *</label>
+                    <input required value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))}
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white" placeholder="+91 XXXXX XXXXX" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Email</label>
+                  <input type="email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white" placeholder="your@email.com" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Interested In</label>
+                  <select value={form.project} onChange={e=>setForm(f=>({...f,project:e.target.value}))}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white">
+                    <option value="">Select a project...</option>
+                    {["Janapriya Heights","Janapriya Meadows","Janapriya Elite","Janapriya Gardens","Janapriya Skyline","Janapriya Prime"].map(p=><option key={p} value={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide">Message</label>
+                  <textarea rows={4} value={form.message} onChange={e=>setForm(f=>({...f,message:e.target.value}))}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white resize-none" placeholder="Tell us about your requirements..." />
+                </div>
+                {status === "error" && <p className="text-red-500 text-sm">Something went wrong. Please try again.</p>}
+                <button type="submit" disabled={status==="loading"}
+                  className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl transition-colors disabled:opacity-50 text-sm tracking-wide">
+                  {status === "loading" ? "Sending…" : "Submit Enquiry →"}
+                </button>
+              </form>
             )}
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input required placeholder="Ravi Kumar"
-                    value={form.name} onChange={e => update('name', e.target.value)}
-                    className="input" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone <span className="text-red-500">*</span>
-                  </label>
-                  <input required placeholder="9876543210"
-                    value={form.phone} onChange={e => update('phone', e.target.value)}
-                    className="input" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input type="email" placeholder="you@example.com"
-                  value={form.email} onChange={e => update('email', e.target.value)}
-                  className="input" />
-              </div>
-
-              {/* Interest */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  I'm looking for
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {INTERESTS.map(i => (
-                    <button key={i} type="button"
-                      onClick={() => update('interest', form.interest === i ? '' : i)}
-                      className={`px-4 py-2 rounded-full text-sm border transition-colors ${
-                        form.interest === i
-                          ? 'bg-brand-gold text-white border-brand-gold'
-                          : 'border-gray-300 text-gray-600 hover:border-brand-gold'
-                      }`}>
-                      {i}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Budget */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Budget Range</label>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {BUDGETS.map(b => (
-                    <button key={b} type="button"
-                      onClick={() => selectBudget(b)}
-                      className={`py-2 px-3 rounded-lg text-sm border transition-colors ${
-                        selectedBudget === b
-                          ? 'bg-brand-gold text-white border-brand-gold'
-                          : 'border-gray-300 text-gray-600 hover:border-brand-gold'
-                      }`}>
-                      {b}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-                <textarea rows={4}
-                  placeholder="Tell us more about what you're looking for — location preference, move-in timeline, specific requirements..."
-                  value={form.message} onChange={e => update('message', e.target.value)}
-                  className="input resize-none" />
-              </div>
-
-              <button type="submit" disabled={loading}
-                className="btn-primary w-full text-lg py-4">
-                {loading ? 'Sending...' : '📩 Send Enquiry'}
-              </button>
-
-              <p className="text-center text-xs text-gray-400">
-                We respect your privacy. Your information will never be shared.
-              </p>
-            </form>
           </div>
         </div>
-      </div>
+      </section>
+      <Footer />
     </main>
-  )
+  );
 }

@@ -31,3 +31,15 @@
   .badge-booked     { @apply bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-medium; }
   .badge-trending   { @apply bg-amber-100 text-amber-700 text-xs px-2 py-1 rounded-full font-medium; }
 }
+
+/* ── Janapriya Upscale Brand Theme ── */
+:root {
+  --jp-navy: #2A3887;
+  --jp-blue: #29A9DF;
+  --jp-cyan: #00C2FF;
+  --jp-light: #E2F1FC;
+  --jp-dark: #262262;
+  --jp-text: #333333;
+  --jp-muted: #555A5C;
+  --jp-bg: #F8F9FB;
+}
