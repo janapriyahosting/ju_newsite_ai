@@ -244,52 +244,110 @@ export default function HomePage() {
         </section>
       )}
 
+      {/* ── Trending Units ─────────────────────────────────────────────────── */}
+      {trending.length > 0 && (
+        <section className="py-20" style={{ background: "#F8F9FB" }}>
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="flex items-end justify-between mb-10">
+              <div>
+                <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-2">Hot Properties</p>
+                <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Trending Now</h2>
+                <p style={{ color: "#555A5C" }} className="mt-2 text-sm">Our most popular units — book before they&apos;re gone.</p>
+              </div>
+              <Link href="/store" className="hidden md:flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-full border transition-all hover:scale-105"
+                style={{ border: "2px solid #2A3887", color: "#2A3887" }}>
+                View All →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {trending.map((u: any) => (
+                <Link key={u.id} href={`/units/${u.id}`}
+                  className="bg-white rounded-2xl overflow-hidden group transition-all duration-200 hover:-translate-y-1 block"
+                  style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
+                  <div className="h-36 flex flex-col justify-between p-4"
+                    style={{ background: "linear-gradient(135deg,#262262,#2A3887)" }}>
+                    <div className="flex justify-between items-center">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-black bg-white" style={{ color: "#22c55e" }}>● Available</span>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.15)", color: "#29A9DF" }}>🔥 Trending</span>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.55)" }}>
+                        {u.unit_type}{u.bedrooms ? ` · ${u.bedrooms} BHK` : ""}
+                      </p>
+                      <p className="text-white font-black text-base leading-tight">{u.unit_number}</p>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex gap-3 text-xs mb-3" style={{ color: "#666" }}>
+                      {u.bedrooms && <span>🛏 {u.bedrooms} BHK</span>}
+                      {u.area_sqft && <span>📐 {parseFloat(u.area_sqft).toFixed(0)} sqft</span>}
+                      {u.floor_number != null && <span>🏢 Fl {u.floor_number}</span>}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-black text-base" style={{ color: "#2A3887" }}>{formatPrice(u.base_price)}</p>
+                        {u.area_sqft && u.base_price && (
+                          <p className="text-xs" style={{ color: "#aaa" }}>
+                            ₹{Math.round(parseFloat(u.base_price)/parseFloat(u.area_sqft)).toLocaleString()}/sqft
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white group-hover:scale-105 transition-all"
+                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View →</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="text-center mt-8 md:hidden">
+              <Link href="/store" className="inline-block px-8 py-3 font-bold rounded-full text-white"
+                style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View All Units →</Link>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ── Featured Projects ──────────────────────────────────────────────── */}
-      <section className="py-20" style={{ background: "#F8F9FB" }}>
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-3">Our Portfolio</p>
             <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Featured Projects</h2>
             <p style={{ color: "#555A5C" }} className="mt-3 max-w-xl mx-auto">Premium residential communities across Hyderabad — crafted to the highest standards.</p>
           </div>
-
-          <div className="flex gap-3 justify-center mb-10 flex-wrap">
-            {["All","Ready to Move","Under Construction","New Launch"].map(f => (
-              <button key={f} className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all`}
-                style={f==="All"?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{borderColor:"#ddd",color:"#555",background:"white"}}>
-                {f}
-              </button>
-            ))}
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {PROJECTS.map(p => (
-              <div key={p.name} className="group bg-white rounded-2xl overflow-hidden hover:-translate-y-1 transition-all duration-300"
-                style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.1)" }}>
-                <div className="h-52 relative flex flex-col justify-between p-5"
-                  style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
+            {projects.length > 0 ? projects.map((p: any) => (
+              <Link key={p.id} href={`/projects/${p.id}`}
+                className="group bg-white rounded-2xl overflow-hidden hover:-translate-y-1 transition-all duration-300 block"
+                style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.1)", border: "1px solid #E2F1FC" }}>
+                <div className="h-52 flex flex-col justify-between p-5"
+                  style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                   <span className="self-start px-3 py-1 rounded-full text-xs font-bold bg-white"
-                    style={{ color: p.statusColor }}>{p.status}</span>
+                    style={{ color: p.status === "ready" ? "#22c55e" : p.status === "upcoming" ? "#f59e0b" : "#2A3887" }}>
+                    {p.status === "ready" ? "✓ Ready to Move" : p.status === "upcoming" ? "⏳ Upcoming" : "🏗 Under Construction"}
+                  </span>
                   <div>
-                    <p style={{ color: "rgba(255,255,255,0.7)" }} className="text-xs mb-1">{p.type}</p>
+                    <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-xs mb-1">{p.project_type || "Residential"}</p>
                     <h3 className="text-white font-black text-xl">{p.name}</h3>
+                    {p.address && <p style={{ color: "rgba(255,255,255,0.55)" }} className="text-xs mt-1">📍 {p.address}</p>}
                   </div>
                 </div>
-                <div className="p-6">
-                  <p style={{ color: "#555A5C" }} className="text-sm mb-4">📍 {p.loc}, Hyderabad</p>
+                <div className="p-5">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-lg" style={{ color: "#2A3887" }}>{p.price}</span>
-                    <Link href="/projects" className="text-sm font-bold transition-colors hover:underline" style={{ color: "#29A9DF" }}>View Details →</Link>
+                    <span className="font-bold text-base" style={{ color: "#2A3887" }}>
+                      {p.min_price ? formatPrice(p.min_price) : "Price on request"}
+                    </span>
+                    <span className="text-sm font-bold transition-colors" style={{ color: "#29A9DF" }}>View Details →</span>
                   </div>
                 </div>
-              </div>
+              </Link>
+            )) : [1,2,3].map(i => (
+              <div key={i} className="h-72 rounded-2xl animate-pulse" style={{ background: "#E2F1FC" }} />
             ))}
           </div>
           <div className="text-center mt-10">
             <Link href="/projects" className="inline-flex items-center gap-2 px-8 py-3.5 font-bold rounded-full transition-all hover:scale-105"
-              style={{ border: "2px solid #2A3887", color: "#2A3887", background: "white" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background="#2A3887"; (e.currentTarget as HTMLAnchorElement).style.color="white"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background="white"; (e.currentTarget as HTMLAnchorElement).style.color="#2A3887"; }}>
+              style={{ border: "2px solid #2A3887", color: "#2A3887" }}>
               View All Projects →
             </Link>
           </div>
