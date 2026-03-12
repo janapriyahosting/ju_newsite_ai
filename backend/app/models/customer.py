@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import String, Boolean, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.app.models.base import UUIDMixin, TimeStampMixin
@@ -14,6 +15,7 @@ class Customer(UUIDMixin, TimeStampMixin, Base):
     sf_contact_id: Mapped[str]  = mapped_column(String(50), nullable=True)   # Salesforce ID
     is_verified:   Mapped[bool] = mapped_column(Boolean, default=False)
     is_active:     Mapped[bool] = mapped_column(Boolean, default=True)
+    last_login: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     preferences:   Mapped[dict] = mapped_column(JSON, default=dict)          # search preferences
     otp:           Mapped[str]  = mapped_column(String(10), nullable=True)
     otp_expiry:    Mapped[str]  = mapped_column(String(50), nullable=True)

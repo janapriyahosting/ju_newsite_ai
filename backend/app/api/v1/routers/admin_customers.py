@@ -86,3 +86,48 @@ async def toggle_active(
     customer.is_active = not customer.is_active
     await db.flush()
     return {"is_active": customer.is_active, "message": f"Customer {'activated' if customer.is_active else 'deactivated'}"}
+
+
+@router.get("/recent-logins")
+async def recent_logins(
+    limit: int = Query(10, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(verify_admin_token)
+):
+    result = await db.execute(
+        select(Customer)
+        .where(Customer.last_login.isnot(None))
+        .order_by(Customer.last_login.desc())
+        .limit(limit)
+    )
+    customers = result.scalars().all()
+    return [
+        {"id": str(c.id), "name": c.name, "email": c.email,
+         "phone": c.phone, "last_login": c.last_login.isoformat() if c.last_login else None,
+         "is_active": c.is_active}
+        for c in customers
+    ]
+
+
+@router.get("/registrations/chart")
+async def registration_chart(
+    days: int = Query(30, ge=7, le=90),
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(verify_admin_token)
+):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import func, cast
+    from sqlalchemy.types import Date as SADate
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days)
+    result = await db.execute(
+        select(
+            cast(Customer.created_at, SADate).label("date"),
+            func.count(Customer.id).label("count")
+        )
+        .where(Customer.created_at >= start)
+        .group_by(cast(Customer.created_at, SADate))
+        .order_by(cast(Customer.created_at, SADate))
+    )
+    rows = result.all()
+    return [{"date": str(r.date), "count": r.count} for r in rows]
