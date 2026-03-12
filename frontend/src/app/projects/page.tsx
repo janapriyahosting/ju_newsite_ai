@@ -5,12 +5,12 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 const ALL_PROJECTS = [
-  {name:"Janapriya Heights",loc:"Gachibowli",type:"2 & 3 BHK",price:"₹45L – ₹85L",units:120,status:"Ready to Move",statusColor:"#22c55e",desc:"Spacious apartments with premium amenities in the IT hub of Hyderabad."},
-  {name:"Janapriya Meadows",loc:"Kompally",type:"Villas & Row Houses",price:"₹85L – ₹1.5Cr",units:60,status:"Under Construction",statusColor:"#f59e0b",desc:"Independent villas with private gardens in a gated community."},
-  {name:"Janapriya Elite",loc:"Banjara Hills",type:"Luxury Apts",price:"₹1.2Cr – ₹2.5Cr",units:48,status:"New Launch",statusColor:"#29A9DF",desc:"Ultra-luxury apartments in the most premium address in Hyderabad."},
-  {name:"Janapriya Gardens",loc:"Miyapur",type:"2 BHK",price:"₹38L – ₹55L",units:200,status:"Ready to Move",statusColor:"#22c55e",desc:"Affordable luxury with lush green surroundings and excellent connectivity."},
-  {name:"Janapriya Skyline",loc:"Kukatpally",type:"3 & 4 BHK",price:"₹75L – ₹1.2Cr",units:80,status:"Under Construction",statusColor:"#f59e0b",desc:"Sky-high living with panoramic city views and world-class facilities."},
-  {name:"Janapriya Prime",loc:"Madhapur",type:"Studio & 1 BHK",price:"₹28L – ₹45L",units:150,status:"New Launch",statusColor:"#29A9DF",desc:"Smart compact homes ideal for professionals and young families."},
+  {name:"Janapriya Heights",slug:"janapriya-heights",loc:"Gachibowli",type:"2 & 3 BHK",price:"₹45L – ₹85L",units:120,status:"Ready to Move",statusColor:"#22c55e",desc:"Spacious apartments with premium amenities in the IT hub of Hyderabad."},
+  {name:"Janapriya Meadows",slug:"janapriya-meadows",loc:"Kompally",type:"Villas & Row Houses",price:"₹85L – ₹1.5Cr",units:60,status:"Under Construction",statusColor:"#f59e0b",desc:"Independent villas with private gardens in a gated community."},
+  {name:"Janapriya Elite",slug:"janapriya-elite",loc:"Banjara Hills",type:"Luxury Apts",price:"₹1.2Cr – ₹2.5Cr",units:48,status:"New Launch",statusColor:"#29A9DF",desc:"Ultra-luxury apartments in the most premium address in Hyderabad."},
+  {name:"Janapriya Gardens",slug:"janapriya-gardens",loc:"Miyapur",type:"2 BHK",price:"₹38L – ₹55L",units:200,status:"Ready to Move",statusColor:"#22c55e",desc:"Affordable luxury with lush green surroundings and excellent connectivity."},
+  {name:"Janapriya Skyline",slug:"janapriya-skyline",loc:"Kukatpally",type:"3 & 4 BHK",price:"₹75L – ₹1.2Cr",units:80,status:"Under Construction",statusColor:"#f59e0b",desc:"Sky-high living with panoramic city views and world-class facilities."},
+  {name:"Janapriya Prime",slug:"janapriya-prime",loc:"Madhapur",type:"Studio & 1 BHK",price:"₹28L – ₹45L",units:150,status:"New Launch",statusColor:"#29A9DF",desc:"Smart compact homes ideal for professionals and young families."},
 ];
 
 const FILTERS = ["All","Ready to Move","Under Construction","New Launch"];
@@ -54,7 +54,7 @@ export default function ProjectsPage() {
           {filtered.map(p => (
             <div key={p.name} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
               style={{ boxShadow:"0 4px 20px rgba(42,56,135,0.1)", border:"1px solid #E2F1FC" }}>
-              <div className="h-52 relative flex flex-col justify-between p-5"
+              <Link href={`/projects/${p.slug}`} className="block h-52 relative flex flex-col justify-between p-5 cursor-pointer"
                 style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                 <div className="flex justify-between items-start">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-white" style={{ color:p.statusColor }}>{p.status}</span>
@@ -63,8 +63,9 @@ export default function ProjectsPage() {
                 <div>
                   <p style={{ color:"rgba(255,255,255,0.7)" }} className="text-xs mb-1">{p.type}</p>
                   <h3 className="text-white font-black text-xl">{p.name}</h3>
+                  <p className="text-xs mt-1" style={{ color:"rgba(255,255,255,0.5)" }}>View Details →</p>
                 </div>
-              </div>
+              </Link>
               <div className="p-6">
                 <p style={{ color:"#555A5C" }} className="text-sm mb-2">📍 {p.loc}, Hyderabad</p>
                 <p style={{ color:"#555A5C" }} className="text-xs mb-4 leading-relaxed">{p.desc}</p>

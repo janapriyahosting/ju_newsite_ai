@@ -5,19 +5,32 @@ import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
 
-function fmt(v: number) {
+function fmtPrice(v: number): string {
   if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)}Cr`;
   if (v >= 100000) return `₹${(v / 100000).toFixed(0)}L`;
   return `₹${v.toLocaleString("en-IN")}`;
 }
 
+interface Project {
+  id: string; name: string; slug: string; description: string;
+  location: string; address: string; city: string; state: string;
+  pincode: string; rera_number: string; amenities: string[];
+  images: string[]; brochure_url: string | null; video_url: string | null;
+  status: string; is_featured: boolean;
+}
+interface Unit {
+  id: string; unit_type: string; unit_number: string; floor: number;
+  area_sqft: number; price: number; status: string; facing: string;
+}
+
 export default function ProjectDetailPage() {
-  const { slug } = useParams();
+  const params = useParams();
+  const slug = params?.slug as string;
   const router = useRouter();
-  const [project, setProject] = useState<any>(null);
-  const [units, setUnits] = useState<any[]>([]);
+  const [project, setProject] = useState<Project | null>(null);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview"|"units"|"amenities">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "units" | "amenities">("overview");
   const [enquireOpen, setEnquireOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
 
@@ -26,98 +39,83 @@ export default function ProjectDetailPage() {
     (async () => {
       setLoading(true);
       try {
-        // Fetch all projects and find by slug
         const res = await fetch(`${API}/projects?limit=50`);
         const data = await res.json();
-        const proj = (data.items || []).find((p: any) => p.slug === slug);
+        const proj = (data.items || []).find((p: Project) => p.slug === slug);
         if (!proj) { router.push("/projects"); return; }
         setProject(proj);
-        // Fetch units for this project
         const uRes = await fetch(`${API}/units?project_id=${proj.id}&limit=100`);
         const uData = await uRes.json();
         setUnits(uData.items || []);
       } catch (e) { console.error(e); }
       setLoading(false);
     })();
-  }, [slug]);
+  }, [slug, router]);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{fontFamily:"'Lato',sans-serif"}}>
-      <div className="text-center">
-        <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin mx-auto mb-4" style={{borderColor:"#29A9DF",borderTopColor:"transparent"}}/>
-        <p style={{color:"#666"}}>Loading project details...</p>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Lato',sans-serif" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ width: 48, height: 48, borderRadius: "50%", border: "4px solid #29A9DF", borderTopColor: "transparent", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+        <p style={{ color: "#666" }}>Loading project...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   );
 
   if (!project) return null;
 
-  const priceRange = units.length > 0 ? {
-    min: Math.min(...units.map((u:any) => u.price || 0).filter(Boolean)),
-    max: Math.max(...units.map((u:any) => u.price || 0).filter(Boolean)),
-  } : null;
+  const availableUnits = units.filter(u => u.status === "available");
+  const prices = units.map(u => u.price).filter(Boolean);
+  const minPrice = prices.length ? Math.min(...prices) : 0;
+  const maxPrice = prices.length ? Math.max(...prices) : 0;
+  const unitTypes = [...new Set(units.map(u => u.unit_type).filter(Boolean))];
 
-  const unitTypes = [...new Set(units.map((u:any) => u.unit_type).filter(Boolean))];
-  const STATUS_COLOR: Record<string,{bg:string;color:string}> = {
-    available:   {bg:"#DCFCE7", color:"#16A34A"},
-    booked:      {bg:"#FEE2E2", color:"#DC2626"},
-    hold:        {bg:"#FEF3C7", color:"#D97706"},
-    sold:        {bg:"#F0F4FF", color:"#2A3887"},
+  const STATUS: Record<string, { bg: string; color: string }> = {
+    available: { bg: "#DCFCE7", color: "#16A34A" },
+    booked:    { bg: "#FEE2E2", color: "#DC2626" },
+    hold:      { bg: "#FEF3C7", color: "#D97706" },
+    sold:      { bg: "#F0F4FF", color: "#2A3887" },
   };
 
   return (
-    <div style={{fontFamily:"'Lato',sans-serif", minHeight:"100vh", background:"#F8F9FB"}}>
+    <div style={{ fontFamily: "'Lato',sans-serif", minHeight: "100vh", background: "#F8F9FB" }}>
 
-      {/* Hero Banner */}
-      <div style={{background:"linear-gradient(135deg,#262262 0%,#2A3887 50%,#29A9DF 100%)", minHeight:"340px", position:"relative"}}>
-        {/* Back */}
-        <div className="max-w-6xl mx-auto px-6 pt-6">
-          <Link href="/projects" className="inline-flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl"
-            style={{background:"rgba(255,255,255,0.15)",color:"white",backdropFilter:"blur(8px)"}}>
+      {/* Hero */}
+      <div style={{ background: "linear-gradient(135deg,#262262 0%,#2A3887 50%,#29A9DF 100%)", padding: "24px 0 48px" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px" }}>
+          <Link href="/projects" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "white", background: "rgba(255,255,255,0.15)", padding: "8px 16px", borderRadius: 12, textDecoration: "none", marginBottom: 24 }}>
             ← Back to Projects
           </Link>
-        </div>
-        <div className="max-w-6xl mx-auto px-6 pt-8 pb-16">
-          <div className="flex flex-wrap items-start justify-between gap-6">
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 24 }}>
             <div>
               {project.status && (
-                <span className="inline-block text-xs font-bold px-3 py-1 rounded-full mb-3"
-                  style={{background:"rgba(255,255,255,0.2)",color:"white"}}>
-                  {project.status.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase())}
+                <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "4px 12px", borderRadius: 999, background: "rgba(255,255,255,0.2)", color: "white", marginBottom: 10 }}>
+                  {project.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                 </span>
               )}
-              <h1 className="text-4xl font-black text-white mb-2">{project.name}</h1>
-              <p className="text-lg mb-1" style={{color:"rgba(255,255,255,0.8)"}}>
-                📍 {project.address || project.location}, {project.city}
-              </p>
-              {project.rera_number && (
-                <p className="text-xs" style={{color:"rgba(255,255,255,0.6)"}}>RERA: {project.rera_number}</p>
-              )}
+              <h1 style={{ fontSize: 36, fontWeight: 900, color: "white", margin: "0 0 8px" }}>{project.name}</h1>
+              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.8)", margin: "0 0 4px" }}>📍 {project.address || project.location}, {project.city}</p>
+              {project.rera_number && <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", margin: 0 }}>RERA: {project.rera_number}</p>}
             </div>
-            <div className="flex gap-3 mt-2">
-              <button onClick={()=>setEnquireOpen(true)}
-                className="px-6 py-3 font-bold text-sm rounded-xl"
-                style={{background:"white",color:"#262262"}}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => setEnquireOpen(true)} style={{ padding: "12px 24px", fontWeight: 700, fontSize: 13, borderRadius: 12, background: "white", color: "#262262", border: "none", cursor: "pointer" }}>
                 📋 Enquire Now
               </button>
-              <button onClick={()=>setVisitOpen(true)}
-                className="px-6 py-3 font-bold text-sm rounded-xl"
-                style={{background:"rgba(255,255,255,0.15)",color:"white",border:"2px solid rgba(255,255,255,0.4)"}}>
+              <button onClick={() => setVisitOpen(true)} style={{ padding: "12px 24px", fontWeight: 700, fontSize: 13, borderRadius: 12, background: "rgba(255,255,255,0.15)", color: "white", border: "2px solid rgba(255,255,255,0.4)", cursor: "pointer" }}>
                 🏡 Site Visit
               </button>
             </div>
           </div>
-          {/* Stats bar */}
-          <div className="flex flex-wrap gap-6 mt-8">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 40, marginTop: 32 }}>
             {[
-              {label:"Total Units", value: units.length || "—"},
-              {label:"Available", value: units.filter((u:any)=>u.status==="available").length},
-              {label:"Price Range", value: priceRange && priceRange.min > 0 ? `${fmt(priceRange.min)} – ${fmt(priceRange.max)}` : "On Request"},
-              {label:"Unit Types", value: unitTypes.length > 0 ? unitTypes.join(", ") : "Mixed"},
+              { label: "Total Units", value: units.length || "—" },
+              { label: "Available", value: availableUnits.length },
+              { label: "Price Range", value: minPrice > 0 ? `${fmtPrice(minPrice)} – ${fmtPrice(maxPrice)}` : "On Request" },
+              { label: "Unit Types", value: unitTypes.length > 0 ? unitTypes.join(", ") : "Mixed" },
             ].map(s => (
-              <div key={s.label} className="text-white">
-                <p className="text-2xl font-black">{String(s.value)}</p>
-                <p className="text-xs opacity-70">{s.label}</p>
+              <div key={s.label} style={{ color: "white" }}>
+                <p style={{ fontSize: 26, fontWeight: 900, margin: "0 0 2px" }}>{String(s.value)}</p>
+                <p style={{ fontSize: 11, opacity: 0.7, margin: 0 }}>{s.label}</p>
               </div>
             ))}
           </div>
@@ -125,59 +123,40 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-0 z-30 bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 flex gap-0">
-          {(["overview","units","amenities"] as const).map(t => (
-            <button key={t} onClick={()=>setActiveTab(t)}
-              className="px-6 py-4 text-sm font-bold capitalize transition-all"
-              style={activeTab===t
-                ? {borderBottom:"3px solid #29A9DF",color:"#2A3887"}
-                : {color:"#999",borderBottom:"3px solid transparent"}}>
-              {t === "units" ? `Units (${units.length})` : t.charAt(0).toUpperCase()+t.slice(1)}
+      <div style={{ background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", position: "sticky", top: 0, zIndex: 30 }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 24px", display: "flex" }}>
+          {(["overview", "units", "amenities"] as const).map(t => (
+            <button key={t} onClick={() => setActiveTab(t)} style={{ padding: "16px 24px", fontSize: 13, fontWeight: 700, background: "none", border: "none", borderBottom: activeTab === t ? "3px solid #29A9DF" : "3px solid transparent", color: activeTab === t ? "#2A3887" : "#999", cursor: "pointer", textTransform: "capitalize" }}>
+              {t === "units" ? `Units (${units.length})` : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      {/* Body */}
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
 
-        {/* Overview Tab */}
+        {/* Overview */}
         {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC"}}>
-                <h2 className="font-black text-lg mb-3" style={{color:"#262262"}}>About the Project</h2>
-                <p className="text-sm leading-relaxed" style={{color:"#555"}}>{project.description || "Premium residential project by Janapriya."}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              <div style={{ background: "white", borderRadius: 16, padding: 24, border: "1px solid #E2F1FC" }}>
+                <h2 style={{ fontSize: 18, fontWeight: 900, color: "#262262", margin: "0 0 12px" }}>About the Project</h2>
+                <p style={{ fontSize: 14, lineHeight: 1.7, color: "#555", margin: 0 }}>{project.description || "Premium residential project by Janapriya."}</p>
               </div>
-              {project.video_url && (
-                <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC"}}>
-                  <h2 className="font-black text-lg mb-3" style={{color:"#262262"}}>Project Video</h2>
-                  <div className="aspect-video rounded-xl overflow-hidden bg-gray-100">
-                    <iframe src={project.video_url} className="w-full h-full" allowFullScreen/>
-                  </div>
-                </div>
-              )}
-              {/* Unit type summary */}
               {unitTypes.length > 0 && (
-                <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC"}}>
-                  <h2 className="font-black text-lg mb-4" style={{color:"#262262"}}>Unit Configuration</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div style={{ background: "white", borderRadius: 16, padding: 24, border: "1px solid #E2F1FC" }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, color: "#262262", margin: "0 0 16px" }}>Unit Configuration</h2>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 12 }}>
                     {unitTypes.map(type => {
-                      const typeUnits = units.filter((u:any) => u.unit_type === type);
-                      const avail = typeUnits.filter((u:any) => u.status === "available").length;
-                      const prices = typeUnits.map((u:any) => u.price).filter(Boolean);
+                      const typeUnits = units.filter(u => u.unit_type === type);
+                      const avail = typeUnits.filter(u => u.status === "available").length;
+                      const tp = typeUnits.map(u => u.price).filter(Boolean);
                       return (
-                        <div key={type} className="p-4 rounded-xl text-center cursor-pointer transition-all hover:-translate-y-0.5"
-                          style={{background:"#F0F4FF",border:"2px solid #E2F1FC"}}
-                          onClick={()=>setActiveTab("units")}>
-                          <p className="font-black text-lg" style={{color:"#2A3887"}}>{type}</p>
-                          <p className="text-xs font-bold mt-1" style={{color:"#16A34A"}}>{avail} available</p>
-                          {prices.length > 0 && (
-                            <p className="text-xs mt-1" style={{color:"#888"}}>
-                              {fmt(Math.min(...prices))}+
-                            </p>
-                          )}
+                        <div key={type} onClick={() => setActiveTab("units")} style={{ padding: 16, borderRadius: 12, background: "#F0F4FF", border: "2px solid #E2F1FC", textAlign: "center", cursor: "pointer" }}>
+                          <p style={{ fontSize: 18, fontWeight: 900, color: "#2A3887", margin: "0 0 4px" }}>{type}</p>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: "#16A34A", margin: "0 0 4px" }}>{avail} available</p>
+                          {tp.length > 0 && <p style={{ fontSize: 11, color: "#888", margin: 0 }}>{fmtPrice(Math.min(...tp))}+</p>}
                         </div>
                       );
                     })}
@@ -186,36 +165,32 @@ export default function ProjectDetailPage() {
               )}
             </div>
             {/* Sidebar */}
-            <div className="space-y-4">
-              <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC"}}>
-                <h3 className="font-black text-sm mb-4" style={{color:"#262262"}}>Project Details</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: "white", borderRadius: 16, padding: 20, border: "1px solid #E2F1FC" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 900, color: "#262262", margin: "0 0 16px" }}>Project Details</h3>
                 {[
-                  {label:"📍 Location", value:`${project.city}, ${project.state}`},
-                  {label:"📌 Pincode", value:project.pincode},
-                  {label:"🏛️ RERA No.", value:project.rera_number||"Applied"},
-                  {label:"🏠 Total Units", value:units.length||"—"},
-                  {label:"✅ Available", value:units.filter((u:any)=>u.status==="available").length},
-                ].map(r => (
-                  <div key={r.label} className="flex justify-between py-2" style={{borderBottom:"1px solid #F8F9FB"}}>
-                    <span className="text-xs" style={{color:"#999"}}>{r.label}</span>
-                    <span className="text-xs font-bold" style={{color:"#555"}}>{r.value}</span>
+                  { label: "📍 Location", value: `${project.city}, ${project.state}` },
+                  { label: "📌 Pincode", value: project.pincode },
+                  { label: "🏛️ RERA No.", value: project.rera_number || "Applied" },
+                  { label: "🏠 Total Units", value: units.length || "—" },
+                  { label: "✅ Available", value: availableUnits.length },
+                ].map(row => (
+                  <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #F8F9FB" }}>
+                    <span style={{ fontSize: 11, color: "#999" }}>{row.label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#555" }}>{row.value}</span>
                   </div>
                 ))}
               </div>
-              <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC"}}>
-                <h3 className="font-black text-sm mb-4" style={{color:"#262262"}}>Get in Touch</h3>
-                <button onClick={()=>setEnquireOpen(true)} className="w-full py-3 font-bold text-sm text-white rounded-xl mb-2"
-                  style={{background:"linear-gradient(135deg,#262262,#29A9DF)"}}>
+              <div style={{ background: "white", borderRadius: 16, padding: 20, border: "1px solid #E2F1FC" }}>
+                <h3 style={{ fontSize: 13, fontWeight: 900, color: "#262262", margin: "0 0 16px" }}>Get in Touch</h3>
+                <button onClick={() => setEnquireOpen(true)} style={{ width: "100%", padding: "12px", fontWeight: 700, fontSize: 13, color: "white", background: "linear-gradient(135deg,#262262,#29A9DF)", border: "none", borderRadius: 12, cursor: "pointer", marginBottom: 8 }}>
                   📋 Send Enquiry
                 </button>
-                <button onClick={()=>setVisitOpen(true)} className="w-full py-3 font-bold text-sm rounded-xl"
-                  style={{border:"2px solid #E2F1FC",color:"#2A3887"}}>
+                <button onClick={() => setVisitOpen(true)} style={{ width: "100%", padding: "12px", fontWeight: 700, fontSize: 13, color: "#2A3887", background: "white", border: "2px solid #E2F1FC", borderRadius: 12, cursor: "pointer", marginBottom: project.brochure_url ? 8 : 0 }}>
                   🏡 Book Site Visit
                 </button>
                 {project.brochure_url && (
-                  <a href={project.brochure_url} target="_blank" rel="noopener noreferrer"
-                    className="block w-full py-3 font-bold text-sm text-center rounded-xl mt-2"
-                    style={{border:"2px solid #E2F1FC",color:"#29A9DF"}}>
+                  <a href={project.brochure_url} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: "100%", padding: "12px", fontWeight: 700, fontSize: 13, color: "#29A9DF", textAlign: "center", border: "2px solid #E2F1FC", borderRadius: 12, textDecoration: "none" }}>
                     📄 Download Brochure
                   </a>
                 )}
@@ -224,99 +199,81 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {/* Units Tab */}
+        {/* Units */}
         {activeTab === "units" && (
           <div>
-            <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
-              <h2 className="font-black text-xl" style={{color:"#262262"}}>Available Units</h2>
-              <div className="flex gap-2 flex-wrap">
-                {unitTypes.map(type => (
-                  <span key={type} className="px-3 py-1 text-xs font-bold rounded-full cursor-pointer"
-                    style={{background:"#E2F1FC",color:"#2A3887"}}>{type}</span>
-                ))}
+            <h2 style={{ fontSize: 20, fontWeight: 900, color: "#262262", margin: "0 0 20px" }}>All Units ({units.length})</h2>
+            {units.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "64px 0", color: "#ccc" }}>
+                <p style={{ fontSize: 48, margin: "0 0 12px" }}>🏠</p>
+                <p style={{ fontWeight: 700 }}>No units found for this project</p>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {units.map((u:any) => {
-                const sc = STATUS_COLOR[u.status] || {bg:"#F0F4FF",color:"#555"};
-                return (
-                  <div key={u.id} className="bg-white rounded-2xl p-5 transition-all hover:-translate-y-1"
-                    style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <p className="font-black text-lg" style={{color:"#262262"}}>{u.unit_type || "Unit"}</p>
-                        <p className="text-xs font-bold" style={{color:"#999"}}>Unit {u.unit_number || u.name || u.id.slice(0,8)}</p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
+                {units.map(u => {
+                  const sc = STATUS[u.status] || { bg: "#F0F4FF", color: "#555" };
+                  return (
+                    <div key={u.id} style={{ background: "white", borderRadius: 16, padding: 20, border: "1px solid #E2F1FC", boxShadow: "0 2px 10px rgba(42,56,135,0.06)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                        <div>
+                          <p style={{ fontSize: 18, fontWeight: 900, color: "#262262", margin: "0 0 2px" }}>{u.unit_type || "Unit"}</p>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: "#999", margin: 0 }}>Unit {u.unit_number || u.id.slice(0, 8)}</p>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 999, background: sc.bg, color: sc.color, textTransform: "capitalize" }}>
+                          {u.status || "available"}
+                        </span>
                       </div>
-                      <span className="text-xs font-bold px-2 py-1 rounded-full capitalize" style={sc}>
-                        {u.status || "available"}
-                      </span>
+                      <div style={{ marginBottom: 16 }}>
+                        {u.floor != null && <p style={{ fontSize: 12, color: "#888", margin: "0 0 4px" }}>🏢 Floor {u.floor}</p>}
+                        {u.area_sqft && <p style={{ fontSize: 12, color: "#888", margin: "0 0 4px" }}>📐 {u.area_sqft} sq.ft</p>}
+                        {u.facing && <p style={{ fontSize: 12, color: "#888", margin: 0 }}>🧭 {u.facing} Facing</p>}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid #F0F4FF" }}>
+                        <p style={{ fontSize: 16, fontWeight: 900, color: "#262262", margin: 0 }}>{u.price ? fmtPrice(u.price) : "On Request"}</p>
+                        <button onClick={() => setEnquireOpen(true)} style={{ padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "white", background: "linear-gradient(135deg,#2A3887,#29A9DF)", border: "none", borderRadius: 8, cursor: "pointer" }}>
+                          Enquire
+                        </button>
+                      </div>
                     </div>
-                    <div className="space-y-1 mb-4">
-                      {u.floor && <p className="text-xs" style={{color:"#888"}}>🏢 Floor {u.floor}</p>}
-                      {u.area_sqft && <p className="text-xs" style={{color:"#888"}}>📐 {u.area_sqft} sq.ft</p>}
-                      {u.facing && <p className="text-xs" style={{color:"#888"}}>🧭 {u.facing} Facing</p>}
-                    </div>
-                    <div className="flex items-center justify-between pt-3" style={{borderTop:"1px solid #F0F4FF"}}>
-                      <p className="font-black" style={{color:"#262262"}}>
-                        {u.price ? fmt(u.price) : "On Request"}
-                      </p>
-                      <button onClick={()=>setEnquireOpen(true)}
-                        className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
-                        style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)"}}>
-                        Enquire
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {units.length === 0 && (
-              <div className="text-center py-16" style={{color:"#ccc"}}>
-                <p className="text-4xl mb-3">🏠</p>
-                <p className="font-bold">No units found for this project</p>
+                  );
+                })}
               </div>
             )}
           </div>
         )}
 
-        {/* Amenities Tab */}
+        {/* Amenities */}
         {activeTab === "amenities" && (
-          <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC"}}>
-            <h2 className="font-black text-xl mb-6" style={{color:"#262262"}}>Amenities</h2>
+          <div style={{ background: "white", borderRadius: 16, padding: 24, border: "1px solid #E2F1FC" }}>
+            <h2 style={{ fontSize: 20, fontWeight: 900, color: "#262262", margin: "0 0 24px" }}>Amenities</h2>
             {project.amenities?.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {project.amenities.map((a:string, i:number) => {
-                  const icons: Record<string,string> = {
-                    "Swimming Pool":"🏊","Gym":"💪","Clubhouse":"🏛️","24/7 Security":"🔐",
-                    "Power Backup":"⚡","Children Play Area":"🎠","Landscaped Gardens":"🌳",
-                    "Parking":"🅿️","Lift":"🛗","CCTV":"📷","Water Supply":"💧","Wi-Fi":"📶",
-                  };
-                  const icon = Object.entries(icons).find(([k])=>a.toLowerCase().includes(k.toLowerCase()))?.[1] || "✅";
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(180px,1fr))", gap: 12 }}>
+                {project.amenities.map((a, i) => {
+                  const iconMap: Record<string, string> = { "Pool": "🏊", "Gym": "💪", "Club": "🏛️", "Security": "🔐", "Power": "⚡", "Play": "🎠", "Garden": "🌳", "Park": "🅿️", "Lift": "🛗", "CCTV": "📷", "Water": "💧", "Wi-Fi": "📶" };
+                  const icon = Object.entries(iconMap).find(([k]) => a.includes(k))?.[1] || "✅";
                   return (
-                    <div key={i} className="flex items-center gap-3 p-4 rounded-xl"
-                      style={{background:"#F0F4FF",border:"1px solid #E2F1FC"}}>
-                      <span className="text-2xl">{icon}</span>
-                      <span className="text-sm font-bold" style={{color:"#2A3887"}}>{a}</span>
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: 16, borderRadius: 12, background: "#F0F4FF", border: "1px solid #E2F1FC" }}>
+                      <span style={{ fontSize: 24 }}>{icon}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#2A3887" }}>{a}</span>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <p className="text-center py-8" style={{color:"#ccc"}}>No amenities listed</p>
+              <p style={{ textAlign: "center", padding: "32px 0", color: "#ccc" }}>No amenities listed</p>
             )}
           </div>
         )}
       </div>
 
-      {/* Enquire Modal */}
-      {enquireOpen && <EnquireModal project={project} onClose={()=>setEnquireOpen(false)}/>}
-      {visitOpen && <SiteVisitModal project={project} onClose={()=>setVisitOpen(false)}/>}
+      {enquireOpen && <EnquireModal project={project} onClose={() => setEnquireOpen(false)} />}
+      {visitOpen && <SiteVisitModal project={project} onClose={() => setVisitOpen(false)} />}
     </div>
   );
 }
 
-function EnquireModal({project, onClose}: {project:any; onClose:()=>void}) {
-  const [form, setForm] = useState({name:"",phone:"",email:"",message:""});
+function EnquireModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -325,56 +282,53 @@ function EnquireModal({project, onClose}: {project:any; onClose:()=>void}) {
     setSending(true);
     try {
       await fetch(`${API}/leads`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({...form, project_id: project.id, source:"website", interest: project.name})
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, project_id: project.id, source: "website", interest: project.name }),
       });
       setSent(true);
-    } catch {}
+    } catch { /* ignore */ }
     setSending(false);
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.55)"}}>
-      <div className="bg-white rounded-3xl p-7 w-full max-w-md" style={{boxShadow:"0 25px 60px rgba(0,0,0,0.25)"}}>
-        <div className="flex justify-between items-start mb-5">
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,0.55)" }}>
+      <div style={{ background: "white", borderRadius: 24, padding: 28, width: "100%", maxWidth: 420, boxShadow: "0 25px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
-            <h3 className="font-black text-xl" style={{color:"#262262"}}>Enquire About</h3>
-            <p className="text-sm" style={{color:"#29A9DF"}}>{project.name}</p>
+            <h3 style={{ fontSize: 20, fontWeight: 900, color: "#262262", margin: "0 0 4px" }}>Enquire About</h3>
+            <p style={{ fontSize: 13, color: "#29A9DF", margin: 0 }}>{project.name}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#999" }}>✕</button>
         </div>
         {sent ? (
-          <div className="text-center py-8">
-            <div className="text-5xl mb-3">✅</div>
-            <p className="font-black text-lg" style={{color:"#16A34A"}}>Enquiry Sent!</p>
-            <p className="text-sm mt-1" style={{color:"#888"}}>Our team will contact you shortly.</p>
-            <button onClick={onClose} className="mt-4 px-6 py-2 font-bold text-white rounded-xl text-sm"
-              style={{background:"#16A34A"}}>Done</button>
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
+            <p style={{ fontSize: 18, fontWeight: 900, color: "#16A34A", margin: "0 0 8px" }}>Enquiry Sent!</p>
+            <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px" }}>Our team will contact you shortly.</p>
+            <button onClick={onClose} style={{ padding: "8px 24px", fontWeight: 700, color: "white", background: "#16A34A", border: "none", borderRadius: 12, cursor: "pointer" }}>Done</button>
           </div>
         ) : (
-          <form onSubmit={submit} className="space-y-3">
-            {[{key:"name",label:"Full Name",type:"text",ph:"Your name"},
-              {key:"phone",label:"Phone",type:"tel",ph:"Mobile number"},
-              {key:"email",label:"Email",type:"email",ph:"your@email.com (optional)"},
-              {key:"message",label:"Message",type:"textarea",ph:"Tell us what you're looking for..."}
+          <form onSubmit={submit}>
+            {[
+              { key: "name", label: "Full Name", type: "text", ph: "Your name", req: true },
+              { key: "phone", label: "Phone", type: "tel", ph: "Mobile number", req: true },
+              { key: "email", label: "Email", type: "email", ph: "your@email.com (optional)", req: false },
             ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-black mb-1" style={{color:"#2A3887"}}>{f.label}</label>
-                {f.type==="textarea" ? (
-                  <textarea rows={3} placeholder={f.ph} required={f.key==="name"||f.key==="phone"}
-                    value={(form as any)[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))}
-                    className="w-full px-3 py-2.5 text-sm rounded-xl border focus:outline-none resize-none"
-                    style={{borderColor:"#E2F1FC"}}/>
-                ) : (
-                  <input type={f.type} placeholder={f.ph} required={f.key==="name"||f.key==="phone"}
-                    value={(form as any)[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))}
-                    className="w-full px-3 py-2.5 text-sm rounded-xl border focus:outline-none"
-                    style={{borderColor:"#E2F1FC"}}/>
-                )}
+              <div key={f.key} style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#2A3887", marginBottom: 4 }}>{f.label}</label>
+                <input type={f.type} placeholder={f.ph} required={f.req}
+                  value={(form as Record<string,string>)[f.key]}
+                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, borderRadius: 12, border: "1px solid #E2F1FC", outline: "none", boxSizing: "border-box" }} />
               </div>
             ))}
-            <button type="submit" disabled={sending} className="w-full py-3 font-bold text-white text-sm rounded-xl disabled:opacity-60"
-              style={{background:"linear-gradient(135deg,#262262,#29A9DF)"}}>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#2A3887", marginBottom: 4 }}>Message</label>
+              <textarea rows={3} placeholder="Tell us what you are looking for..."
+                value={form.message} onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 13, borderRadius: 12, border: "1px solid #E2F1FC", outline: "none", resize: "none", boxSizing: "border-box" }} />
+            </div>
+            <button type="submit" disabled={sending} style={{ width: "100%", padding: 12, fontWeight: 700, fontSize: 13, color: "white", background: "linear-gradient(135deg,#262262,#29A9DF)", border: "none", borderRadius: 12, cursor: "pointer", opacity: sending ? 0.6 : 1 }}>
               {sending ? "Sending..." : "Submit Enquiry"}
             </button>
           </form>
@@ -384,8 +338,8 @@ function EnquireModal({project, onClose}: {project:any; onClose:()=>void}) {
   );
 }
 
-function SiteVisitModal({project, onClose}: {project:any; onClose:()=>void}) {
-  const [form, setForm] = useState({name:"",phone:"",visit_date:"",visit_time:"9:00 AM"});
+function SiteVisitModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  const [form, setForm] = useState({ name: "", phone: "", visit_date: "", visit_time: "9:00 AM" });
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
 
@@ -394,59 +348,56 @@ function SiteVisitModal({project, onClose}: {project:any; onClose:()=>void}) {
     setSending(true);
     try {
       await fetch(`${API}/site-visits`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({...form, project_id: project.id,
-          visit_date: form.visit_date ? new Date(form.visit_date).toISOString() : null})
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, project_id: project.id, visit_date: form.visit_date ? new Date(form.visit_date).toISOString() : null }),
       });
       setSent(true);
-    } catch {}
+    } catch { /* ignore */ }
     setSending(false);
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background:"rgba(0,0,0,0.55)"}}>
-      <div className="bg-white rounded-3xl p-7 w-full max-w-md" style={{boxShadow:"0 25px 60px rgba(0,0,0,0.25)"}}>
-        <div className="flex justify-between items-start mb-5">
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, background: "rgba(0,0,0,0.55)" }}>
+      <div style={{ background: "white", borderRadius: 24, padding: 28, width: "100%", maxWidth: 420, boxShadow: "0 25px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
-            <h3 className="font-black text-xl" style={{color:"#262262"}}>Book Site Visit</h3>
-            <p className="text-sm" style={{color:"#29A9DF"}}>{project.name}</p>
+            <h3 style={{ fontSize: 20, fontWeight: 900, color: "#262262", margin: "0 0 4px" }}>Book Site Visit</h3>
+            <p style={{ fontSize: 13, color: "#29A9DF", margin: 0 }}>{project.name}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#999" }}>✕</button>
         </div>
         {sent ? (
-          <div className="text-center py-8">
-            <div className="text-5xl mb-3">🏡</div>
-            <p className="font-black text-lg" style={{color:"#16A34A"}}>Visit Booked!</p>
-            <p className="text-sm mt-1" style={{color:"#888"}}>We'll confirm your slot shortly.</p>
-            <button onClick={onClose} className="mt-4 px-6 py-2 font-bold text-white rounded-xl text-sm"
-              style={{background:"#16A34A"}}>Done</button>
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🏡</div>
+            <p style={{ fontSize: 18, fontWeight: 900, color: "#16A34A", margin: "0 0 8px" }}>Visit Booked!</p>
+            <p style={{ fontSize: 13, color: "#888", margin: "0 0 16px" }}>We will confirm your slot shortly.</p>
+            <button onClick={onClose} style={{ padding: "8px 24px", fontWeight: 700, color: "white", background: "#16A34A", border: "none", borderRadius: 12, cursor: "pointer" }}>Done</button>
           </div>
         ) : (
-          <form onSubmit={submit} className="space-y-3">
-            {[{key:"name",label:"Full Name",type:"text",ph:"Your name"},
-              {key:"phone",label:"Phone",type:"tel",ph:"Mobile number"},
-              {key:"visit_date",label:"Preferred Date",type:"date",ph:""},
+          <form onSubmit={submit}>
+            {[
+              { key: "name", label: "Full Name", type: "text", ph: "Your name" },
+              { key: "phone", label: "Phone", type: "tel", ph: "Mobile number" },
+              { key: "visit_date", label: "Preferred Date", type: "date", ph: "" },
             ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs font-black mb-1" style={{color:"#2A3887"}}>{f.label}</label>
+              <div key={f.key} style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#2A3887", marginBottom: 4 }}>{f.label}</label>
                 <input type={f.type} placeholder={f.ph} required
-                  value={(form as any)[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))}
-                  className="w-full px-3 py-2.5 text-sm rounded-xl border focus:outline-none"
-                  style={{borderColor:"#E2F1FC"}}/>
+                  value={(form as Record<string,string>)[f.key]}
+                  onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))}
+                  style={{ width: "100%", padding: "10px 12px", fontSize: 13, borderRadius: 12, border: "1px solid #E2F1FC", outline: "none", boxSizing: "border-box" }} />
               </div>
             ))}
-            <div>
-              <label className="block text-xs font-black mb-1" style={{color:"#2A3887"}}>Preferred Time</label>
-              <select value={form.visit_time} onChange={e=>setForm(p=>({...p,visit_time:e.target.value}))}
-                className="w-full px-3 py-2.5 text-sm rounded-xl border focus:outline-none"
-                style={{borderColor:"#E2F1FC"}}>
-                {["9:00 AM","10:00 AM","11:00 AM","12:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"].map(t=>(
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#2A3887", marginBottom: 4 }}>Preferred Time</label>
+              <select value={form.visit_time} onChange={e => setForm(p => ({ ...p, visit_time: e.target.value }))}
+                style={{ width: "100%", padding: "10px 12px", fontSize: 13, borderRadius: 12, border: "1px solid #E2F1FC", outline: "none", boxSizing: "border-box" }}>
+                {["9:00 AM","10:00 AM","11:00 AM","12:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM"].map(t => (
                   <option key={t}>{t}</option>
                 ))}
               </select>
             </div>
-            <button type="submit" disabled={sending} className="w-full py-3 font-bold text-white text-sm rounded-xl disabled:opacity-60"
-              style={{background:"linear-gradient(135deg,#262262,#29A9DF)"}}>
+            <button type="submit" disabled={sending} style={{ width: "100%", padding: 12, fontWeight: 700, fontSize: 13, color: "white", background: "linear-gradient(135deg,#262262,#29A9DF)", border: "none", borderRadius: 12, cursor: "pointer", opacity: sending ? 0.6 : 1 }}>
               {sending ? "Booking..." : "Book Site Visit"}
             </button>
           </form>
