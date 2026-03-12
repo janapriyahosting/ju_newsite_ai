@@ -16,6 +16,57 @@ function fmtPrice(p: any) {
   return `₹${n.toLocaleString("en-IN")}`;
 }
 
+
+const STATUS_COLORS: Record<string,{bg:string;color:string}> = {
+  available: {bg:"#DCFCE7",color:"#16A34A"},
+  booked:    {bg:"#FEE2E2",color:"#DC2626"},
+  hold:      {bg:"#FEF3C7",color:"#D97706"},
+  sold:      {bg:"#F0F4FF",color:"#2A3887"},
+};
+
+function UnitCard({ unit: u }: { unit: any }) {
+  const [sv, setSv] = useState(isSaved(u.id));
+  const sc = STATUS_COLORS[u.status] || {bg:"#F0F4FF",color:"#555"};
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden transition-all hover:-translate-y-1"
+      style={{ border:"1.5px solid #E2F1FC", boxShadow:"0 4px 15px rgba(42,56,135,0.07)" }}>
+      <div className="h-28 p-4 flex flex-col justify-between"
+        style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+        <div className="flex justify-between">
+          <span className="px-2 py-0.5 rounded-full text-xs font-black bg-white capitalize" style={{ color:sc.color }}>
+            {u.status || "available"}
+          </span>
+          <button onClick={()=>{toggleSaved(u.id);setSv(isSaved(u.id));}}
+            className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
+            style={{ background:sv?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.2)", color:"white" }}>
+            {sv?"♥":"♡"}
+          </button>
+        </div>
+        <div>
+          <p style={{ color:"rgba(255,255,255,0.65)" }} className="text-xs">{u.unit_type}</p>
+          <p className="text-white font-black">{u.unit_number}</p>
+        </div>
+      </div>
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-1 text-xs mb-3" style={{ color:"#666" }}>
+          <span>🛏 {u.bedrooms} BHK</span>
+          <span>🏢 Floor {u.floor_number}</span>
+          <span>📐 {u.area_sqft ? parseFloat(u.area_sqft).toFixed(0) : "—"} sqft</span>
+          {u.facing && <span>🧭 {u.facing}</span>}
+        </div>
+        <div className="flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
+          <span className="font-black text-sm" style={{ color:"#2A3887" }}>{fmtPrice(u.base_price)}</span>
+          <Link href={`/units/${u.id}`}
+            className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
+            style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)", textDecoration:"none" }}>
+            View →
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TowerDetailPage() {
   const { id, towerId } = useParams<{ id: string; towerId: string }>();
   const [project, setProject] = useState<any>(null);
@@ -63,13 +114,6 @@ export default function TowerDetailPage() {
   const available = units.filter(u=>u.status==="available").length;
   const booked = units.filter(u=>u.status==="booked").length;
   const prices = units.map(u=>parseFloat(u.base_price||0)).filter(Boolean);
-
-  const STATUS_COLOR: Record<string,{bg:string;color:string}> = {
-    available: {bg:"#DCFCE7",color:"#16A34A"},
-    booked:    {bg:"#FEE2E2",color:"#DC2626"},
-    hold:      {bg:"#FEF3C7",color:"#D97706"},
-    sold:      {bg:"#F0F4FF",color:"#2A3887"},
-  };
 
   return (
     <main style={{ fontFamily:"'Lato',sans-serif", minHeight:"100vh", background:"#F8F9FB" }}>
@@ -169,50 +213,7 @@ export default function TowerDetailPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {displayUnits.map(u => {
-              const sc = STATUS_COLOR[u.status] || {bg:"#F0F4FF",color:"#555"};
-              const [sv, setSv] = useState(isSaved(u.id));
-              return (
-                <div key={u.id} className="bg-white rounded-2xl overflow-hidden transition-all hover:-translate-y-1"
-                  style={{ border:"1.5px solid #E2F1FC", boxShadow:"0 4px 15px rgba(42,56,135,0.07)" }}>
-                  {/* Card Header */}
-                  <div className="h-28 p-4 flex flex-col justify-between"
-                    style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-                    <div className="flex justify-between">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-black bg-white capitalize" style={{ color:sc.color }}>
-                        {u.status || "available"}
-                      </span>
-                      <button onClick={()=>{toggleSaved(u.id);setSv(isSaved(u.id));}}
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
-                        style={{ background:sv?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.2)", color:"white" }}>
-                        {sv?"♥":"♡"}
-                      </button>
-                    </div>
-                    <div>
-                      <p style={{ color:"rgba(255,255,255,0.65)" }} className="text-xs">{u.unit_type}</p>
-                      <p className="text-white font-black">{u.unit_number}</p>
-                    </div>
-                  </div>
-                  {/* Card Body */}
-                  <div className="p-4">
-                    <div className="grid grid-cols-2 gap-1 text-xs mb-3" style={{ color:"#666" }}>
-                      <span>🛏 {u.bedrooms} BHK</span>
-                      <span>🏢 Floor {u.floor_number}</span>
-                      <span>📐 {u.area_sqft ? parseFloat(u.area_sqft).toFixed(0) : "—"} sqft</span>
-                      {u.facing && <span>🧭 {u.facing}</span>}
-                    </div>
-                    <div className="flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
-                      <span className="font-black text-sm" style={{ color:"#2A3887" }}>{fmtPrice(u.base_price)}</span>
-                      <Link href={`/units/${u.id}`}
-                        className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
-                        style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)", textDecoration:"none" }}>
-                        View →
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {displayUnits.map(u => <UnitCard key={u.id} unit={u} />)}
           </div>
         )}
       </div>
