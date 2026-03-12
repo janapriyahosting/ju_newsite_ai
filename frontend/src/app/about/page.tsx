@@ -58,38 +58,7 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-
-              {/* ── Meet the Team ──────────────────────────────────────────────────── */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-14">
-            <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-3">Leadership</p>
-            <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Meet the Team</h2>
-            <p style={{ color: "#555A5C" }} className="mt-3 max-w-xl mx-auto text-sm">
-              Four decades of vision, trust, and excellence — led by people who believe in building more than just homes.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {TEAM.map((m, i) => (
-              <div key={i} className="bg-white rounded-3xl p-8 text-center transition-all duration-300 hover:-translate-y-1"
-                style={{ boxShadow: "0 8px 40px rgba(42,56,135,0.1)", border: "1.5px solid #E2F1FC" }}>
-                {/* Avatar */}
-                <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-white text-2xl font-black mx-auto mb-5"
-                  style={{ background: `linear-gradient(135deg, ${m.color}, #29A9DF)`, boxShadow: `0 8px 25px ${m.color}40` }}>
-                  {m.initials}
-                </div>
-                {/* Name + Role */}
-                <h3 className="font-black text-xl mb-1" style={{ color: "#262262" }}>{m.name}</h3>
-                <p className="text-sm font-bold mb-4 px-3 py-1 rounded-full inline-block"
-                  style={{ background: "#E2F1FC", color: "#2A3887" }}>{m.role}</p>
-                {/* Bio */}
-                <p className="text-sm leading-relaxed" style={{ color: "#555A5C" }}>{m.bio}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-      <Footer />
+<Footer />
     </main>
   );
 }
