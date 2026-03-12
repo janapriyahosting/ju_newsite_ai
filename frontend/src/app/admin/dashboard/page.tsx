@@ -42,14 +42,21 @@ export default function AdminDashboard() {
 
   async function loadAll(){
     setLoading(true);
-    const [s, lg, ch] = await Promise.allSettled([
-      adminApi("/admin/stats"),
-      adminApi("/admin/customers/recent-logins?limit=8"),
-      adminApi("/admin/customers/registrations/chart?days=30"),
-    ]);
-    if(s.status==="fulfilled") setStats(s.value as unknown as AdminStats);
-    if(lg.status==="fulfilled"){const v=lg.value as any;setLogins(Array.isArray(v)?v:[]);}
-    if(ch.status==="fulfilled"){const v=ch.value as any;setChart(Array.isArray(v)?v:[]);}
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+    const token = typeof window !== "undefined"
+      ? (localStorage.getItem("admin_token") || localStorage.getItem("jp_admin_token") || "")
+      : "";
+    const headers = {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"};
+    try {
+      const [sRes, lgRes, chRes] = await Promise.all([
+        fetch(`${API}/admin/stats`, {headers}),
+        fetch(`${API}/admin/customers/recent-logins?limit=8`, {headers}),
+        fetch(`${API}/admin/customers/registrations/chart?days=30`, {headers}),
+      ]);
+      if(sRes.ok) setStats(await sRes.json());
+      if(lgRes.ok){const v=await lgRes.json();setLogins(Array.isArray(v)?v:[]);}
+      if(chRes.ok){const v=await chRes.json();setChart(Array.isArray(v)?v:[]);}
+    } catch(e){console.error("Dashboard load error:", e);}
     setLoading(false);
   }
 
@@ -59,7 +66,10 @@ export default function AdminDashboard() {
     if(pwForm.newPw.length<8){setPwMsg("❌ Minimum 8 characters");return;}
     setPwSaving(true);setPwMsg("");
     try{
-      await adminApi("/admin/change-password",{method:"POST",body:JSON.stringify({current_password:pwForm.current,new_password:pwForm.newPw})});
+      const API2 = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+      const tok2 = localStorage.getItem("admin_token") || localStorage.getItem("jp_admin_token") || "";
+      const pwRes = await fetch(`${API2}/admin/change-password`, {method:"POST", headers:{"Authorization":`Bearer ${tok2}`,"Content-Type":"application/json"}, body:JSON.stringify({current_password:pwForm.current,new_password:pwForm.newPw})});
+      if(!pwRes.ok){const e=await pwRes.json();throw new Error(e.detail||"Failed");}
       setPwMsg("✅ Password changed successfully!");
       setPwForm({current:"",newPw:"",confirm:""});
       setTimeout(()=>{setPwModal(false);setPwMsg("");},2000);
