@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from datetime import datetime, timedelta
@@ -23,10 +23,10 @@ async def list_customers(
     customers = result.scalars().all()
     total = await db.scalar(select(func.count()).select_from(Customer))
     return {"items": [
-        {"id": str(c.id), "name": c.name, "email": c.email, "phone": c.phone,
-         "is_active": c.is_active, "is_verified": c.is_verified,
+        {"id": str(cu.id), "name": cu.name, "email": cu.email, "phone": cu.phone,
+         "is_active": cu.is_active, "is_verified": c.is_verified,
          "created_at": str(c.created_at)}
-        for c in customers
+        for cu in customers
     ], "total": total}
 
 @router.get("/stats")
