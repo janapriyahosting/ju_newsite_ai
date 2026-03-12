@@ -5,17 +5,17 @@ import Link from 'next/link';
 import { useAdminStore } from '@/lib/adminAuth';
 
 const navItems = [
-    { href: "/admin/dashboard",  icon: "📊", label: "Dashboard" },
-    { href: "/admin/analytics",  icon: "📈", label: "Analytics" },
-    { href: "/admin/customers",  icon: "👥", label: "Customers" },
-    { href: "/admin/leads",      icon: "📋", label: "Leads" },
-    { href: "/admin/site-visits",icon: "🏡", label: "Site Visits" },
-    { href: "/admin/crud",       icon: "🏠", label: "Units" },
-    { href: "/admin/data-manager",icon: "🗂️", label: "Data Manager" },
-    { href: "/admin/fields",     icon: "⚙️", label: "Fields" },
-    { href: "/admin/cms",        icon: "📄", label: "CMS" },
-    { href: "/admin/users",      icon: "👤", label: "Admin Users" },
-  ];
+  { href: '/admin/dashboard',  label: 'Dashboard',   icon: '📊' },
+  { href: '/admin/analytics',  label: 'Analytics',   icon: '📈' },
+  { href: '/admin/customers',  label: 'Customers',   icon: '👥' },
+  { href: '/admin/leads',      label: 'Leads',       icon: '📋' },
+  { href: '/admin/site-visits',label: 'Site Visits', icon: '🏡' },
+  { href: '/admin/units',      label: 'Units',       icon: '🏠' },
+  { href: '/admin/crud',       label: 'Data Manager',icon: '🗄️' },
+  { href: '/admin/fields',     label: 'Fields',      icon: '⚙️' },
+  { href: '/admin/cms',        label: 'CMS',         icon: '📄' },
+  { href: '/admin/users',      label: 'Admin Users', icon: '🔐' },
+];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { token, role, fullName, logout } = useAdminStore();

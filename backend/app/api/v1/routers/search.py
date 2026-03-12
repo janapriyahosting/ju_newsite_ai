@@ -368,8 +368,8 @@ class SessionPingRequest(BaseModel):
 @router.post("/session/ping")
 async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_db)):
     import uuid as _u
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc)
+    from datetime import datetime
+    now = datetime.utcnow()  # naive UTC — matches DB TIMESTAMP WITHOUT TIME ZONE
 
     res = await db.execute(
         select(SessionLog).where(SessionLog.session_id == data.session_id)
