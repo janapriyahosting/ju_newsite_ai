@@ -244,69 +244,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ── Trending Units ─────────────────────────────────────────────────── */}
-      {trending.length > 0 && (
-        <section className="py-20" style={{ background: "#F8F9FB" }}>
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="flex items-end justify-between mb-10">
-              <div>
-                <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-2">Hot Properties</p>
-                <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Trending Now</h2>
-                <p style={{ color: "#555A5C" }} className="mt-2 text-sm">Our most popular units — book before they&apos;re gone.</p>
-              </div>
-              <Link href="/store" className="hidden md:flex items-center gap-2 font-bold text-sm px-5 py-2.5 rounded-full border transition-all hover:scale-105"
-                style={{ border: "2px solid #2A3887", color: "#2A3887" }}>
-                View All →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {trending.map((u: any) => (
-                <Link key={u.id} href={`/units/${u.id}`}
-                  className="bg-white rounded-2xl overflow-hidden group transition-all duration-200 hover:-translate-y-1 block"
-                  style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
-                  <div className="h-36 flex flex-col justify-between p-4"
-                    style={{ background: "linear-gradient(135deg,#262262,#2A3887)" }}>
-                    <div className="flex justify-between items-center">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-black bg-white" style={{ color: "#22c55e" }}>● Available</span>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(255,255,255,0.15)", color: "#29A9DF" }}>🔥 Trending</span>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide mb-0.5" style={{ color: "rgba(255,255,255,0.55)" }}>
-                        {u.unit_type}{u.bedrooms ? ` · ${u.bedrooms} BHK` : ""}
-                      </p>
-                      <p className="text-white font-black text-base leading-tight">{u.unit_number}</p>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <div className="flex gap-3 text-xs mb-3" style={{ color: "#666" }}>
-                      {u.bedrooms && <span>🛏 {u.bedrooms} BHK</span>}
-                      {u.area_sqft && <span>📐 {parseFloat(u.area_sqft).toFixed(0)} sqft</span>}
-                      {u.floor_number != null && <span>🏢 Fl {u.floor_number}</span>}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-black text-base" style={{ color: "#2A3887" }}>{formatPrice(u.base_price)}</p>
-                        {u.area_sqft && u.base_price && (
-                          <p className="text-xs" style={{ color: "#aaa" }}>
-                            ₹{Math.round(parseFloat(u.base_price)/parseFloat(u.area_sqft)).toLocaleString()}/sqft
-                          </p>
-                        )}
-                      </div>
-                      <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white group-hover:scale-105 transition-all"
-                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View →</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <div className="text-center mt-8 md:hidden">
-              <Link href="/store" className="inline-block px-8 py-3 font-bold rounded-full text-white"
-                style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View All Units →</Link>
-            </div>
-          </div>
-        </section>
-      )}
-
+      
       {/* ── Featured Projects ──────────────────────────────────────────────── */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-6">

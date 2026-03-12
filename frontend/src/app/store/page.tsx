@@ -17,7 +17,7 @@ function formatPrice(p: any) {
 }
 
 // ── Unit Card ────────────────────────────────────────────────────────────────
-function UnitCard({ unit, onCompareChange }: { unit: any; onCompareChange: () => void }) {
+function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending?: boolean; onCompareChange: () => void }) {
   const [saved, setSaved] = useState(false);
   const [inCompare, setInCompare] = useState(false);
   const [toast, setToast] = useState("");
@@ -69,9 +69,12 @@ function UnitCard({ unit, onCompareChange }: { unit: any; onCompareChange: () =>
           </div>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
-            {unit.unit_type}{unit.bedrooms ? ` · ${unit.bedrooms} BHK` : ""}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
+              {unit.unit_type}{unit.bedrooms ? ` · ${unit.bedrooms} BHK` : ""}
+            </p>
+            {isTrending && <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"white" }}>🔥</span>}
+          </div>
           <h3 className="text-white font-black text-lg leading-tight">{unit.unit_number||"Unit"}</h3>
         </div>
         {toast && (
@@ -179,10 +182,12 @@ const STATUS_OPTS = ["All Status","available","booked","reserved"];
 
 export default function StorePage() {
   const [units, setUnits] = useState<any[]>([]);
+  const [trendingIds, setTrendingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Quick filters
+  const [showTrendingOnly, setShowTrendingOnly] = useState(false);
   const [unitType, setUnitType] = useState("All");
   const [status, setStatus] = useState("All Status");
   const [sort, setSort] = useState("newest");
@@ -204,6 +209,7 @@ export default function StorePage() {
     facing!=="Any",
     floorIdx!==0,
     minBeds>0,
+    showTrendingOnly,
   ].filter(Boolean).length;
 
   useEffect(() => { loadAll(); }, []);
@@ -211,9 +217,15 @@ export default function StorePage() {
   async function loadAll() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/units?page_size=200`);
-      const d = await res.json() as any;
-      setUnits(Array.isArray(d) ? d : (d.items || []));
+      const [allRes, trendRes] = await Promise.all([
+        fetch(`${API}/units?page_size=200`),
+        fetch(`${API}/units/trending?limit=50`),
+      ]);
+      const allData = await allRes.json() as any;
+      const trendData = await trendRes.json() as any;
+      setUnits(Array.isArray(allData) ? allData : (allData.items || []));
+      const tItems = Array.isArray(trendData) ? trendData : (trendData.items || []);
+      setTrendingIds(new Set(tItems.map((u: any) => u.id)));
     } catch {}
     setLoading(false);
   }
@@ -240,10 +252,13 @@ export default function StorePage() {
     setPriceRange([0,20000000]); setAreaRange([0,5000]);
     setFacing("Any"); setFloorIdx(0); setMinBeds(0);
     setUnitType("All"); setStatus("All Status");
+    setShowTrendingOnly(false);
   }
 
   // Client-side filtering
   const filtered = units.filter(u => {
+    // Trending only
+    if (showTrendingOnly && !trendingIds.has(u.id)) return false;
     // Unit type
     if (unitType !== "All") {
       const t = unitType.toLowerCase();
@@ -340,6 +355,11 @@ export default function StorePage() {
                   {t}
                 </button>
               ))}
+              <button onClick={() => setShowTrendingOnly(o => !o)}
+                className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1"
+                style={showTrendingOnly?{background:"#f59e0b",color:"white",borderColor:"#f59e0b"}:{background:"white",color:"#666",borderColor:"#ddd"}}>
+                🔥 Trending
+              </button>
             </div>
 
             <div className="flex gap-2 ml-auto items-center flex-wrap">
@@ -455,7 +475,7 @@ export default function StorePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map(unit => (
-              <UnitCard key={unit.id} unit={unit} onCompareChange={() => {}} />
+              <UnitCard key={unit.id} unit={unit} isTrending={trendingIds.has(unit.id)} onCompareChange={() => {}} />
             ))}
           </div>
         )}
