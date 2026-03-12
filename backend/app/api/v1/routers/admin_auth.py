@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from typing import Optional
+from fastapi import Query, APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
