@@ -29,7 +29,7 @@ function MiniUnitCard({ unit: u }: { unit: any }) {
           <span>📐 {u.area_sqft ? parseFloat(u.area_sqft).toFixed(0) : "—"} sqft</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="font-black" style={{ color: "#2A3887" }}>{formatPrice(u.base_price)}</span>
+          <span className="font-black" style={{ color: "#2A3887" }}>{formatPrice(u.price||u.base_price)}</span>
           <Link href={`/units/${u.id}`} className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
             style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View →</Link>
         </div>
@@ -68,18 +68,22 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      fetch(`${API}/projects/${id}`).then(r=>r.json() as Promise<any>),
-      fetch(`${API}/projects/${id}/towers`).then(r=>r.json() as Promise<any>),
-      fetch(`${API}/units?limit=100`).then(r=>r.json() as Promise<any>),
-    ]).then(([p, t, u]) => {
-      setProject(p);
-      setTowers(Array.isArray(t) ? t : ((t as any).items || []));
-      const allUnits = Array.isArray(u) ? u : ((u as any).items || []);
-      const towerIds = new Set((Array.isArray(t) ? t : ((t as any).items || [])).map((x:any)=>x.id));
-      setUnits(allUnits.filter((x:any) => towerIds.has(x.tower_id)));
-      setLoading(false);
-    }).catch(()=>setLoading(false));
+    // Resolve slug or UUID to project, then fetch units by project_id
+    fetch(`${API}/projects?limit=50`)
+      .then(r => r.json())
+      .then(async (data: any) => {
+        const items = data.items || [];
+        // Match by slug or id
+        const proj = items.find((p: any) => p.slug === id || p.id === id);
+        if (!proj) { setLoading(false); return; }
+        setProject(proj);
+        // Fetch units filtered by project_id
+        const uRes = await fetch(`${API}/units?project_id=${proj.id}&limit=200`);
+        const uData = await uRes.json();
+        const allUnits = Array.isArray(uData) ? uData : (uData.items || []);
+        setUnits(allUnits);
+        setLoading(false);
+      }).catch(() => setLoading(false));
   }, [id]);
 
   if (loading) return (
@@ -104,7 +108,7 @@ export default function ProjectDetailPage() {
   );
 
   const available = units.filter(u=>u.status==="available").length;
-  const prices = units.map(u=>parseFloat(u.base_price||0)).filter(Boolean);
+  const prices = units.map(u=>parseFloat(u.price||u.base_price||0)).filter(Boolean);
   const minPrice = prices.length ? Math.min(...prices) : 0;
   const maxPrice = prices.length ? Math.max(...prices) : 0;
 
