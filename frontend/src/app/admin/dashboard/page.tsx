@@ -3,44 +3,46 @@ import { useState, useEffect } from "react";
 import { adminApi } from "@/lib/adminAuth";
 import Link from "next/link";
 
-interface Stats { total_registrations:number; active_customers:number; registrations_last_30_days:number; registrations_last_7_days:number; }
-interface RecentLogin { id:string; name:string; email:string; phone:string; last_login:string; is_active:boolean; }
+interface AdminStats {
+  total_customers: number; active_customers: number; new_customers_7d: number; new_customers_30d: number;
+  total_leads: number; new_leads_7d: number; leads_by_status: Record<string,number>; leads_by_source: {source:string;count:number}[];
+  total_site_visits: number; upcoming_site_visits: number; site_visits_by_status: Record<string,number>;
+  total_units: number; available_units: number; sold_units: number; units_by_type: {unit_type:string;count:number}[];
+  total_bookings: number; confirmed_bookings: number;
+  search_logs_7d: number;
+}
+interface RecentLogin { id:string; name:string; email:string; last_login:string; is_active:boolean; }
 interface ChartDay { date:string; count:number; }
 
 function timeAgo(iso:string) {
-  const diff = Date.now()-new Date(iso).getTime();
+  const diff=Date.now()-new Date(iso).getTime();
   const m=Math.floor(diff/60000),h=Math.floor(m/60),d=Math.floor(h/24);
   if(d>0)return`${d}d ago`;if(h>0)return`${h}h ago`;if(m>0)return`${m}m ago`;return"Just now";
 }
+function fmt(n:number){if(n>=10000000)return`₹${(n/10000000).toFixed(1)}Cr`;if(n>=100000)return`₹${(n/100000).toFixed(1)}L`;return`₹${n.toLocaleString()}`;}
 
 export default function AdminDashboard() {
-  const [stats,setStats]=useState<Stats|null>(null);
-  const [logins,setLogins]=useState<RecentLogin[]>([]);
-  const [chart,setChart]=useState<ChartDay[]>([]);
-  const [leads,setLeads]=useState<any[]>([]);
-  const [visits,setVisits]=useState<any[]>([]);
-  const [loading,setLoading]=useState(true);
-  const [pwModal,setPwModal]=useState(false);
-  const [pwForm,setPwForm]=useState({current:"",newPw:"",confirm:""});
-  const [pwMsg,setPwMsg]=useState("");
-  const [pwSaving,setPwSaving]=useState(false);
+  const [stats, setStats] = useState<AdminStats|null>(null);
+  const [logins, setLogins] = useState<RecentLogin[]>([]);
+  const [chart, setChart] = useState<ChartDay[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [pwModal, setPwModal] = useState(false);
+  const [pwForm, setPwForm] = useState({current:"",newPw:"",confirm:""});
+  const [pwMsg, setPwMsg] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
 
   useEffect(()=>{loadAll();},[]);
 
   async function loadAll(){
     setLoading(true);
-    const [s,lg,ch,l,v]=await Promise.allSettled([
-      adminApi("/admin/customers/stats"),
+    const [s, lg, ch] = await Promise.allSettled([
+      adminApi("/admin/stats"),
       adminApi("/admin/customers/recent-logins?limit=8"),
       adminApi("/admin/customers/registrations/chart?days=30"),
-      adminApi("/leads?limit=5"),
-      adminApi("/site-visits?limit=5"),
     ]);
-    if(s.status==="fulfilled")setStats(s.value as unknown as Stats);
-    if(lg.status==="fulfilled"){const lv=lg.value as any;setLogins(Array.isArray(lv)?lv:[]);}
-    if(ch.status==="fulfilled"){const cv=ch.value as any;setChart(Array.isArray(cv)?cv:[]);}
-    if(l.status==="fulfilled"){const lv=l.value as any;setLeads(Array.isArray(lv)?lv:(lv?.items||[]));}
-    if(v.status==="fulfilled"){const vv=v.value as any;setVisits(Array.isArray(vv)?vv:(vv?.items||[]));}
+    if(s.status==="fulfilled") setStats(s.value as unknown as AdminStats);
+    if(lg.status==="fulfilled"){const v=lg.value as any;setLogins(Array.isArray(v)?v:[]);}
+    if(ch.status==="fulfilled"){const v=ch.value as any;setChart(Array.isArray(v)?v:[]);}
     setLoading(false);
   }
 
@@ -51,7 +53,7 @@ export default function AdminDashboard() {
     setPwSaving(true);setPwMsg("");
     try{
       await adminApi("/admin/change-password",{method:"POST",body:JSON.stringify({current_password:pwForm.current,new_password:pwForm.newPw})});
-      setPwMsg("✅ Password changed!");
+      setPwMsg("✅ Password changed successfully!");
       setPwForm({current:"",newPw:"",confirm:""});
       setTimeout(()=>{setPwModal(false);setPwMsg("");},2000);
     }catch(err:any){setPwMsg("❌ "+(err.message||"Incorrect current password"));}
@@ -59,12 +61,18 @@ export default function AdminDashboard() {
   }
 
   const chartMax=chart.length>0?Math.max(...chart.map(d=>d.count),1):1;
-  const STAT_CARDS=stats?[
-    {label:"Total Customers",value:stats.total_registrations,icon:"👥",color:"#2A3887",bg:"#E2F1FC"},
-    {label:"Active Customers",value:stats.active_customers,icon:"✅",color:"#16A34A",bg:"#DCFCE7"},
-    {label:"Last 30 Days",value:stats.registrations_last_30_days,icon:"📅",color:"#29A9DF",bg:"#E0F7FF"},
-    {label:"This Week",value:stats.registrations_last_7_days,icon:"🔥",color:"#D97706",bg:"#FEF3C7"},
-  ]:[];
+
+  const MAIN_TILES = stats ? [
+    {label:"Total Customers",value:stats.total_customers??0,sub:`${stats.new_customers_7d??0} this week`,icon:"👥",color:"#2A3887",bg:"#E2F1FC"},
+    {label:"Active Customers",value:stats.active_customers??0,sub:"registered & active",icon:"✅",color:"#16A34A",bg:"#DCFCE7"},
+    {label:"Total Leads",value:stats.total_leads??0,sub:`${stats.new_leads_7d??0} this week`,icon:"📋",color:"#D97706",bg:"#FEF3C7"},
+    {label:"Site Visits",value:stats.total_site_visits??0,sub:`${stats.upcoming_site_visits??0} upcoming`,icon:"🏡",color:"#7C3AED",bg:"#F3E8FF"},
+    {label:"Total Units",value:stats.total_units??0,sub:`${stats.available_units??0} available`,icon:"🏠",color:"#0891B2",bg:"#E0F7FF"},
+    {label:"Available Units",value:stats.available_units??0,sub:`${stats.sold_units??0} sold`,icon:"🔑",color:"#29A9DF",bg:"#E0F7FF"},
+    {label:"Bookings",value:stats.total_bookings??0,sub:`${stats.confirmed_bookings??0} confirmed`,icon:"📅",color:"#DB2777",bg:"#FCE7F3"},
+    {label:"Searches (7d)",value:stats.search_logs_7d??0,sub:"AI search queries",icon:"🔍",color:"#059669",bg:"#D1FAE5"},
+  ] : [];
+
   const QUICK=[
     {href:"/admin/customers",icon:"👥",label:"Customers",desc:"Manage registrations"},
     {href:"/admin/crud",icon:"🏠",label:"Properties",desc:"Units & projects"},
@@ -72,10 +80,12 @@ export default function AdminDashboard() {
     {href:"/admin/cms",icon:"📄",label:"CMS",desc:"Pages & content"},
   ];
 
+  const Skeleton = ()=><div className="h-24 rounded-2xl animate-pulse" style={{background:"#E2F1FC"}}/>;
+
   return (
     <div style={{fontFamily:"'Lato',sans-serif"}}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-black" style={{color:"#262262"}}>Dashboard</h1>
           <p className="text-sm mt-0.5" style={{color:"#999"}}>Welcome back — here&apos;s what&apos;s happening</p>
@@ -88,47 +98,49 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {loading?[1,2,3,4].map(i=><div key={i} className="h-24 rounded-2xl animate-pulse" style={{background:"#E2F1FC"}}/>)
-        :STAT_CARDS.map(s=>(
-          <div key={s.label} className="bg-white rounded-2xl p-5 flex items-center gap-4" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style={{background:s.bg}}>{s.icon}</div>
-            <div>
-              <p className="text-2xl font-black" style={{color:s.color}}>{s.value??0}</p>
-              <p className="text-xs font-semibold" style={{color:"#777"}}>{s.label}</p>
+      {/* Main 8 stat tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {loading?[...Array(8)].map((_,i)=><Skeleton key={i}/>)
+        :MAIN_TILES.map(s=>(
+          <div key={s.label} className="bg-white rounded-2xl p-4 flex items-center gap-3"
+            style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{background:s.bg}}>{s.icon}</div>
+            <div className="min-w-0">
+              <p className="text-xl font-black leading-none" style={{color:s.color}}>{s.value}</p>
+              <p className="text-xs font-bold truncate mt-0.5" style={{color:"#555"}}>{s.label}</p>
+              <p className="text-xs truncate" style={{color:"#aaa"}}>{s.sub}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
-          <div className="flex items-center justify-between mb-5">
+      {/* Row 2: Chart + Quick Access */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+        {/* Registration Chart */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-black text-base" style={{color:"#262262"}}>New Registrations</h2>
+              <h2 className="font-black text-sm" style={{color:"#262262"}}>New Customer Registrations</h2>
               <p className="text-xs" style={{color:"#999"}}>Last 30 days</p>
             </div>
             <span className="text-xs font-bold px-3 py-1 rounded-full" style={{background:"#E2F1FC",color:"#2A3887"}}>{chart.reduce((s,d)=>s+d.count,0)} total</span>
           </div>
           {chart.length===0?(
-            <div className="h-44 flex flex-col items-center justify-center gap-2" style={{color:"#ccc"}}>
-              <div className="text-4xl">📊</div><p className="text-sm">No data yet — registrations will appear here</p>
+            <div className="h-36 flex flex-col items-center justify-center gap-2" style={{color:"#ccc"}}>
+              <div className="text-3xl">📊</div><p className="text-xs">No registration data yet</p>
             </div>
           ):(
-            <div className="flex items-end gap-1 h-44">
+            <div className="flex items-end gap-0.5 h-36">
               {chart.map((d,i)=>{
                 const pct=Math.max((d.count/chartMax)*100,5);
                 const lbl=new Date(d.date).toLocaleDateString("en-IN",{day:"numeric",month:"short"});
                 return(
-                  <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                    <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
+                  <div key={i} className="flex-1 flex flex-col items-center group relative">
+                    <div className="absolute bottom-full mb-1 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
                       <div className="px-2 py-1 rounded text-xs font-bold text-white whitespace-nowrap" style={{background:"#2A3887"}}>{d.count} · {lbl}</div>
                       <div className="w-2 h-2 rotate-45 -mt-1" style={{background:"#2A3887"}}/>
                     </div>
-                    <div className="w-full rounded-t-md" style={{height:`${pct}%`,background:"linear-gradient(180deg,#29A9DF,#2A3887)",minHeight:"4px"}}/>
-                    {chart.length<=14&&<span style={{color:"#ccc",fontSize:"9px"}}>{new Date(d.date).getDate()}</span>}
+                    <div className="w-full rounded-t" style={{height:`${pct}%`,background:"linear-gradient(180deg,#29A9DF,#2A3887)",minHeight:"3px"}}/>
                   </div>
                 );
               })}
@@ -137,12 +149,12 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Access */}
-        <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
-          <h2 className="font-black text-base mb-5" style={{color:"#262262"}}>Quick Access</h2>
+        <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+          <h2 className="font-black text-sm mb-4" style={{color:"#262262"}}>Quick Access</h2>
           <div className="space-y-2">
             {QUICK.map(q=>(
               <Link key={q.href} href={q.href} className="flex items-center gap-3 p-3 rounded-xl transition-all hover:-translate-y-0.5" style={{background:"#F8F9FB",border:"1px solid #E2F1FC"}}>
-                <span className="text-xl w-8 text-center">{q.icon}</span>
+                <span className="text-lg w-7 text-center">{q.icon}</span>
                 <div><p className="font-bold text-sm" style={{color:"#2A3887"}}>{q.label}</p><p className="text-xs" style={{color:"#999"}}>{q.desc}</p></div>
                 <span className="ml-auto text-xs" style={{color:"#ccc"}}>→</span>
               </Link>
@@ -151,30 +163,113 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Row 3: Leads by Source + Units by Type + Visits by Status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+        {/* Leads by Source */}
+        <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+          <h2 className="font-black text-sm mb-4" style={{color:"#262262"}}>Leads by Source</h2>
+          {!stats||!stats.leads_by_source?.length?(
+            <p className="text-xs text-center py-6" style={{color:"#ccc"}}>No leads data yet</p>
+          ):(
+            <div className="space-y-2">
+              {stats.leads_by_source.slice(0,6).map((s,i)=>{
+                const total=stats.leads_by_source.reduce((a,b)=>a+b.count,0);
+                const pct=total>0?Math.round((s.count/total)*100):0;
+                const colors=["#2A3887","#29A9DF","#D97706","#16A34A","#7C3AED","#DB2777"];
+                return(
+                  <div key={i}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-semibold capitalize" style={{color:"#555"}}>{s.source||"direct"}</span>
+                      <span className="font-bold" style={{color:colors[i%colors.length]}}>{s.count} ({pct}%)</span>
+                    </div>
+                    <div className="h-1.5 rounded-full" style={{background:"#F0F4FF"}}>
+                      <div className="h-full rounded-full transition-all" style={{width:`${pct}%`,background:colors[i%colors.length]}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Units by Type */}
+        <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+          <h2 className="font-black text-sm mb-4" style={{color:"#262262"}}>Units by Type</h2>
+          {!stats||!stats.units_by_type?.length?(
+            <p className="text-xs text-center py-6" style={{color:"#ccc"}}>No units data yet</p>
+          ):(
+            <div className="space-y-2">
+              {stats.units_by_type.map((u,i)=>{
+                const total=stats.units_by_type.reduce((a,b)=>a+b.count,0);
+                const pct=total>0?Math.round((u.count/total)*100):0;
+                const colors=["#2A3887","#29A9DF","#D97706","#16A34A","#7C3AED","#DB2777"];
+                return(
+                  <div key={i}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="font-semibold" style={{color:"#555"}}>{u.unit_type||"Unknown"}</span>
+                      <span className="font-bold" style={{color:colors[i%colors.length]}}>{u.count} ({pct}%)</span>
+                    </div>
+                    <div className="h-1.5 rounded-full" style={{background:"#F0F4FF"}}>
+                      <div className="h-full rounded-full" style={{width:`${pct}%`,background:colors[i%colors.length]}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Visits by Status */}
+        <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+          <h2 className="font-black text-sm mb-4" style={{color:"#262262"}}>Site Visits by Status</h2>
+          {!stats||!stats.site_visits_by_status||Object.keys(stats.site_visits_by_status||{}).length===0?(
+            <p className="text-xs text-center py-6" style={{color:"#ccc"}}>No visit data yet</p>
+          ):(
+            <div className="space-y-3">
+              {Object.entries(stats.site_visits_by_status).map(([status,count],i)=>{
+                const statusColors:Record<string,{bg:string,color:string}>={
+                  scheduled:{bg:"#FEF3C7",color:"#D97706"},
+                  confirmed:{bg:"#DCFCE7",color:"#16A34A"},
+                  completed:{bg:"#E2F1FC",color:"#2A3887"},
+                  cancelled:{bg:"#FEE2E2",color:"#DC2626"},
+                };
+                const sc=statusColors[status]||{bg:"#F0F4FF",color:"#555"};
+                return(
+                  <div key={i} className="flex items-center justify-between p-2 rounded-xl" style={{background:sc.bg}}>
+                    <span className="text-xs font-bold capitalize" style={{color:sc.color}}>{status}</span>
+                    <span className="text-lg font-black" style={{color:sc.color}}>{count as number}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Row 4: Recent Logins + Leads by Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Recent Logins */}
-        <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
-          <div className="flex items-center justify-between mb-5">
+        <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-black text-base" style={{color:"#262262"}}>Recent Logins</h2>
+              <h2 className="font-black text-sm" style={{color:"#262262"}}>Recent Customer Logins</h2>
               <p className="text-xs" style={{color:"#999"}}>Customer portal activity</p>
             </div>
-            <Link href="/admin/customers" className="text-xs font-bold" style={{color:"#29A9DF"}}>All customers →</Link>
+            <Link href="/admin/customers" className="text-xs font-bold" style={{color:"#29A9DF"}}>All →</Link>
           </div>
           {logins.length===0?(
-            <div className="py-10 text-center flex flex-col items-center gap-2" style={{color:"#ccc"}}>
-              <div className="text-3xl">🔐</div>
-              <p className="text-sm">No logins recorded yet</p>
-              <p className="text-xs">Tracked automatically when customers sign in</p>
+            <div className="py-8 text-center flex flex-col items-center gap-2" style={{color:"#ccc"}}>
+              <div className="text-2xl">🔐</div>
+              <p className="text-xs">No logins recorded yet — tracked automatically when customers sign in</p>
             </div>
           ):logins.map((u,i)=>(
-            <div key={i} className="flex items-center gap-3 py-2.5" style={{borderBottom:"1px solid #F0F4FF"}}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-black flex-shrink-0" style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)"}}>
+            <div key={i} className="flex items-center gap-3 py-2" style={{borderBottom:"1px solid #F0F4FF"}}>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black flex-shrink-0" style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)"}}>
                 {u.name?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm truncate" style={{color:"#2A3887"}}>{u.name}</p>
-                <p className="text-xs truncate" style={{color:"#999"}}>{u.email}</p>
+                <p className="font-bold text-xs truncate" style={{color:"#2A3887"}}>{u.name}</p>
+                <p className="text-xs truncate" style={{color:"#aaa"}}>{u.email}</p>
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-xs font-bold" style={{color:"#29A9DF"}}>{timeAgo(u.last_login)}</p>
@@ -186,41 +281,32 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Leads + Visits */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-black text-base" style={{color:"#262262"}}>Recent Leads</h2>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:"#E2F1FC",color:"#2A3887"}}>{leads.length}</span>
+        {/* Leads by Status */}
+        <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
+          <h2 className="font-black text-sm mb-4" style={{color:"#262262"}}>Leads by Status</h2>
+          {!stats||!stats.leads_by_status||Object.keys(stats.leads_by_status||{}).length===0?(
+            <p className="text-xs text-center py-8" style={{color:"#ccc"}}>No leads yet</p>
+          ):(
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(stats.leads_by_status).map(([status,count],i)=>{
+                const statusColors:Record<string,{bg:string,color:string}>={
+                  new:{bg:"#E2F1FC",color:"#2A3887"},
+                  contacted:{bg:"#FEF3C7",color:"#D97706"},
+                  qualified:{bg:"#D1FAE5",color:"#059669"},
+                  converted:{bg:"#DCFCE7",color:"#16A34A"},
+                  lost:{bg:"#FEE2E2",color:"#DC2626"},
+                  followup:{bg:"#F3E8FF",color:"#7C3AED"},
+                };
+                const sc=statusColors[status]||{bg:"#F0F4FF",color:"#555"};
+                return(
+                  <div key={i} className="rounded-2xl p-4 text-center" style={{background:sc.bg}}>
+                    <p className="text-2xl font-black" style={{color:sc.color}}>{count as number}</p>
+                    <p className="text-xs font-bold capitalize mt-1" style={{color:sc.color}}>{status}</p>
+                  </div>
+                );
+              })}
             </div>
-            {leads.length===0?<p className="text-sm text-center py-6" style={{color:"#ccc"}}>No leads yet</p>
-            :leads.slice(0,4).map((l:any,i:number)=>(
-              <div key={i} className="flex items-center justify-between py-2" style={{borderBottom:"1px solid #F0F4FF"}}>
-                <div><p className="font-bold text-sm" style={{color:"#2A3887"}}>{l.name}</p><p className="text-xs" style={{color:"#999"}}>{l.phone}</p></div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:"#FEF3C7",color:"#D97706"}}>{l.status||"new"}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="bg-white rounded-2xl p-6" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-black text-base" style={{color:"#262262"}}>Site Visits</h2>
-              <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{background:"#E2F1FC",color:"#2A3887"}}>{visits.length}</span>
-            </div>
-            {visits.length===0?<p className="text-sm text-center py-6" style={{color:"#ccc"}}>No visits scheduled</p>
-            :visits.slice(0,4).map((v:any,i:number)=>(
-              <div key={i} className="flex items-center justify-between py-2" style={{borderBottom:"1px solid #F0F4FF"}}>
-                <div>
-                  <p className="font-bold text-sm" style={{color:"#2A3887"}}>{v.name}</p>
-                  <p className="text-xs" style={{color:"#999"}}>{v.visit_date?new Date(v.visit_date).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):"—"}{v.visit_time?` · ${v.visit_time}`:""}</p>
-                </div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{
-                  background:v.status==="confirmed"?"#DCFCE7":v.status==="completed"?"#E2F1FC":"#FEF3C7",
-                  color:v.status==="confirmed"?"#16A34A":v.status==="completed"?"#2A3887":"#D97706"
-                }}>{v.status||"pending"}</span>
-              </div>
-            ))}
-          </div>
+          )}
         </div>
       </div>
 
@@ -233,10 +319,11 @@ export default function AdminDashboard() {
                 <h3 className="font-black text-xl" style={{color:"#262262"}}>Change Admin Password</h3>
                 <p className="text-xs mt-0.5" style={{color:"#999"}}>Update your admin credentials securely</p>
               </div>
-              <button onClick={()=>setPwModal(false)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+              <button onClick={()=>setPwModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
             {pwMsg&&(
-              <div className="mb-5 px-4 py-3 rounded-xl text-sm font-medium" style={{background:pwMsg.includes("✅")?"#F0FDF4":"#FEF2F2",color:pwMsg.includes("✅")?"#16A34A":"#DC2626"}}>
+              <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium"
+                style={{background:pwMsg.includes("✅")?"#F0FDF4":"#FEF2F2",color:pwMsg.includes("✅")?"#16A34A":"#DC2626"}}>
                 {pwMsg}
               </div>
             )}
