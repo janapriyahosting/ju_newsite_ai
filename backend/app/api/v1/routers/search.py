@@ -8,6 +8,7 @@ from backend.app.core.database import get_db
 from backend.app.core.config import settings
 from backend.app.models.unit import Unit
 from backend.app.models.search_log import SearchLog
+from backend.app.models.session_log import SessionLog
 from backend.app.schemas.search import (
     NLPSearchRequest, FilterSearchRequest, SearchResponse
 )
@@ -366,7 +367,6 @@ class SessionPingRequest(BaseModel):
 @router.post("/session/ping")
 async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_db)):
     """Track visitor session — called from frontend periodically."""
-    from backend.app.models.session_log import SessionLog
     import uuid as _uuid
     
     # Try to find existing session

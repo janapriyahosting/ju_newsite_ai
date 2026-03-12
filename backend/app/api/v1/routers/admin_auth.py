@@ -13,6 +13,9 @@ warnings.filterwarnings("ignore", ".*bcrypt.*")
 from backend.app.core.database import get_db
 from backend.app.core.config import settings
 from backend.app.models.admin_user import AdminUser
+from backend.app.models.search_log import SearchLog
+from backend.app.models.session_log import SessionLog
+from backend.app.models.customer import Customer as CustomerModel
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 security = HTTPBearer()
@@ -234,8 +237,7 @@ async def get_analytics(
     """Full visitor analytics for admin dashboard."""
     from datetime import datetime, timedelta, timezone
     from sqlalchemy import func, cast, Date as SADate
-    from backend.app.models.session_log import SessionLog
-    from backend.app.models.customer import Customer
+    Customer = CustomerModel
     
     end = datetime.now(timezone.utc)
     start = end - timedelta(days=days)
