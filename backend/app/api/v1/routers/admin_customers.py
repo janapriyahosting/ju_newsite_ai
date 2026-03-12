@@ -102,10 +102,10 @@ async def recent_logins(
     )
     customers = result.scalars().all()
     return [
-        {"id": str(c.id), "name": c.name, "email": c.email,
-         "phone": c.phone, "last_login": c.last_login.isoformat() if c.last_login else None,
-         "is_active": c.is_active}
-        for c in customers
+        {"id": str(cu.id), "name": cu.name, "email": cu.email,
+         "phone": cu.phone, "last_login": cu.last_login.isoformat() if cu.last_login else None,
+         "is_active": cu.is_active}
+        for cu in customers
     ]
 
 
