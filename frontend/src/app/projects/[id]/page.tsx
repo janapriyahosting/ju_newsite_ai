@@ -29,7 +29,7 @@ function MiniUnitCard({ unit: u }: { unit: any }) {
           <span>📐 {u.area_sqft ? parseFloat(u.area_sqft).toFixed(0) : "—"} sqft</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="font-black" style={{ color: "#2A3887" }}>{formatPrice(u.price||u.base_price)}</span>
+          <span className="font-black" style={{ color: "#2A3887" }}>{formatPrice(u.base_price)}</span>
           <Link href={`/units/${u.id}`} className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
             style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View →</Link>
         </div>
@@ -68,20 +68,25 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    // Resolve slug or UUID to project, then fetch units by project_id
+    // Resolve slug/id → project → towers → units
     fetch(`${API}/projects?limit=50`)
       .then(r => r.json())
       .then(async (data: any) => {
-        const items = data.items || [];
-        // Match by slug or id
-        const proj = items.find((p: any) => p.slug === id || p.id === id);
+        const proj = (data.items || []).find((p: any) => p.slug === id || p.id === id);
         if (!proj) { setLoading(false); return; }
         setProject(proj);
-        // Fetch units filtered by project_id
-        const uRes = await fetch(`${API}/units?project_id=${proj.id}&limit=200`);
-        const uData = await uRes.json();
-        const allUnits = Array.isArray(uData) ? uData : (uData.items || []);
-        setUnits(allUnits);
+        // Fetch towers for this project
+        const tRes = await fetch(`${API}/projects/${proj.id}/towers`);
+        const tData = await tRes.json();
+        const towerList = Array.isArray(tData) ? tData : (tData.items || []);
+        setTowers(towerList);
+        // Fetch units for each tower in parallel
+        const unitArrays = await Promise.all(
+          towerList.map((t: any) =>
+            fetch(`${API}/units?tower_id=${t.id}&limit=200`).then(r=>r.json()).then(u => u.items || [])
+          )
+        );
+        setUnits(unitArrays.flat());
         setLoading(false);
       }).catch(() => setLoading(false));
   }, [id]);
@@ -108,7 +113,7 @@ export default function ProjectDetailPage() {
   );
 
   const available = units.filter(u=>u.status==="available").length;
-  const prices = units.map(u=>parseFloat(u.price||u.base_price||0)).filter(Boolean);
+  const prices = units.map(u=>parseFloat(parseFloat(u.base_price||0))).filter(Boolean);
   const minPrice = prices.length ? Math.min(...prices) : 0;
   const maxPrice = prices.length ? Math.max(...prices) : 0;
 
@@ -225,14 +230,20 @@ export default function ProjectDetailPage() {
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {towers.map((t:any) => (
-                  <div key={t.id} className="bg-white rounded-2xl p-5" style={{ border: "1.5px solid #E2F1FC" }}>
-                    <h3 className="font-black text-base mb-2" style={{ color: "#2A3887" }}>{t.name || t.tower_name}</h3>
+                  <Link key={t.id} href={`/projects/${id}/towers/${t.id}`}
+                    className="bg-white rounded-2xl p-5 block transition-all hover:-translate-y-1"
+                    style={{ border: "1.5px solid #E2F1FC", boxShadow:"0 4px 15px rgba(42,56,135,0.07)", textDecoration:"none" }}>
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-black text-base" style={{ color: "#2A3887" }}>{t.name || t.tower_name}</h3>
+                      <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:"#E2F1FC", color:"#2A3887" }}>View →</span>
+                    </div>
                     <div className="space-y-1 text-sm" style={{ color: "#555" }}>
                       {t.total_floors && <p>🏢 {t.total_floors} Floors</p>}
                       {t.units_per_floor && <p>🏠 {t.units_per_floor} Units/Floor</p>}
                       {t.total_units && <p>📊 {t.total_units} Total Units</p>}
+                      {t.description && <p className="text-xs mt-2" style={{ color:"#999" }}>{t.description}</p>}
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

@@ -4,20 +4,36 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-const ALL_PROJECTS = [
-  {name:"Janapriya Heights",slug:"janapriya-heights",loc:"Gachibowli",type:"2 & 3 BHK",price:"₹45L – ₹85L",units:120,status:"Ready to Move",statusColor:"#22c55e",desc:"Spacious apartments with premium amenities in the IT hub of Hyderabad."},
-  {name:"Janapriya Meadows",slug:"janapriya-meadows",loc:"Kompally",type:"Villas & Row Houses",price:"₹85L – ₹1.5Cr",units:60,status:"Under Construction",statusColor:"#f59e0b",desc:"Independent villas with private gardens in a gated community."},
-  {name:"Janapriya Elite",slug:"janapriya-elite",loc:"Banjara Hills",type:"Luxury Apts",price:"₹1.2Cr – ₹2.5Cr",units:48,status:"New Launch",statusColor:"#29A9DF",desc:"Ultra-luxury apartments in the most premium address in Hyderabad."},
-  {name:"Janapriya Gardens",slug:"janapriya-gardens",loc:"Miyapur",type:"2 BHK",price:"₹38L – ₹55L",units:200,status:"Ready to Move",statusColor:"#22c55e",desc:"Affordable luxury with lush green surroundings and excellent connectivity."},
-  {name:"Janapriya Skyline",slug:"janapriya-skyline",loc:"Kukatpally",type:"3 & 4 BHK",price:"₹75L – ₹1.2Cr",units:80,status:"Under Construction",statusColor:"#f59e0b",desc:"Sky-high living with panoramic city views and world-class facilities."},
-  {name:"Janapriya Prime",slug:"janapriya-prime",loc:"Madhapur",type:"Studio & 1 BHK",price:"₹28L – ₹45L",units:150,status:"New Launch",statusColor:"#29A9DF",desc:"Smart compact homes ideal for professionals and young families."},
-];
-
+const API = "http://173.168.0.81:8000/api/v1";
 const FILTERS = ["All","Ready to Move","Under Construction","New Launch"];
+
+function statusColor(s: string) {
+  if (s?.toLowerCase().includes("ready")) return "#22c55e";
+  if (s?.toLowerCase().includes("new")) return "#29A9DF";
+  return "#f59e0b";
+}
+function fmtPrice(p: number) {
+  if (!p) return "On Request";
+  if (p >= 10000000) return `₹${(p/10000000).toFixed(1)}Cr`;
+  if (p >= 100000) return `₹${(p/100000).toFixed(0)}L`;
+  return `₹${p.toLocaleString("en-IN")}`;
+}
 
 export default function ProjectsPage() {
   const [filter, setFilter] = useState("All");
-  const filtered = ALL_PROJECTS.filter(p => filter==="All" || p.status===filter);
+  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API}/projects?limit=50`)
+      .then(r => r.json())
+      .then(d => { setAllProjects(d.items || []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const filtered = allProjects.filter(p =>
+    filter === "All" || (p.status || "").replace(/_/g," ").toLowerCase() === filter.toLowerCase()
+  );
 
   return (
     <main style={{ fontFamily:"'Lato',sans-serif" }} className="min-h-screen bg-white">
@@ -50,38 +66,58 @@ export default function ProjectsPage() {
       </div>
 
       <section className="py-16 max-w-7xl mx-auto px-6">
+        {loading ? (
+          <div className="text-center py-20">
+            <div className="text-4xl animate-spin mb-3">⟳</div>
+            <p style={{ color:"#999" }}>Loading projects...</p>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filtered.map(p => (
-            <div key={p.name} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
+            <div key={p.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
               style={{ boxShadow:"0 4px 20px rgba(42,56,135,0.1)", border:"1px solid #E2F1FC" }}>
               <Link href={`/projects/${p.slug}`} className="block h-52 relative flex flex-col justify-between p-5 cursor-pointer"
                 style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                 <div className="flex justify-between items-start">
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-white" style={{ color:p.statusColor }}>{p.status}</span>
-                  <span className="text-xs font-bold text-white/70 bg-white/10 px-3 py-1 rounded-full">{p.units} units</span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-white"
+                    style={{ color: statusColor(p.status) }}>
+                    {(p.status||"Active").replace(/_/g," ").replace(/\w/g,(c:string)=>c.toUpperCase())}
+                  </span>
+                  <span className="text-xs font-bold text-white/70 bg-white/10 px-3 py-1 rounded-full">
+                    {p.total_units || "—"} units
+                  </span>
                 </div>
                 <div>
-                  <p style={{ color:"rgba(255,255,255,0.7)" }} className="text-xs mb-1">{p.type}</p>
+                  <p style={{ color:"rgba(255,255,255,0.7)" }} className="text-xs mb-1">{p.property_type || p.unit_types || "Residential"}</p>
                   <h3 className="text-white font-black text-xl">{p.name}</h3>
                   <p className="text-xs mt-1" style={{ color:"rgba(255,255,255,0.5)" }}>View Details →</p>
                 </div>
               </Link>
               <div className="p-6">
-                <p style={{ color:"#555A5C" }} className="text-sm mb-2">📍 {p.loc}, Hyderabad</p>
-                <p style={{ color:"#555A5C" }} className="text-xs mb-4 leading-relaxed">{p.desc}</p>
+                <p style={{ color:"#555A5C" }} className="text-sm mb-2">📍 {p.location || p.city}, {p.city !== p.location ? p.city : "Hyderabad"}</p>
+                <p style={{ color:"#555A5C" }} className="text-xs mb-4 leading-relaxed">{p.description?.substring(0,100)}{p.description?.length > 100 ? "..." : ""}</p>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="font-black text-lg" style={{ color:"#2A3887" }}>{p.price}</span>
+                  <span className="font-black text-lg" style={{ color:"#2A3887" }}>
+                    {p.min_price && p.max_price ? `${fmtPrice(p.min_price)} – ${fmtPrice(p.max_price)}` : "On Request"}
+                  </span>
                 </div>
                 <div className="flex gap-2">
-                  <Link href="/contact" className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors"
-                    style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>Enquire</Link>
+                  <Link href={`/projects/${p.slug}`} className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors"
+                    style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>View Details</Link>
                   <Link href="/contact" className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors"
-                    style={{ border:"1px solid #2A3887", color:"#2A3887" }}>Site Visit</Link>
+                    style={{ border:"1px solid #2A3887", color:"#2A3887" }}>Enquire</Link>
                 </div>
               </div>
             </div>
           ))}
+          {filtered.length === 0 && !loading && (
+            <div className="col-span-3 text-center py-20" style={{ color:"#999" }}>
+              <p className="text-4xl mb-3">🏗️</p>
+              <p className="font-bold">No projects found for this filter</p>
+            </div>
+          )}
         </div>
+        )}
       </section>
 
       {/* CTA */}
