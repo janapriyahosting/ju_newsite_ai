@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from backend.app.core.database import get_db
 from backend.app.api.v1.routers.admin_auth import verify_admin_token
@@ -19,7 +19,7 @@ async def get_analytics(
     db: AsyncSession = Depends(get_db),
     admin=Depends(verify_admin_token)
 ):
-    end_dt = datetime.now(timezone.utc)
+    end_dt = datetime.utcnow()
     start_dt = end_dt - timedelta(days=days)
 
     # Search logs
