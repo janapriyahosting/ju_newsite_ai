@@ -8,17 +8,9 @@ from backend.app.models.cart import CartItem
 from backend.app.models.booking import Booking
 from backend.app.models.coupon import Coupon
 from backend.app.models.search_log import SearchLog
+from backend.app.models.session_log import SessionLog
 
 __all__ = [
-    "Project",
-    "Tower",
-    "Unit",
-    "Customer",
-    "Lead",
-    "SiteVisit",
-    "CartItem",
-    "Booking",
-    "Coupon",
-    "SearchLog",
+    "Project", "Tower", "Unit", "Customer", "Lead",
+    "SiteVisit", "CartItem", "Booking", "Coupon", "SearchLog", "SessionLog",
 ]
-from backend.app.models.session_log import SessionLog

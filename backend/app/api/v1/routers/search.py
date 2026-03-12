@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -374,7 +376,8 @@ async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_
     )
     session = result.scalar_one_or_none()
     
-    now = __import__('datetime').datetime.now(__import__('datetime').timezone.utc)
+    from datetime import datetime as _dt, timezone as _tz
+    now = _dt.now(_tz.utc)
     
     if session:
         session.last_seen_at = now
