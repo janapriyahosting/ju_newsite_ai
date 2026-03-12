@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from backend.app.core.config import settings
@@ -61,3 +63,8 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+# Serve uploaded media files
+_media_dir = os.path.join(os.path.dirname(__file__), "../../media")
+os.makedirs(_media_dir, exist_ok=True)
+app.mount("/media", StaticFiles(directory=_media_dir), name="media")

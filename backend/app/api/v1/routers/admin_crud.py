@@ -40,7 +40,7 @@ def model_to_dict(obj):
 UNIT_FIELDS = ["tower_id","unit_number","floor_number","unit_type","bedrooms","bathrooms",
                "balconies","area_sqft","carpet_area","plot_area","base_price","price_per_sqft",
                "down_payment","emi_estimate","facing","status","amenities","images",
-               "is_trending","is_featured","description","floor_plan_img"]
+               "is_trending","is_featured","description","floor_plan_img","floor_plans","video_url","walkthrough_url"]
 
 CSV_COLUMNS = ["unit_number","floor_number","unit_type","bedrooms","bathrooms","balconies",
                "area_sqft","carpet_area","base_price","price_per_sqft","down_payment",
@@ -94,7 +94,7 @@ async def update_project(project_id:str, data:dict, db:AsyncSession=Depends(get_
     r=await db.execute(select(Project).where(Project.id==uuid.UUID(project_id)))
     p=r.scalar_one_or_none()
     if not p: raise HTTPException(404,"Project not found")
-    allowed=["name","city","locality","rera_number","total_units","possession_date","is_active"]
+    allowed=["name","slug","description","city","location","address","state","pincode","locality","rera_number","total_units","possession_date","is_active","is_featured","images","video_url","walkthrough_url","brochure_url","floor_plans","amenities","lat","lng"]
     [setattr(p,k,v) for k,v in data.items() if k in allowed]
     await db.commit(); await db.refresh(p); return model_to_dict(p)
 
@@ -156,7 +156,7 @@ async def update_tower(tower_id:str, data:dict, db:AsyncSession=Depends(get_db),
     r=await db.execute(select(Tower).where(Tower.id==uuid.UUID(tower_id)))
     t=r.scalar_one_or_none()
     if not t: raise HTTPException(404,"Tower not found")
-    allowed=["name","total_floors","total_units","description","is_active"]
+    allowed=["name","total_floors","total_units","description","is_active","images","video_url","walkthrough_url","floor_plans","svg_floor_plan"]
     [setattr(t,k,v) for k,v in data.items() if k in allowed]
     await db.commit(); await db.refresh(t); return model_to_dict(t)
 
