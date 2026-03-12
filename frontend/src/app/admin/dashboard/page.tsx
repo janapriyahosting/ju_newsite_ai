@@ -4,12 +4,19 @@ import { adminApi } from "@/lib/adminAuth";
 import Link from "next/link";
 
 interface AdminStats {
-  total_customers: number; active_customers: number; new_customers_7d: number; new_customers_30d: number;
-  total_leads: number; new_leads_7d: number; leads_by_status: Record<string,number>; leads_by_source: {source:string;count:number}[];
-  total_site_visits: number; upcoming_site_visits: number; site_visits_by_status: Record<string,number>;
-  total_units: number; available_units: number; sold_units: number; units_by_type: {unit_type:string;count:number}[];
-  total_bookings: number; confirmed_bookings: number;
-  search_logs_7d: number;
+  units: {total:number; available:number; booked:number; hold:number};
+  leads: {total:number; new:number; this_week:number};
+  visits: {total:number; pending:number};
+  bookings: {total:number};
+  customers: {total:number};
+  projects: {total:number};
+  searches: {total:number; this_week:number};
+  leads_by_source: {source:string; count:number}[];
+  units_by_type: {type:string; count:number}[];
+  leads_by_status: Record<string,number>;
+  site_visits_by_status: Record<string,number>;
+  recent_leads: any[];
+  recent_visits: any[];
 }
 interface RecentLogin { id:string; name:string; email:string; last_login:string; is_active:boolean; }
 interface ChartDay { date:string; count:number; }
@@ -63,14 +70,14 @@ export default function AdminDashboard() {
   const chartMax=chart.length>0?Math.max(...chart.map(d=>d.count),1):1;
 
   const MAIN_TILES = stats ? [
-    {label:"Total Customers",value:stats.total_customers??0,sub:`${stats.new_customers_7d??0} this week`,icon:"👥",color:"#2A3887",bg:"#E2F1FC"},
-    {label:"Active Customers",value:stats.active_customers??0,sub:"registered & active",icon:"✅",color:"#16A34A",bg:"#DCFCE7"},
-    {label:"Total Leads",value:stats.total_leads??0,sub:`${stats.new_leads_7d??0} this week`,icon:"📋",color:"#D97706",bg:"#FEF3C7"},
-    {label:"Site Visits",value:stats.total_site_visits??0,sub:`${stats.upcoming_site_visits??0} upcoming`,icon:"🏡",color:"#7C3AED",bg:"#F3E8FF"},
-    {label:"Total Units",value:stats.total_units??0,sub:`${stats.available_units??0} available`,icon:"🏠",color:"#0891B2",bg:"#E0F7FF"},
-    {label:"Available Units",value:stats.available_units??0,sub:`${stats.sold_units??0} sold`,icon:"🔑",color:"#29A9DF",bg:"#E0F7FF"},
-    {label:"Bookings",value:stats.total_bookings??0,sub:`${stats.confirmed_bookings??0} confirmed`,icon:"📅",color:"#DB2777",bg:"#FCE7F3"},
-    {label:"Searches (7d)",value:stats.search_logs_7d??0,sub:"AI search queries",icon:"🔍",color:"#059669",bg:"#D1FAE5"},
+    {label:"Total Customers",value:stats.customers?.total??0,sub:"registered users",icon:"👥",color:"#2A3887",bg:"#E2F1FC"},
+    {label:"Total Leads",value:stats.leads?.total??0,sub:`${stats.leads?.this_week??0} this week`,icon:"📋",color:"#D97706",bg:"#FEF3C7"},
+    {label:"Site Visits",value:stats.visits?.total??0,sub:`${stats.visits?.pending??0} pending`,icon:"🏡",color:"#7C3AED",bg:"#F3E8FF"},
+    {label:"Bookings",value:stats.bookings?.total??0,sub:"confirmed bookings",icon:"📅",color:"#DB2777",bg:"#FCE7F3"},
+    {label:"Total Units",value:stats.units?.total??0,sub:`${stats.units?.available??0} available`,icon:"🏠",color:"#0891B2",bg:"#E0F7FF"},
+    {label:"Available Units",value:stats.units?.available??0,sub:`${stats.units?.booked??0} booked`,icon:"🔑",color:"#29A9DF",bg:"#E0F7FF"},
+    {label:"Projects",value:stats.projects?.total??0,sub:"active projects",icon:"🏗️",color:"#16A34A",bg:"#DCFCE7"},
+    {label:"Searches (7d)",value:stats.searches?.this_week??0,sub:`${stats.searches?.total??0} total`,icon:"🔍",color:"#059669",bg:"#D1FAE5"},
   ] : [];
 
   const QUICK=[
@@ -168,7 +175,7 @@ export default function AdminDashboard() {
         {/* Leads by Source */}
         <div className="bg-white rounded-2xl p-5" style={{border:"1px solid #E2F1FC",boxShadow:"0 2px 10px rgba(42,56,135,0.06)"}}>
           <h2 className="font-black text-sm mb-4" style={{color:"#262262"}}>Leads by Source</h2>
-          {!stats||!stats.leads_by_source?.length?(
+          {!stats||!(stats.leads_by_source?.length)?(
             <p className="text-xs text-center py-6" style={{color:"#ccc"}}>No leads data yet</p>
           ):(
             <div className="space-y-2">
@@ -199,14 +206,14 @@ export default function AdminDashboard() {
             <p className="text-xs text-center py-6" style={{color:"#ccc"}}>No units data yet</p>
           ):(
             <div className="space-y-2">
-              {stats.units_by_type.map((u,i)=>{
-                const total=stats.units_by_type.reduce((a,b)=>a+b.count,0);
+              {(stats.units_by_type||[]).map((u,i)=>{
+                const total=(stats.units_by_type||[]).reduce((a,b)=>a+b.count,0);
                 const pct=total>0?Math.round((u.count/total)*100):0;
                 const colors=["#2A3887","#29A9DF","#D97706","#16A34A","#7C3AED","#DB2777"];
                 return(
                   <div key={i}>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="font-semibold" style={{color:"#555"}}>{u.unit_type||"Unknown"}</span>
+                      <span className="font-semibold" style={{color:"#555"}}>{u.type||"Unknown"}</span>
                       <span className="font-bold" style={{color:colors[i%colors.length]}}>{u.count} ({pct}%)</span>
                     </div>
                     <div className="h-1.5 rounded-full" style={{background:"#F0F4FF"}}>
