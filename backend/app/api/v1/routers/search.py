@@ -354,7 +354,7 @@ async def filter_search(data: FilterSearchRequest, db: AsyncSession = Depends(ge
     )
 
 
-# ── Session Tracking ──────────────────────────────────────────────────────────
+# ── Session Tracking ─────────────────────────────────────────────────────────
 
 class SessionPingRequest(BaseModel):
     session_id: str
@@ -364,52 +364,40 @@ class SessionPingRequest(BaseModel):
     duration_seconds: int = 0
     customer_id: Optional[str] = None
 
+
 @router.post("/session/ping")
 async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_db)):
-    """Track visitor session — called from frontend periodically."""
-    import uuid as _uuid
+    import uuid as _u
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
 
-    # Try to find existing session
-    result = await db.execute(
+    res = await db.execute(
         select(SessionLog).where(SessionLog.session_id == data.session_id)
         .order_by(SessionLog.started_at.desc()).limit(1)
     )
-    session = result.scalar_one_or_none()
+    sess = res.scalar_one_or_none()
 
-    if session:
-        session.last_seen_at = now
-        session.duration_seconds = data.duration_seconds
-        session.page_path = data.page_path
-        session.page_views = (session.page_views or 1) + 1
-        if data.customer_id and not session.customer_id:
-            try:
-                session.customer_id = _uuid.UUID(data.customer_id)
-                session.is_customer = True
-            except Exception:
-                pass
+    if sess:
+        sess.last_seen_at = now
+        sess.duration_seconds = data.duration_seconds
+        sess.page_path = data.page_path
+        sess.page_views = (sess.page_views or 1) + 1
+        if data.customer_id and not sess.customer_id:
+            try: sess.customer_id = _u.UUID(data.customer_id); sess.is_customer = True
+            except Exception: pass
     else:
         cid = None
         if data.customer_id:
-            try:
-                cid = _uuid.UUID(data.customer_id)
-            except Exception:
-                pass
-        session = SessionLog(
-            session_id=data.session_id,
-            visitor_id=data.visitor_id,
-            page_path=data.page_path,
-            referrer=data.referrer,
-            customer_id=cid,
-            is_customer=bool(cid),
-            started_at=now,
-            last_seen_at=now,
-            duration_seconds=data.duration_seconds,
-            page_views=1,
-            created_at=now,
+            try: cid = _u.UUID(data.customer_id)
+            except Exception: pass
+        sess = SessionLog(
+            session_id=data.session_id, visitor_id=data.visitor_id,
+            page_path=data.page_path, referrer=data.referrer,
+            customer_id=cid, is_customer=bool(cid),
+            started_at=now, last_seen_at=now, created_at=now,
+            duration_seconds=data.duration_seconds, page_views=1,
         )
-        db.add(session)
+        db.add(sess)
 
     await db.commit()
     return {"ok": True}
