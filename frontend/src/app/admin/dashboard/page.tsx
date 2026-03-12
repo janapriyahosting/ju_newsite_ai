@@ -37,8 +37,8 @@ export default function AdminDashboard() {
       adminApi("/site-visits?limit=5"),
     ]);
     if(s.status==="fulfilled")setStats(s.value as unknown as Stats);
-    if(lg.status==="fulfilled")setLogins((lg.value as any)||[]);
-    if(ch.status==="fulfilled")setChart((ch.value as any)||[]);
+    if(lg.status==="fulfilled"){const lv=lg.value as any;setLogins(Array.isArray(lv)?lv:[]);}
+    if(ch.status==="fulfilled"){const cv=ch.value as any;setChart(Array.isArray(cv)?cv:[]);}
     if(l.status==="fulfilled"){const lv=l.value as any;setLeads(Array.isArray(lv)?lv:(lv?.items||[]));}
     if(v.status==="fulfilled"){const vv=v.value as any;setVisits(Array.isArray(vv)?vv:(vv?.items||[]));}
     setLoading(false);
@@ -58,7 +58,7 @@ export default function AdminDashboard() {
     setPwSaving(false);
   }
 
-  const chartMax=Math.max(...chart.map(d=>d.count),1);
+  const chartMax=chart.length>0?Math.max(...chart.map(d=>d.count),1):1;
   const STAT_CARDS=stats?[
     {label:"Total Customers",value:stats.total_registrations,icon:"👥",color:"#2A3887",bg:"#E2F1FC"},
     {label:"Active Customers",value:stats.active_customers,icon:"✅",color:"#16A34A",bg:"#DCFCE7"},
