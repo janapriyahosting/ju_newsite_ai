@@ -394,6 +394,8 @@ async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_
         if data.customer_id:
             try: cid = _uuid.UUID(data.customer_id)
             except: pass
+        from datetime import datetime, timezone as _tz2
+        _now2 = datetime.now(_tz2.utc)
         session = SessionLog(
             session_id=data.session_id,
             visitor_id=data.visitor_id,
@@ -401,9 +403,11 @@ async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_
             referrer=data.referrer,
             customer_id=cid,
             is_customer=bool(cid),
-            started_at=now,
-            last_seen_at=now,
+            started_at=_now2,
+            last_seen_at=_now2,
             duration_seconds=data.duration_seconds,
+            page_views=1,
+            created_at=_now2,
         )
         db.add(session)
     
