@@ -1,3 +1,4 @@
+import SessionTracker from "@/components/SessionTracker";
 import type { Metadata } from "next";
 import { Lato } from "next/font/google";
 import "./globals.css";
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={lato.className}>{children}</body>
+      <body className={lato.className}>{children}
+        <SessionTracker /></body>
     </html>
   );
 }

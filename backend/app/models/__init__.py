@@ -21,3 +21,4 @@ __all__ = [
     "Coupon",
     "SearchLog",
 ]
+from backend.app.models.session_log import SessionLog

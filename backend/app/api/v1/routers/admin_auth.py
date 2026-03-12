@@ -222,3 +222,99 @@ async def change_own_password(
     user.password_hash = bcrypt.hash(data.new_password)
     await db.flush()
     return {"message": "Password changed successfully"}
+
+
+@router.get("/analytics")
+async def get_analytics(
+    days: int = Query(30, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(verify_admin_token)
+):
+    """Full visitor analytics for admin dashboard."""
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import func, cast, Date as SADate
+    from backend.app.models.session_log import SessionLog
+    from backend.app.models.customer import Customer
+    
+    end = datetime.now(timezone.utc)
+    start = end - timedelta(days=days)
+    
+    # Search logs with customer info
+    search_result = await db.execute(
+        select(SearchLog, Customer)
+        .outerjoin(Customer, SearchLog.customer_id == Customer.id)
+        .where(SearchLog.created_at >= start)
+        .order_by(SearchLog.created_at.desc())
+        .limit(100)
+    )
+    searches = search_result.all()
+    
+    # Session analytics
+    session_result = await db.execute(
+        select(SessionLog, Customer)
+        .outerjoin(Customer, SessionLog.customer_id == Customer.id)
+        .where(SessionLog.created_at >= start)
+        .order_by(SessionLog.last_seen_at.desc())
+        .limit(100)
+    )
+    sessions = session_result.all()
+    
+    # Top search queries
+    top_queries = await db.execute(
+        select(SearchLog.query, func.count(SearchLog.id).label("count"))
+        .where(SearchLog.created_at >= start)
+        .group_by(SearchLog.query)
+        .order_by(func.count(SearchLog.id).desc())
+        .limit(10)
+    )
+    
+    # Daily search counts
+    daily_searches = await db.execute(
+        select(cast(SearchLog.created_at, SADate).label("date"), func.count(SearchLog.id).label("count"))
+        .where(SearchLog.created_at >= start)
+        .group_by(cast(SearchLog.created_at, SADate))
+        .order_by(cast(SearchLog.created_at, SADate))
+    )
+    
+    # Avg session duration
+    avg_dur = await db.execute(
+        select(func.avg(SessionLog.duration_seconds))
+        .where(SessionLog.created_at >= start)
+    )
+    avg_duration = avg_dur.scalar() or 0
+    
+    return {
+        "summary": {
+            "total_searches": len(searches),
+            "total_sessions": len(sessions),
+            "customer_sessions": sum(1 for s, _ in sessions if s.is_customer),
+            "avg_duration_seconds": round(float(avg_duration)),
+        },
+        "searches": [
+            {
+                "id": str(s.id), "query": s.query,
+                "results_count": s.results_count if hasattr(s, 'results_count') else 0,
+                "customer_id": str(s.customer_id) if s.customer_id else None,
+                "customer_name": c.name if c else None,
+                "customer_email": c.email if c else None,
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+            }
+            for s, c in searches
+        ],
+        "sessions": [
+            {
+                "session_id": s.session_id,
+                "customer_name": c.name if c else None,
+                "customer_email": c.email if c else None,
+                "is_customer": s.is_customer,
+                "page_path": s.page_path,
+                "duration_seconds": s.duration_seconds,
+                "page_views": s.page_views,
+                "started_at": s.started_at.isoformat() if s.started_at else None,
+                "last_seen_at": s.last_seen_at.isoformat() if s.last_seen_at else None,
+            }
+            for s, c in sessions
+        ],
+        "top_queries": [{"query": r.query, "count": r.count} for r in top_queries.all()],
+        "daily_searches": [{"date": str(r.date), "count": r.count} for r in daily_searches.all()],
+    }

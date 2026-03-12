@@ -349,3 +349,60 @@ async def filter_search(data: FilterSearchRequest, db: AsyncSession = Depends(ge
         total=total, page=data.page, page_size=data.page_size,
         total_pages=-(-total // data.page_size), items=units,
     )
+
+
+# ── Session Tracking ──────────────────────────────────────────────────────────
+
+class SessionPingRequest(BaseModel):
+    session_id: str
+    visitor_id: str
+    page_path: str
+    referrer: Optional[str] = None
+    duration_seconds: int = 0
+    customer_id: Optional[str] = None
+
+@router.post("/session/ping")
+async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_db)):
+    """Track visitor session — called from frontend periodically."""
+    from backend.app.models.session_log import SessionLog
+    import uuid as _uuid
+    
+    # Try to find existing session
+    result = await db.execute(
+        select(SessionLog).where(SessionLog.session_id == data.session_id)
+        .order_by(SessionLog.started_at.desc()).limit(1)
+    )
+    session = result.scalar_one_or_none()
+    
+    now = __import__('datetime').datetime.now(__import__('datetime').timezone.utc)
+    
+    if session:
+        session.last_seen_at = now
+        session.duration_seconds = data.duration_seconds
+        session.page_path = data.page_path
+        session.page_views = (session.page_views or 1) + 1
+        if data.customer_id and not session.customer_id:
+            try:
+                session.customer_id = _uuid.UUID(data.customer_id)
+                session.is_customer = True
+            except: pass
+    else:
+        cid = None
+        if data.customer_id:
+            try: cid = _uuid.UUID(data.customer_id)
+            except: pass
+        session = SessionLog(
+            session_id=data.session_id,
+            visitor_id=data.visitor_id,
+            page_path=data.page_path,
+            referrer=data.referrer,
+            customer_id=cid,
+            is_customer=bool(cid),
+            started_at=now,
+            last_seen_at=now,
+            duration_seconds=data.duration_seconds,
+        )
+        db.add(session)
+    
+    await db.commit()
+    return {"ok": True}
