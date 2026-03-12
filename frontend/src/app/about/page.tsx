@@ -4,6 +4,30 @@ import Link from "next/link";
 
 export const metadata = { title: "About Us — Janapriya Upscale" };
 
+const TEAM = [
+  {
+    name: "K. Ravinder Reddy",
+    role: "Founder & Chairman",
+    bio: "With over 40 years of experience in real estate development, Mr. Ravinder Reddy has built Janapriya into one of Hyderabad's most trusted names in premium residential communities.",
+    initials: "KRR",
+    color: "#262262",
+  },
+  {
+    name: "K. Kranti Kiran Reddy",
+    role: "Managing Director",
+    bio: "Leading Janapriya's strategic growth and operations, Mr. Kranti Kiran Reddy brings a vision for innovation in design and customer-centric development across all projects.",
+    initials: "KKR",
+    color: "#2A3887",
+  },
+  {
+    name: "N. Satish Kumar",
+    role: "Chief Financial Officer",
+    bio: "As CFO, Mr. Satish Kumar oversees financial strategy, investment planning, and ensures Janapriya maintains the highest standards of fiscal integrity and transparency.",
+    initials: "NSK",
+    color: "#29A9DF",
+  },
+];
+
 export default function AboutPage() {
   return (
     <main className="min-h-screen bg-white">
@@ -35,43 +59,31 @@ export default function AboutPage() {
           </div>
         </div>
 
-        {/* Team */}
-        <div className="text-center mb-12">
-          <p className="text-amber-600 text-xs font-bold tracking-widest uppercase mb-3">Leadership</p>
-          <h2 className="text-4xl font-black text-gray-900" style={{fontFamily:"Georgia,serif"}}>Meet the Team</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20">
-          {[
-            {name:"Ramesh Janapriya",role:"Founder & Chairman",color:"from-blue-600 to-blue-800"},
-            {name:"Sunita Reddy",role:"Managing Director",color:"from-emerald-600 to-emerald-800"},
-            {name:"Arun Kumar",role:"Chief Architect",color:"from-amber-500 to-amber-700"},
-            {name:"Priya Mehta",role:"Head of Sales",color:"from-rose-500 to-rose-700"},
-          ].map(m=>(
-            <div key={m.name} className="text-center group">
-              <div className={`w-20 h-20 rounded-full bg-gradient-to-br ${m.color} mx-auto mb-3 flex items-center justify-center text-3xl text-white font-black group-hover:scale-110 transition-transform`}>
-                {m.name[0]}
-              </div>
-              <h4 className="font-bold text-gray-900 text-sm">{m.name}</h4>
-              <p className="text-gray-500 text-xs mt-0.5">{m.role}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Values */}
-        <div className="bg-gray-950 rounded-3xl p-10 md:p-16 text-white">
-          <div className="text-center mb-10">
-            <h2 className="text-4xl font-black" style={{fontFamily:"Georgia,serif"}}>Our Core Values</h2>
+              {/* ── Meet the Team ──────────────────────────────────────────────────── */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-3">Leadership</p>
+            <h2 className="text-4xl md:text-5xl font-black" style={{ color: "#262262" }}>Meet the Team</h2>
+            <p style={{ color: "#555A5C" }} className="mt-3 max-w-xl mx-auto text-sm">
+              Four decades of vision, trust, and excellence — led by people who believe in building more than just homes.
+            </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {icon:"🎯",title:"Transparency",desc:"No hidden costs, no surprises. Every rupee is accounted for and every promise is kept."},
-              {icon:"🏗️",title:"Quality",desc:"We use only premium materials, certified contractors, and rigorous quality checks at every stage."},
-              {icon:"🤝",title:"Customer First",desc:"Your satisfaction isn't just a goal — it's our standard. We're with you before, during and after possession."},
-            ].map(v=>(
-              <div key={v.title} className="text-center">
-                <div className="text-5xl mb-4">{v.icon}</div>
-                <h4 className="font-bold text-white text-lg mb-2">{v.title}</h4>
-                <p className="text-gray-400 text-sm leading-relaxed">{v.desc}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {TEAM.map((m, i) => (
+              <div key={i} className="bg-white rounded-3xl p-8 text-center transition-all duration-300 hover:-translate-y-1"
+                style={{ boxShadow: "0 8px 40px rgba(42,56,135,0.1)", border: "1.5px solid #E2F1FC" }}>
+                {/* Avatar */}
+                <div className="w-24 h-24 rounded-2xl flex items-center justify-center text-white text-2xl font-black mx-auto mb-5"
+                  style={{ background: `linear-gradient(135deg, ${m.color}, #29A9DF)`, boxShadow: `0 8px 25px ${m.color}40` }}>
+                  {m.initials}
+                </div>
+                {/* Name + Role */}
+                <h3 className="font-black text-xl mb-1" style={{ color: "#262262" }}>{m.name}</h3>
+                <p className="text-sm font-bold mb-4 px-3 py-1 rounded-full inline-block"
+                  style={{ background: "#E2F1FC", color: "#2A3887" }}>{m.role}</p>
+                {/* Bio */}
+                <p className="text-sm leading-relaxed" style={{ color: "#555A5C" }}>{m.bio}</p>
               </div>
             ))}
           </div>
