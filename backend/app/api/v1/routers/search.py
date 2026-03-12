@@ -368,17 +368,16 @@ class SessionPingRequest(BaseModel):
 async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_db)):
     """Track visitor session — called from frontend periodically."""
     import uuid as _uuid
-    
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+
     # Try to find existing session
     result = await db.execute(
         select(SessionLog).where(SessionLog.session_id == data.session_id)
         .order_by(SessionLog.started_at.desc()).limit(1)
     )
     session = result.scalar_one_or_none()
-    
-    from datetime import datetime as _dt, timezone as _tz
-    now = _dt.now(_tz.utc)
-    
+
     if session:
         session.last_seen_at = now
         session.duration_seconds = data.duration_seconds
@@ -388,14 +387,15 @@ async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_
             try:
                 session.customer_id = _uuid.UUID(data.customer_id)
                 session.is_customer = True
-            except: pass
+            except Exception:
+                pass
     else:
         cid = None
         if data.customer_id:
-            try: cid = _uuid.UUID(data.customer_id)
-            except: pass
-        from datetime import datetime, timezone as _tz2
-        _now2 = datetime.now(_tz2.utc)
+            try:
+                cid = _uuid.UUID(data.customer_id)
+            except Exception:
+                pass
         session = SessionLog(
             session_id=data.session_id,
             visitor_id=data.visitor_id,
@@ -403,13 +403,13 @@ async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_
             referrer=data.referrer,
             customer_id=cid,
             is_customer=bool(cid),
-            started_at=_now2,
-            last_seen_at=_now2,
+            started_at=now,
+            last_seen_at=now,
             duration_seconds=data.duration_seconds,
             page_views=1,
-            created_at=_now2,
+            created_at=now,
         )
         db.add(session)
-    
+
     await db.commit()
     return {"ok": True}

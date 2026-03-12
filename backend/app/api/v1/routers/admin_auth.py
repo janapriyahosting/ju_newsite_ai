@@ -236,88 +236,99 @@ async def get_analytics(
 ):
     """Full visitor analytics for admin dashboard."""
     from datetime import datetime, timedelta, timezone
-    from sqlalchemy import func, cast, Date as SADate
-    Customer = CustomerModel
-    
-    end = datetime.now(timezone.utc)
-    start = end - timedelta(days=days)
-    
-    # Search logs with customer info
+    from sqlalchemy import func, cast, text
+    from sqlalchemy.dialects.postgresql import DATE as SADate
+
+    end_dt = datetime.now(timezone.utc)
+    start_dt = end_dt - timedelta(days=days)
+
+    # Search logs — simple query first
     search_result = await db.execute(
-        select(SearchLog, Customer)
-        .outerjoin(Customer, SearchLog.customer_id == Customer.id)
-        .where(SearchLog.created_at >= start)
-        .order_by(SearchLog.created_at.desc())
-        .limit(100)
+        select(SearchLog).where(SearchLog.created_at >= start_dt)
+        .order_by(SearchLog.created_at.desc()).limit(200)
     )
-    searches = search_result.all()
-    
-    # Session analytics
+    search_rows = search_result.scalars().all()
+
+    # Get customer info for searches that have customer_id
+    customer_ids = list({str(s.customer_id) for s in search_rows if s.customer_id})
+    customers_map = {}
+    if customer_ids:
+        cust_result = await db.execute(
+            select(CustomerModel).where(CustomerModel.id.in_([s.customer_id for s in search_rows if s.customer_id]))
+        )
+        for cust in cust_result.scalars().all():
+            customers_map[str(cust.id)] = cust
+
+    # Session logs
     session_result = await db.execute(
-        select(SessionLog, Customer)
-        .outerjoin(Customer, SessionLog.customer_id == Customer.id)
-        .where(SessionLog.created_at >= start)
-        .order_by(SessionLog.last_seen_at.desc())
-        .limit(100)
+        select(SessionLog).where(SessionLog.created_at >= start_dt)
+        .order_by(SessionLog.last_seen_at.desc()).limit(200)
     )
-    sessions = session_result.all()
-    
-    # Top search queries
-    top_queries = await db.execute(
-        select(SearchLog.query, func.count(SearchLog.id).label("count"))
-        .where(SearchLog.created_at >= start)
-        .group_by(SearchLog.query)
-        .order_by(func.count(SearchLog.id).desc())
-        .limit(10)
-    )
-    
+    session_rows = session_result.scalars().all()
+
+    # Session customer info
+    sess_customer_ids = list({str(s.customer_id) for s in session_rows if s.customer_id})
+    if sess_customer_ids:
+        sess_cust_result = await db.execute(
+            select(CustomerModel).where(CustomerModel.id.in_([s.customer_id for s in session_rows if s.customer_id]))
+        )
+        for cust in sess_cust_result.scalars().all():
+            customers_map[str(cust.id)] = cust
+
+    # Top queries aggregation
+    query_counts: dict = {}
+    for s in search_rows:
+        q = (s.query or "").strip().lower()
+        if q:
+            query_counts[q] = query_counts.get(q, 0) + 1
+    top_queries = sorted(query_counts.items(), key=lambda x: -x[1])[:10]
+
     # Daily search counts
-    daily_searches = await db.execute(
-        select(cast(SearchLog.created_at, SADate).label("date"), func.count(SearchLog.id).label("count"))
-        .where(SearchLog.created_at >= start)
-        .group_by(cast(SearchLog.created_at, SADate))
-        .order_by(cast(SearchLog.created_at, SADate))
-    )
-    
+    daily: dict = {}
+    for s in search_rows:
+        if s.created_at:
+            day = s.created_at.strftime("%Y-%m-%d")
+            daily[day] = daily.get(day, 0) + 1
+    daily_searches = [{"date": d, "count": c} for d, c in sorted(daily.items())]
+
     # Avg session duration
-    avg_dur = await db.execute(
-        select(func.avg(SessionLog.duration_seconds))
-        .where(SessionLog.created_at >= start)
-    )
-    avg_duration = avg_dur.scalar() or 0
-    
+    durations = [s.duration_seconds for s in session_rows if s.duration_seconds]
+    avg_duration = round(sum(durations) / len(durations)) if durations else 0
+
     return {
         "summary": {
-            "total_searches": len(searches),
-            "total_sessions": len(sessions),
-            "customer_sessions": sum(1 for s, _ in sessions if s.is_customer),
-            "avg_duration_seconds": round(float(avg_duration)),
+            "total_searches": len(search_rows),
+            "total_sessions": len(session_rows),
+            "customer_sessions": sum(1 for s in session_rows if s.is_customer),
+            "avg_duration_seconds": avg_duration,
         },
         "searches": [
             {
-                "id": str(s.id), "query": s.query,
-                "results_count": s.results_count if hasattr(s, 'results_count') else 0,
+                "id": str(s.id),
+                "query": s.query,
+                "results_count": s.results_count or 0,
                 "customer_id": str(s.customer_id) if s.customer_id else None,
-                "customer_name": c.name if c else None,
-                "customer_email": c.email if c else None,
+                "customer_name": customers_map.get(str(s.customer_id), None) and customers_map[str(s.customer_id)].name,
+                "customer_email": customers_map.get(str(s.customer_id), None) and customers_map[str(s.customer_id)].email,
                 "created_at": s.created_at.isoformat() if s.created_at else None,
             }
-            for s, c in searches
+            for s in search_rows
         ],
         "sessions": [
             {
                 "session_id": s.session_id,
-                "customer_name": c.name if c else None,
-                "customer_email": c.email if c else None,
+                "customer_name": customers_map.get(str(s.customer_id), None) and customers_map[str(s.customer_id)].name,
+                "customer_email": customers_map.get(str(s.customer_id), None) and customers_map[str(s.customer_id)].email,
                 "is_customer": s.is_customer,
                 "page_path": s.page_path,
-                "duration_seconds": s.duration_seconds,
-                "page_views": s.page_views,
+                "duration_seconds": s.duration_seconds or 0,
+                "page_views": s.page_views or 1,
                 "started_at": s.started_at.isoformat() if s.started_at else None,
                 "last_seen_at": s.last_seen_at.isoformat() if s.last_seen_at else None,
             }
-            for s, c in sessions
+            for s in session_rows
         ],
-        "top_queries": [{"query": r.query, "count": r.count} for r in top_queries.all()],
-        "daily_searches": [{"date": str(r.date), "count": r.count} for r in daily_searches.all()],
+        "top_queries": [{"query": q, "count": cnt} for q, cnt in top_queries],
+        "daily_searches": daily_searches,
     }
+
