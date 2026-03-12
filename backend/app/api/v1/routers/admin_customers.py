@@ -24,8 +24,8 @@ async def list_customers(
     total = await db.scalar(select(func.count()).select_from(Customer))
     return {"items": [
         {"id": str(cu.id), "name": cu.name, "email": cu.email, "phone": cu.phone,
-         "is_active": cu.is_active, "is_verified": c.is_verified,
-         "created_at": str(c.created_at)}
+         "is_active": cu.is_active, "is_verified": cu.is_verified,
+         "created_at": str(cu.created_at)}
         for cu in customers
     ], "total": total}
 
@@ -131,31 +131,3 @@ async def registration_chart(
     )
     rows = result.all()
     return [{"date": str(r.date), "count": r.count} for r in rows]
-
-
-@router.get("", response_model=None)
-async def list_customers(
-    limit: int = 200,
-    offset: int = 0,
-    db: AsyncSession = Depends(get_db),
-    admin=Depends(verify_admin_token)
-):
-    """List all customers for admin."""
-    from sqlalchemy import select as _select
-    from backend.app.models.customer import Customer as _Customer
-    result = await db.execute(
-        _select(_Customer).order_by(_Customer.created_at.desc()).limit(limit).offset(offset)
-    )
-    rows = result.scalars().all()
-    return [
-        {
-            "id": str(r.id),
-            "name": r.name or "",
-            "email": r.email or "",
-            "phone": r.phone or "",
-            "is_active": bool(r.is_active),
-            "created_at": r.created_at.isoformat() if r.created_at else None,
-            "last_login": r.last_login.isoformat() if getattr(r, "last_login", None) else None,
-        }
-        for r in rows
-    ]
