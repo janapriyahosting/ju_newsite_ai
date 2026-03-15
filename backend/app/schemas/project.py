@@ -58,7 +58,9 @@ class ProjectResponse(BaseResponseSchema):
     amenities: List
     images: List
     brochure_url: Optional[str]
-    video_url: Optional[str]
+    video_url: Optional[str] = None
+    walkthrough_url: Optional[str] = None
+    floor_plans: Optional[list] = []
     is_active: bool
     is_featured: bool
 

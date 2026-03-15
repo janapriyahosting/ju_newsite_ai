@@ -68,7 +68,7 @@ export default function ProjectDetailPage() {
   const prices = units.map(u => u.price).filter(Boolean);
   const minPrice = prices.length ? Math.min(...prices) : 0;
   const maxPrice = prices.length ? Math.max(...prices) : 0;
-  const unitTypes = [...new Set(units.map(u => u.unit_type).filter(Boolean))];
+  const unitTypes = Array.from(new Set(units.map(u => u.unit_type).filter(Boolean))];
 
   const STATUS: Record<string, { bg: string; color: string }> = {
     available: { bg: "#DCFCE7", color: "#16A34A" },

@@ -21,7 +21,7 @@ export default function TowerDetailPage(){
   })();},[towerId,projSlug]);
   if(loading)return<div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 border-4 rounded-full animate-spin"style={{borderColor:'#E2F1FC',borderTopColor:'#2A3887'}}/></div>;
   if(!tower)return<div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">Tower not found</p></div>;
-  const floors=[...new Set(units.map((u:any)=>u.floor_number))].sort((a,b)=>Number(a)-Number(b));
+  const floors=Array.from(new Set(units.map((u:any)=>u.floor_number))].sort((a,b)=>Number(a)-Number(b));
   const filtered=units.filter((u:any)=>(floorF==='all'||u.floor_number===floorF)&&(statF==='all'||u.status===statF));
   const avail=units.filter((u:any)=>u.status==='available').length;
   const prices=units.filter((u:any)=>+u.base_price>0).map((u:any)=>+u.base_price);
