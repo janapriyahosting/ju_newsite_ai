@@ -21,7 +21,9 @@ class Project(UUIDMixin, TimeStampMixin, Base):
     amenities:   Mapped[dict] = mapped_column(JSON, default=list)
     images:      Mapped[dict] = mapped_column(JSON, default=list)
     brochure_url: Mapped[str] = mapped_column(String(500), nullable=True)
-    video_url:   Mapped[str]  = mapped_column(String(500), nullable=True)
+    video_url:       Mapped[str]  = mapped_column(String(500), nullable=True)
+    walkthrough_url: Mapped[str]  = mapped_column(String(500), nullable=True)
+    floor_plans:     Mapped[dict] = mapped_column(JSON, default=list)
     is_active:   Mapped[bool] = mapped_column(Boolean, default=True)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
 

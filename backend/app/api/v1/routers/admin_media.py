@@ -1,198 +1,132 @@
-"""
-Admin Media Upload Router
-POST /admin/upload  → upload image/pdf/video thumbnail
-DELETE /admin/media → delete a file
-"""
-import os, uuid, mimetypes
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from fastapi.staticfiles import StaticFiles
-
+"""Admin Media Upload + Section Builder"""
+import os, uuid, json, mimetypes
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select as sa_select
+from backend.app.core.database import get_db
 from backend.app.api.v1.routers.admin_auth import verify_admin_token
-from backend.app.api.v1.routers.admin_crud import model_to_dict, get_db, select
 from backend.app.models.project import Project
 from backend.app.models.tower import Tower
 from backend.app.models.unit import Unit
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select as sa_select
-from pydantic import BaseModel
-from typing import Optional
-import shutil
+from typing import List, Any
 
 router = APIRouter(prefix="/admin", tags=["Admin - Media"])
+MEDIA_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../media"))
+SECTIONS_DIR = os.path.join(MEDIA_ROOT, "_sections")
+ALLOWED = {"image/jpeg","image/png","image/webp","image/gif","application/pdf","video/mp4","video/webm"}
+MAX_SIZE = 50 * 1024 * 1024
+MODEL_MAP = {"project": Project, "tower": Tower, "unit": Unit}
+ARRAY_FIELDS = {"images", "floor_plans"}
 
-MEDIA_ROOT = os.path.join(os.path.dirname(__file__), "../../../../media")
-ALLOWED_IMAGE = {"image/jpeg","image/png","image/webp","image/gif"}
-ALLOWED_DOC   = {"application/pdf"}
-ALLOWED_ALL   = ALLOWED_IMAGE | ALLOWED_DOC | {"video/mp4","video/webm"}
-MAX_SIZE      = 50 * 1024 * 1024  # 50MB
-
-def ensure_dir(path: str):
-    os.makedirs(path, exist_ok=True)
+def _ensure(p): os.makedirs(p, exist_ok=True)
 
 @router.post("/upload")
 async def upload_media(
-    file: UploadFile = File(...),
-    entity: str = Form(...),          # project | tower | unit
-    entity_id: str = Form(...),       # UUID string
-    media_type: str = Form(...),      # images | floor_plans | floor_plan_img | video_url | walkthrough_url | brochure_url
-    db: AsyncSession = Depends(get_db),
-    admin: dict = Depends(verify_admin_token),
+    file: UploadFile = File(...), entity: str = Form(...),
+    entity_id: str = Form(...), media_type: str = Form(...),
+    db: AsyncSession = Depends(get_db), admin: dict = Depends(verify_admin_token),
 ):
-    # Validate mime
-    content_type = file.content_type or mimetypes.guess_type(file.filename)[0] or ""
-    if content_type not in ALLOWED_ALL:
-        raise HTTPException(400, f"File type not allowed: {content_type}")
-
-    # Read + size check
+    ct = file.content_type or mimetypes.guess_type(file.filename or "")[0] or ""
+    if ct not in ALLOWED: raise HTTPException(400, f"File type not allowed: {ct}")
     content = await file.read()
-    if len(content) > MAX_SIZE:
-        raise HTTPException(400, "File too large (max 50MB)")
-
-    # Save file
-    ext = os.path.splitext(file.filename)[1].lower() or ".jpg"
-    filename = f"{uuid.uuid4().hex}{ext}"
-    folder = os.path.join(MEDIA_ROOT, entity, media_type)
-    ensure_dir(folder)
-    filepath = os.path.join(folder, filename)
-    with open(filepath, "wb") as f:
-        f.write(content)
-
-    url = f"/media/{entity}/{media_type}/{filename}"
-
-    # Update DB record
-    try:
-        eid = uuid.UUID(entity_id)
-    except:
-        raise HTTPException(400, "Invalid entity_id")
-
-    MODEL_MAP = {"project": Project, "tower": Tower, "unit": Unit}
+    if len(content) > MAX_SIZE: raise HTTPException(400, "File too large (max 50MB)")
     Model = MODEL_MAP.get(entity)
-    if not Model:
-        raise HTTPException(400, f"Unknown entity: {entity}")
-
+    if not Model: raise HTTPException(400, f"Unknown entity: {entity}")
+    try: eid = uuid.UUID(entity_id)
+    except: raise HTTPException(400, "Invalid entity_id UUID")
     result = await db.execute(sa_select(Model).where(Model.id == eid))
     obj = result.scalar_one_or_none()
-    if not obj:
-        raise HTTPException(404, f"{entity} not found")
-
-    # Array fields: images, floor_plans
-    # Single fields: floor_plan_img, video_url, walkthrough_url, brochure_url
-    if media_type in ("images", "floor_plans"):
+    if not obj: raise HTTPException(404, f"{entity} not found")
+    ext = os.path.splitext(file.filename or "file")[1].lower() or ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    folder = os.path.join(MEDIA_ROOT, entity, media_type)
+    _ensure(folder)
+    with open(os.path.join(folder, filename), "wb") as f: f.write(content)
+    url = f"/media/{entity}/{media_type}/{filename}"
+    if media_type in ARRAY_FIELDS:
         current = getattr(obj, media_type, None) or []
-        if not isinstance(current, list):
-            current = []
-        current.append(url)
-        setattr(obj, media_type, current)
+        if not isinstance(current, list): current = []
+        setattr(obj, media_type, current + [url])
     else:
         setattr(obj, media_type, url)
-
-    await db.commit()
-    await db.refresh(obj)
+    await db.commit(); await db.refresh(obj)
     return {"url": url, "filename": filename, "media_type": media_type, "entity": entity, "entity_id": entity_id}
-
 
 @router.delete("/upload")
 async def delete_media(
-    entity: str,
-    entity_id: str,
-    media_type: str,
-    url: str,
-    db: AsyncSession = Depends(get_db),
-    admin: dict = Depends(verify_admin_token),
+    entity: str = Query(...), entity_id: str = Query(...),
+    media_type: str = Query(...), url: str = Query(...),
+    db: AsyncSession = Depends(get_db), admin: dict = Depends(verify_admin_token),
 ):
-    try:
-        eid = uuid.UUID(entity_id)
-    except:
-        raise HTTPException(400, "Invalid entity_id")
-
-    MODEL_MAP = {"project": Project, "tower": Tower, "unit": Unit}
     Model = MODEL_MAP.get(entity)
-    if not Model:
-        raise HTTPException(400, "Unknown entity")
-
+    if not Model: raise HTTPException(400, "Unknown entity")
+    try: eid = uuid.UUID(entity_id)
+    except: raise HTTPException(400, "Invalid entity_id UUID")
     result = await db.execute(sa_select(Model).where(Model.id == eid))
     obj = result.scalar_one_or_none()
-    if not obj:
-        raise HTTPException(404, f"{entity} not found")
-
-    # Remove from DB
-    if media_type in ("images", "floor_plans"):
+    if not obj: raise HTTPException(404, f"{entity} not found")
+    if media_type in ARRAY_FIELDS:
         current = getattr(obj, media_type, None) or []
-        updated = [u for u in current if u != url]
-        setattr(obj, media_type, updated)
+        setattr(obj, media_type, [u for u in current if u != url])
     else:
         setattr(obj, media_type, None)
-
     await db.commit()
-
-    # Delete file from disk
     if url.startswith("/media/"):
-        filepath = os.path.join(MEDIA_ROOT, url[len("/media/"):])
-        if os.path.exists(filepath):
-            os.remove(filepath)
-
+        fp = os.path.join(MEDIA_ROOT, url[len("/media/"):])
+        if os.path.exists(fp): os.remove(fp)
     return {"deleted": True, "url": url}
 
+def _section_path(entity):
+    _ensure(SECTIONS_DIR)
+    return os.path.join(SECTIONS_DIR, f"{entity}.json")
 
-class SectionConfig(BaseModel):
-    entity: str
-    entity_id: Optional[str] = None   # None = default config
-    sections: list                     # [{key, label, fields:[field_keys], visible}]
-
-
-# Store section configs in a simple JSON file per entity type
-SECTIONS_DIR = os.path.join(MEDIA_ROOT, "_sections")
-
-@router.get("/sections/{entity}")
-async def get_section_config(entity: str, admin: dict = Depends(verify_admin_token)):
-    ensure_dir(SECTIONS_DIR)
-    path = os.path.join(SECTIONS_DIR, f"{entity}.json")
-    if os.path.exists(path):
-        import json
-        with open(path) as f:
-            return json.load(f)
-    # Return default sections
-    return _default_sections(entity)
-
-@router.get("/sections/public/{entity}")
-async def get_public_section_config(entity: str):
-    """No auth — used by detail pages."""
-    ensure_dir(SECTIONS_DIR)
-    path = os.path.join(SECTIONS_DIR, f"{entity}.json")
-    if os.path.exists(path):
-        import json
-        with open(path) as f:
-            return json.load(f)
-    return _default_sections(entity)
-
-@router.post("/sections/{entity}")
-async def save_section_config(entity: str, data: dict, admin: dict = Depends(verify_admin_token)):
-    import json
-    ensure_dir(SECTIONS_DIR)
-    path = os.path.join(SECTIONS_DIR, f"{entity}.json")
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    return {"saved": True}
-
-def _default_sections(entity: str):
-    defaults = {
+def _defaults(entity):
+    d = {
         "project": [
-            {"key":"overview",   "label":"Overview",    "visible":True,  "fields":["description","location","address","city","rera_number"]},
-            {"key":"media",      "label":"Photos & Media","visible":True, "fields":["images","video_url","walkthrough_url","brochure_url"]},
-            {"key":"floor_plans","label":"Floor Plans", "visible":True,  "fields":["floor_plans"]},
-            {"key":"amenities",  "label":"Amenities",   "visible":True,  "fields":["amenities"]},
-            {"key":"location",   "label":"Location",    "visible":True,  "fields":["lat","lng","pincode"]},
+            {"key":"overview","label":"Overview","visible":True,"fields":["description","location","address","city","state","rera_number"]},
+            {"key":"gallery","label":"Photos","visible":True,"fields":["images"]},
+            {"key":"floor_plans","label":"Floor Plans","visible":True,"fields":["floor_plans"]},
+            {"key":"media","label":"Video & Tour","visible":True,"fields":["video_url","walkthrough_url"]},
+            {"key":"documents","label":"Documents","visible":True,"fields":["brochure_url"]},
+            {"key":"amenities","label":"Amenities","visible":True,"fields":["amenities"]},
+            {"key":"location","label":"Location Map","visible":True,"fields":["lat","lng"]},
         ],
         "tower": [
-            {"key":"overview",   "label":"Overview",    "visible":True,  "fields":["description","total_floors","total_units"]},
-            {"key":"media",      "label":"Photos & Media","visible":True, "fields":["images","video_url","walkthrough_url"]},
-            {"key":"floor_plans","label":"Floor Plans", "visible":True,  "fields":["floor_plans","svg_floor_plan"]},
+            {"key":"overview","label":"Overview","visible":True,"fields":["description","total_floors","total_units"]},
+            {"key":"gallery","label":"Photos","visible":True,"fields":["images"]},
+            {"key":"floor_plans","label":"Floor Plans","visible":True,"fields":["floor_plans","svg_floor_plan"]},
+            {"key":"media","label":"Video & Tour","visible":True,"fields":["video_url","walkthrough_url"]},
         ],
         "unit": [
-            {"key":"overview",   "label":"Overview",    "visible":True,  "fields":["unit_type","bedrooms","bathrooms","area_sqft","base_price","status"]},
-            {"key":"details",    "label":"Details",     "visible":True,  "fields":["floor_number","facing","carpet_area","price_per_sqft","down_payment","emi_estimate"]},
-            {"key":"media",      "label":"Photos & Media","visible":True, "fields":["images","video_url","walkthrough_url"]},
-            {"key":"floor_plan", "label":"Floor Plan",  "visible":True,  "fields":["floor_plan_img","floor_plans"]},
+            {"key":"overview","label":"Overview","visible":True,"fields":["unit_type","bedrooms","bathrooms","area_sqft","base_price","status"]},
+            {"key":"details","label":"Details","visible":True,"fields":["floor_number","facing","carpet_area","price_per_sqft","down_payment","emi_estimate","balconies"]},
+            {"key":"gallery","label":"Photos","visible":True,"fields":["images"]},
+            {"key":"floor_plan","label":"Floor Plan","visible":True,"fields":["floor_plan_img","floor_plans"]},
+            {"key":"media","label":"Video & Tour","visible":True,"fields":["video_url","walkthrough_url"]},
+            {"key":"amenities","label":"Amenities","visible":True,"fields":["amenities"]},
         ],
     }
-    return defaults.get(entity, [])
+    return d.get(entity, [])
+
+def _load(entity):
+    p = _section_path(entity)
+    if not os.path.exists(p): return _defaults(entity)
+    data = json.load(open(p))
+    # Always return a plain list
+    if isinstance(data, list): return data
+    if isinstance(data, dict): return data.get("sections", _defaults(entity))
+    return _defaults(entity)
+
+@router.get("/sections/public/{entity}")
+async def sections_public(entity: str):
+    return _load(entity)
+
+@router.get("/sections/{entity}")
+async def sections_get(entity: str, admin: dict = Depends(verify_admin_token)):
+    return _load(entity)
+
+@router.post("/sections/{entity}")
+async def sections_save(entity: str, data: List[Any], admin: dict = Depends(verify_admin_token)):
+    p = _section_path(entity)
+    json.dump(data, open(p,"w"), indent=2)
+    return {"saved": True, "entity": entity, "sections": len(data)}

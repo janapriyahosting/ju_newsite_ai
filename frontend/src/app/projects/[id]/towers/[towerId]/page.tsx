@@ -1,223 +1,66 @@
-"use client";
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { isSaved, toggleSaved } from "@/lib/savedProperties";
-
-const API = "http://173.168.0.81:8000/api/v1";
-
-function fmtPrice(p: any) {
-  if (!p) return "On Request";
-  const n = parseFloat(p);
-  if (n >= 10000000) return `₹${(n/10000000).toFixed(1)} Cr`;
-  if (n >= 100000) return `₹${(n/100000).toFixed(0)} L`;
-  return `₹${n.toLocaleString("en-IN")}`;
-}
-
-
-const STATUS_COLORS: Record<string,{bg:string;color:string}> = {
-  available: {bg:"#DCFCE7",color:"#16A34A"},
-  booked:    {bg:"#FEE2E2",color:"#DC2626"},
-  hold:      {bg:"#FEF3C7",color:"#D97706"},
-  sold:      {bg:"#F0F4FF",color:"#2A3887"},
-};
-
-function UnitCard({ unit: u }: { unit: any }) {
-  const [sv, setSv] = useState(isSaved(u.id));
-  const sc = STATUS_COLORS[u.status] || {bg:"#F0F4FF",color:"#555"};
-  return (
-    <div className="bg-white rounded-2xl overflow-hidden transition-all hover:-translate-y-1"
-      style={{ border:"1.5px solid #E2F1FC", boxShadow:"0 4px 15px rgba(42,56,135,0.07)" }}>
-      <div className="h-28 p-4 flex flex-col justify-between"
-        style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-        <div className="flex justify-between">
-          <span className="px-2 py-0.5 rounded-full text-xs font-black bg-white capitalize" style={{ color:sc.color }}>
-            {u.status || "available"}
-          </span>
-          <button onClick={()=>{toggleSaved(u.id);setSv(isSaved(u.id));}}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
-            style={{ background:sv?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.2)", color:"white" }}>
-            {sv?"♥":"♡"}
-          </button>
-        </div>
-        <div>
-          <p style={{ color:"rgba(255,255,255,0.65)" }} className="text-xs">{u.unit_type}</p>
-          <p className="text-white font-black">{u.unit_number}</p>
-        </div>
-      </div>
-      <div className="p-4">
-        <div className="grid grid-cols-2 gap-1 text-xs mb-3" style={{ color:"#666" }}>
-          <span>🛏 {u.bedrooms} BHK</span>
-          <span>🏢 Floor {u.floor_number}</span>
-          <span>📐 {u.area_sqft ? parseFloat(u.area_sqft).toFixed(0) : "—"} sqft</span>
-          {u.facing && <span>🧭 {u.facing}</span>}
-        </div>
-        <div className="flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
-          <span className="font-black text-sm" style={{ color:"#2A3887" }}>{fmtPrice(u.base_price)}</span>
-          <Link href={`/units/${u.id}`}
-            className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
-            style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)", textDecoration:"none" }}>
-            View →
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function TowerDetailPage() {
-  const { id, towerId } = useParams<{ id: string; towerId: string }>();
-  const [project, setProject] = useState<any>(null);
-  const [tower, setTower] = useState<any>(null);
-  const [units, setUnits] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeFloor, setActiveFloor] = useState<number | null>(null);
-  const [statusFilter, setStatusFilter] = useState("all");
-
-  useEffect(() => {
-    if (!id || !towerId) return;
-    (async () => {
-      // Resolve project slug to object
-      const pd = await fetch(`${API}/projects?limit=50`).then(r=>r.json());
-      const proj = (pd.items||[]).find((p:any) => p.slug===id || p.id===id);
-      if (proj) setProject(proj);
-
-      // Fetch towers to find this tower
-      const td = await fetch(`${API}/projects/${proj?.id}/towers`).then(r=>r.json());
-      const tw = (td.items||td||[]).find((t:any) => t.id===towerId);
-      if (tw) setTower(tw);
-
-      // Fetch units for this tower
-      const ud = await fetch(`${API}/units?tower_id=${towerId}&limit=500`).then(r=>r.json());
-      setUnits(ud.items || []);
-      setLoading(false);
-    })();
-  }, [id, towerId]);
-
-  if (loading) return (
-    <main style={{ fontFamily:"'Lato',sans-serif" }}><Navbar />
-      <div className="min-h-screen flex items-center justify-center pt-20" style={{ background:"#F8F9FB" }}>
-        <div className="text-center"><div className="text-4xl animate-spin mb-3">⟳</div></div>
-      </div>
-    </main>
-  );
-
-  const floors = [...new Set(units.map(u => u.floor_number).filter(f=>f!=null))].sort((a,b)=>a-b);
-  const displayUnits = units.filter(u => {
-    const floorOk = activeFloor === null || u.floor_number === activeFloor;
-    const statusOk = statusFilter === "all" || u.status === statusFilter;
-    return floorOk && statusOk;
-  });
-
-  const available = units.filter(u=>u.status==="available").length;
-  const booked = units.filter(u=>u.status==="booked").length;
-  const prices = units.map(u=>parseFloat(u.base_price||0)).filter(Boolean);
-
-  return (
-    <main style={{ fontFamily:"'Lato',sans-serif", minHeight:"100vh", background:"#F8F9FB" }}>
-      <Navbar />
-
-      {/* Hero */}
-      <div className="pt-16" style={{ background:"linear-gradient(135deg,#262262,#2A3887)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 mb-6 text-xs" style={{ color:"rgba(255,255,255,0.55)" }}>
-            <Link href="/projects" style={{ color:"rgba(255,255,255,0.55)", textDecoration:"none" }}>Projects</Link>
-            <span>›</span>
-            <Link href={`/projects/${id}`} style={{ color:"rgba(255,255,255,0.55)", textDecoration:"none" }}>
-              {project?.name || id}
-            </Link>
-            <span>›</span>
-            <span style={{ color:"#29A9DF" }}>{tower?.name || "Tower"}</span>
+'use client';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+const API='http://173.168.0.81:8000/api/v1';
+const MEDIA='http://173.168.0.81:8000';
+const fmt=(p:any)=>p&&+p>0?`₹${(+p/100000).toFixed(1)}L`:'—';
+const mUrl=(u:string)=>u?.startsWith('/media')?`${MEDIA}${u}`:u;
+function toEmbed(url:string){const yt=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);if(yt)return`https://www.youtube.com/embed/${yt[1]}`;const vm=url.match(/vimeo\.com\/(\d+)/);if(vm)return`https://player.vimeo.com/video/${vm[1]}`;return url;}
+function Gallery({images}:{images:string[]}){const[a,setA]=useState(0);if(!images?.length)return null;return(<div><div className="rounded-2xl overflow-hidden w-full mb-3"style={{background:'#f1f5f9',aspectRatio:'16/9'}}><img src={mUrl(images[a])}alt=""className="w-full h-full object-cover"/></div>{images.length>1&&<div className="flex gap-2 flex-wrap">{images.map((img,i)=><button key={i}onClick={()=>setA(i)}className="w-20 h-14 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all"style={{borderColor:a===i?'#2A3887':'transparent'}}><img src={mUrl(img)}alt=""className="w-full h-full object-cover"/></button>)}</div>}</div>);}
+function FloorPlans({plans,svg}:{plans:string[];svg?:string}){const[a,setA]=useState(0);const all=[...plans];if(svg)all.push('__svg__');if(!all.length)return null;const cur=all[a];return(<div>{all.length>1&&<div className="flex gap-2 mb-3 flex-wrap">{all.map((_,i)=><button key={i}onClick={()=>setA(i)}className="px-4 py-2 rounded-xl text-sm font-bold border-2 transition-all"style={a===i?{borderColor:'#2A3887',background:'#2A3887',color:'white'}:{borderColor:'#e2e8f0',color:'#666'}}>{all[i]==='__svg__'?'SVG Plan':`Plan ${i+1}`}</button>)}</div>}<div className="rounded-2xl overflow-hidden flex items-center justify-center p-4"style={{background:'#f8f9fb',minHeight:280}}>{cur==='__svg__'?<div className="w-full"dangerouslySetInnerHTML={{__html:svg||''}}/>:cur?.endsWith('.pdf')?<iframe src={mUrl(cur)}className="w-full"style={{height:400}}/>:<img src={mUrl(cur)}alt=""className="max-w-full max-h-96 object-contain"/>}</div></div>);}
+function UnitCard({unit}:{unit:any}){const sc:Record<string,string>={available:'#dcfce7',booked:'#fee2e2',hold:'#fef3c7',blocked:'#f3f4f6'};const tc:Record<string,string>={available:'#16A34A',booked:'#DC2626',hold:'#d97706',blocked:'#6b7280'};return(<Link href={`/units/${unit.id}`}className="rounded-2xl p-5 border hover:shadow-lg transition-all block"style={{borderColor:'#e2e8f0'}}><div className="flex items-center justify-between mb-3"><span className="text-xs font-bold px-2 py-1 rounded-full"style={{background:sc[unit.status]||'#f3f4f6',color:tc[unit.status]||'#666'}}>{unit.status}</span><span className="text-sm font-bold"style={{color:'#2A3887'}}>{unit.unit_type}</span></div><p className="font-black text-lg"style={{color:'#262262'}}>{unit.unit_number}</p><div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-500">{unit.bedrooms&&<span>🛏 {unit.bedrooms} BHK</span>}{unit.floor_number&&<span>🏢 F{unit.floor_number}</span>}{unit.area_sqft&&<span>📐 {unit.area_sqft} sqft</span>}{unit.facing&&<span>🧭 {unit.facing}</span>}</div>{unit.base_price>0&&<p className="font-bold mt-3"style={{color:'#2A3887'}}>{fmt(unit.base_price)}</p>}</Link>);}
+export default function TowerDetailPage(){
+  const params=useParams();const projSlug=params?.id as string;const towerId=params?.towerId as string;
+  const[tower,setTower]=useState<any>(null);const[project,setProject]=useState<any>(null);const[units,setUnits]=useState<any[]>([]);const[sections,setSections]=useState<any[]>([]);const[loading,setLoading]=useState(true);const[floorF,setFloorF]=useState<number|'all'>('all');const[statF,setStatF]=useState('all');
+  useEffect(()=>{if(!towerId)return;(async()=>{
+    const[projList,unitsRes,sectRes]=await Promise.all([fetch(`${API}/projects?limit=50`).then(r=>r.json()),fetch(`${API}/units?tower_id=${towerId}&limit=200`).then(r=>r.json()),fetch(`${API}/admin/sections/public/tower`).then(r=>r.json())]);
+    const proj=projList.items?.find((p:any)=>p.slug===projSlug||p.id===projSlug);setProject(proj||null);
+    if(proj){const tr=await fetch(`${API}/projects/${proj.id}/towers`).then(r=>r.json());setTower(tr.items?.find((t:any)=>t.id===towerId)||null);}
+    setUnits(unitsRes.items||[]);setSections(Array.isArray(sectRes)?sectRes:(sectRes?.sections||[]));setLoading(false);
+  })();},[towerId,projSlug]);
+  if(loading)return<div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 border-4 rounded-full animate-spin"style={{borderColor:'#E2F1FC',borderTopColor:'#2A3887'}}/></div>;
+  if(!tower)return<div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">Tower not found</p></div>;
+  const floors=[...new Set(units.map((u:any)=>u.floor_number))].sort((a,b)=>Number(a)-Number(b));
+  const filtered=units.filter((u:any)=>(floorF==='all'||u.floor_number===floorF)&&(statF==='all'||u.status===statF));
+  const avail=units.filter((u:any)=>u.status==='available').length;
+  const prices=units.filter((u:any)=>+u.base_price>0).map((u:any)=>+u.base_price);
+  const minP=prices.length?Math.min(...prices):0;const maxP=prices.length?Math.max(...prices):0;
+  const renderSection=(s:any)=>{
+    const f=s.fields as string[];const parts:any[]=[];
+    if(f.includes('description')&&tower.description)parts.push(<div key="d"><p className="text-xs font-bold text-gray-400 uppercase mb-1">About</p><p className="text-gray-700">{tower.description}</p></div>);
+    if(f.includes('images')&&tower.images?.length)parts.push(<Gallery key="g"images={tower.images}/>);
+    if((f.includes('floor_plans')&&tower.floor_plans?.length)||(f.includes('svg_floor_plan')&&tower.svg_floor_plan))parts.push(<FloorPlans key="fp"plans={tower.floor_plans||[]}svg={f.includes('svg_floor_plan')?tower.svg_floor_plan:undefined}/>);
+    if(f.includes('video_url')&&tower.video_url)parts.push(<div key="v"><p className="text-sm font-bold text-gray-500 mb-2">📹 Tower Video</p><div className="rounded-2xl overflow-hidden"style={{aspectRatio:'16/9',background:'#111'}}><iframe src={toEmbed(tower.video_url)}className="w-full h-full"allowFullScreen title="Video"/></div></div>);
+    if(f.includes('walkthrough_url')&&tower.walkthrough_url)parts.push(<div key="wt"><p className="text-sm font-bold text-gray-500 mb-2">🥽 3D Walkthrough</p><div className="rounded-2xl overflow-hidden"style={{height:450,background:'#111'}}><iframe src={tower.walkthrough_url}className="w-full h-full"allowFullScreen title="Tour"/></div></div>);
+    if(!parts.length)return null;
+    return(<section key={s.key}className="py-10 border-b"style={{borderColor:'#e2e8f0'}}><div className="max-w-6xl mx-auto px-4"><h2 className="text-2xl font-black mb-6"style={{color:'#262262'}}>{s.label}</h2><div className="space-y-6">{parts}</div></div></section>);
+  };
+  return(
+    <div className="min-h-screen bg-white">
+      <div className="py-12 px-4"style={{background:'linear-gradient(135deg,#262262,#2A3887)'}}>
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center gap-2 text-sm mb-4"style={{color:'#93c5fd'}}>
+            <Link href="/projects"className="hover:text-white">Projects</Link><span>›</span>
+            {project&&<Link href={`/projects/${project.slug}`}className="hover:text-white">{project.name}</Link>}<span>›</span>
+            <span className="text-white font-bold">{tower.name}</span>
           </div>
-
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <p style={{ color:"#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-2">
-                {project?.city || "Hyderabad"} · {project?.name}
-              </p>
-              <h1 className="text-4xl font-black text-white mb-2">{tower?.name || "Tower"}</h1>
-              {tower?.description && (
-                <p style={{ color:"rgba(255,255,255,0.65)" }} className="text-sm max-w-xl">{tower.description}</p>
-              )}
-            </div>
-            <Link href={`/contact?project=${id}&tower=${towerId}`}
-              className="px-6 py-3 font-bold text-sm rounded-xl"
-              style={{ background:"white", color:"#262262", textDecoration:"none" }}>
-              📋 Enquire Now
-            </Link>
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div><h1 className="text-4xl font-black text-white mb-2">{tower.name}</h1>{tower.description&&<p className="text-blue-200">{tower.description}</p>}</div>
+            {minP>0&&<div className="text-right"><p className="text-xs text-blue-300 font-bold">Price Range</p><p className="text-2xl font-black text-white">{fmt(minP)} – {fmt(maxP)}</p></div>}
           </div>
-
-          {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            {[
-              {label:"Total Units",  value: units.length,       color:"#29A9DF"},
-              {label:"Available",    value: available,           color:"#22c55e"},
-              {label:"Booked",       value: booked,              color:"#ef4444"},
-              {label:"Floors",       value: tower?.total_floors||floors.length, color:"#29A9DF"},
-            ].map(s => (
-              <div key={s.label} className="rounded-xl px-4 py-3" style={{ background:"rgba(255,255,255,0.08)" }}>
-                <p className="text-xl font-black" style={{ color:s.color }}>{s.value}</p>
-                <p style={{ color:"rgba(255,255,255,0.5)" }} className="text-xs">{s.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {prices.length > 0 && (
-            <p className="mt-4 text-sm font-bold" style={{ color:"rgba(255,255,255,0.7)" }}>
-              Price Range: <span style={{ color:"white" }}>{fmtPrice(Math.min(...prices))} – {fmtPrice(Math.max(...prices))}</span>
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-6 py-8">
-
-        {/* Filters Row */}
-        <div className="flex flex-wrap gap-3 items-center mb-6">
-          <div className="flex gap-2 flex-wrap">
-            <span className="text-sm font-bold" style={{ color:"#555" }}>Floor:</span>
-            <button onClick={()=>setActiveFloor(null)}
-              className="px-3 py-1 rounded-full text-xs font-bold border transition-all"
-              style={activeFloor===null?{background:"#2A3887",color:"white",border:"1px solid #2A3887"}:{background:"white",color:"#555",border:"1px solid #ddd"}}>
-              All
-            </button>
-            {floors.map(f => (
-              <button key={f} onClick={()=>setActiveFloor(activeFloor===f?null:f)}
-                className="px-3 py-1 rounded-full text-xs font-bold border transition-all"
-                style={activeFloor===f?{background:"#2A3887",color:"white",border:"1px solid #2A3887"}:{background:"white",color:"#555",border:"1px solid #ddd"}}>
-                {f}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-2 ml-auto flex-wrap">
-            {["all","available","booked","hold"].map(s => (
-              <button key={s} onClick={()=>setStatusFilter(s)}
-                className="px-3 py-1 rounded-full text-xs font-bold capitalize transition-all"
-                style={statusFilter===s
-                  ? {background:s==="available"?"#16A34A":s==="booked"?"#DC2626":s==="hold"?"#D97706":"#2A3887",color:"white"}
-                  : {background:"white",color:"#555",border:"1px solid #ddd"}}>
-                {s === "all" ? `All Units (${units.length})` : `${s} (${units.filter(u=>u.status===s).length})`}
-              </button>
-            ))}
+            {[{l:'Total',v:units.length},{l:'Available',v:avail},{l:'Booked',v:units.length-avail},{l:'Floors',v:tower.total_floors}].map(s=><div key={s.l}className="rounded-2xl px-5 py-4"style={{background:'rgba(255,255,255,0.1)'}}><p className="text-2xl font-black text-white">{s.v}</p><p className="text-blue-300 text-sm">{s.l}</p></div>)}
           </div>
         </div>
-
-        {/* Units Grid */}
-        {displayUnits.length === 0 ? (
-          <div className="text-center py-16" style={{ color:"#ccc" }}>
-            <p className="text-4xl mb-3">🏠</p>
-            <p className="font-bold">No units match the selected filters</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {displayUnits.map(u => <UnitCard key={u.id} unit={u} />)}
-          </div>
-        )}
       </div>
-      <Footer />
-    </main>
+      {sections.filter((s:any)=>s.visible).map(renderSection)}
+      <section className="py-10"><div className="max-w-6xl mx-auto px-4">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4"><h2 className="text-2xl font-black"style={{color:'#262262'}}>Units ({filtered.length})</h2><div className="flex flex-wrap gap-2">{['all','available','booked','hold'].map(s=><button key={s}onClick={()=>setStatF(s)}className="px-3 py-1.5 rounded-full text-sm font-bold border transition-all capitalize"style={statF===s?{background:'#2A3887',color:'white',borderColor:'#2A3887'}:{background:'white',color:'#666',borderColor:'#e2e8f0'}}>{s==='all'?'All':s}</button>)}</div></div>
+        <div className="flex flex-wrap gap-2 mb-4"><span className="text-sm font-bold text-gray-500 flex items-center mr-1">Floor:</span>{(['all',...floors]as(number|'all')[]).map(f=><button key={String(f)}onClick={()=>setFloorF(f)}className="px-3 py-1.5 rounded-full text-sm font-bold border transition-all"style={floorF===f?{background:'#2A3887',color:'white',borderColor:'#2A3887'}:{background:'white',color:'#666',borderColor:'#e2e8f0'}}>{f==='all'?'All':f}</button>)}</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">{filtered.map((u:any)=><UnitCard key={u.id}unit={u}/>)}</div>
+        {!filtered.length&&<p className="text-center text-gray-400 py-12">No units match selected filters</p>}
+      </div></section>
+    </div>
   );
 }

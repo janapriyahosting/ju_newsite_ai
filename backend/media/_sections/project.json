@@ -1,0 +1,48 @@
+{
+  "sections": [
+    {
+      "key": "overview",
+      "label": "Overview",
+      "visible": true,
+      "fields": [
+        "description",
+        "location",
+        "city",
+        "rera_number"
+      ]
+    },
+    {
+      "key": "gallery",
+      "label": "Photos",
+      "visible": true,
+      "fields": [
+        "images"
+      ]
+    },
+    {
+      "key": "floor_plans",
+      "label": "Floor Plans",
+      "visible": true,
+      "fields": [
+        "floor_plans"
+      ]
+    },
+    {
+      "key": "media",
+      "label": "Video & Tour",
+      "visible": true,
+      "fields": [
+        "video_url",
+        "walkthrough_url"
+      ]
+    },
+    {
+      "key": "amenities",
+      "label": "Amenities",
+      "visible": true,
+      "fields": [
+        "amenities"
+      ]
+    }
+  ]
+}
