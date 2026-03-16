@@ -247,10 +247,10 @@ export default function UnitDetailPage() {
               </div>
             )}
           </div>
-{/* Right: Sticky CTA */}
+          {/* Right: Sticky CTA */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-4">
-{/* Price Card */}
+              {/* Price Card */}
               
               {/* Room Dimensions */}
               {unit.dimensions && unit.dimensions.length > 0 && (
