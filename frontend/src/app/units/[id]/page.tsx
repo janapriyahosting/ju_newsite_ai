@@ -62,13 +62,11 @@ export default function UnitDetailPage() {
             if (Array.isArray(tRes.amenities)) setTowerAmenities(tRes.amenities);
           } catch {}
         }
-        // Load tower
-          const t = await fetch(`${API}/units?tower_id=${u.tower_id}&limit=1`).then(r=>r.json() as Promise<any>).catch(()=>null);
-          // Try to get project from projects API
+        // Load project
+        if (u.tower_id) {
           try {
             const projects = await fetch(`${API}/projects`).then(r=>r.json() as Promise<any>);
             const projectList = Array.isArray(projects) ? projects : (projects as any).items || [];
-            // find project that has this tower
             setProject(projectList[0] || null);
           } catch {}
         }
