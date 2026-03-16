@@ -52,30 +52,29 @@ class UnitResponse(BaseResponseSchema):
     tower_id: UUID
     unit_number: str
     floor_number: int
-    unit_type: Optional[str]
-    bedrooms: Optional[int]
-    bathrooms: Optional[int]
-    balconies: int
-    area_sqft: Optional[Decimal]
-    carpet_area: Optional[Decimal]
-    plot_area: Optional[Decimal]
-    base_price: Optional[Decimal]
-    price_per_sqft: Optional[Decimal]
-    down_payment: Optional[Decimal]
-    emi_estimate: Optional[Decimal]
-    facing: Optional[str]
-    floor_plan_img: Optional[str]
-    status: str
-    amenities: List
-    images: List
-    floor_plans: Optional[list] = []
-    floor_plans: Optional[list] = []
+    unit_type: Optional[str] = None
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[int] = None
+    balconies: int = 0
+    area_sqft: Optional[Decimal] = None
+    carpet_area: Optional[Decimal] = None
+    plot_area: Optional[Decimal] = None
+    base_price: Optional[Decimal] = None
+    price_per_sqft: Optional[Decimal] = None
+    down_payment: Optional[Decimal] = None
+    emi_estimate: Optional[Decimal] = None
+    facing: Optional[str] = None
+    floor_plan_img: Optional[str] = None
+    status: str = "available"
+    amenities: List = []
+    images: List = []
+    floor_plans: List = []
     video_url: Optional[str] = None
     walkthrough_url: Optional[str] = None
-    dimensions: Optional[list] = []
-    is_trending: bool
-    is_featured: bool
-    view_count: int
+    dimensions: List = []
+    is_trending: bool = False
+    is_featured: bool = False
+    view_count: int = 0
 
 
 class UnitFilterParams(BaseSchema):
