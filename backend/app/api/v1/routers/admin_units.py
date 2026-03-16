@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, update as sql_update
+from sqlalchemy import select, func, text
 from uuid import UUID
 from decimal import Decimal
 from backend.app.core.database import get_db
@@ -8,6 +8,7 @@ from backend.app.api.v1.routers.admin_auth import verify_admin_token
 from backend.app.models.unit import Unit
 from backend.app.models.project import Project
 from backend.app.models.tower import Tower
+import json
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -52,7 +53,9 @@ async def update_unit(
     result = await db.execute(select(Unit).where(Unit.id == unit_id))
     unit = result.scalar_one_or_none()
     if not unit: raise HTTPException(404, "Unit not found")
+
     decimal_fields = {"base_price", "emi_estimate", "down_payment", "price_per_sqft", "area_sqft", "carpet_area"}
+    json_fields = {"dimensions", "images", "floor_plans", "amenities"}
     allowed = {
         "status", "base_price", "emi_estimate", "down_payment", "price_per_sqft",
         "is_trending", "is_featured", "facing", "floor_number", "unit_type",
@@ -60,33 +63,57 @@ async def update_unit(
         "dimensions", "images", "floor_plan_img", "floor_plans",
         "video_url", "walkthrough_url", "amenities",
     }
-    from sqlalchemy import update as sa_update
-    import json as _json
-    json_list_fields = {"dimensions", "images", "floor_plans", "amenities"}
-    scalar_updates = {}
-    json_updates = {}
+
+    scalar_sets = {}
+    json_sets = {}
+
     for k, v in data.items():
-        if k in allowed:
-            if k in decimal_fields and v is not None:
-                scalar_updates[k] = Decimal(str(v))
-            elif k in json_list_fields:
-                json_updates[k] = v if isinstance(v, list) else []
-            else:
-                scalar_updates[k] = v
-    # Apply scalar updates via setattr
-    for k, v in scalar_updates.items():
+        if k not in allowed:
+            continue
+        if k in decimal_fields and v is not None:
+            scalar_sets[k] = Decimal(str(v))
+        elif k in json_fields:
+            json_sets[k] = v if isinstance(v, list) else []
+        else:
+            scalar_sets[k] = v
+
+    # Apply scalar updates via ORM
+    for k, v in scalar_sets.items():
         setattr(unit, k, v)
-    # Apply JSON list updates via raw SQL to bypass mutation tracking
-    if json_updates:
-        from sqlalchemy.dialects.postgresql import JSON
-        set_clause = {k: _json.dumps(v) for k, v in json_updates.items()}
+
+    # Apply JSON updates via raw SQL to guarantee persistence
+    if json_sets:
+        set_parts = ", ".join(f"{k} = :{k}" for k in json_sets)
+        params = {k: json.dumps(v) for k, v in json_sets.items()}
+        params["unit_id"] = str(unit_id)
         await db.execute(
-            sa_update(Unit).where(Unit.id == unit_id).values(**{k: v for k,v in json_updates.items()})
+            text(f"UPDATE units SET {set_parts} WHERE id = :unit_id"),
+            params
         )
+
     await db.commit()
     await db.refresh(unit)
     return {
         "id": str(unit.id),
         "status": unit.status,
         "dimensions": unit.dimensions or [],
+    }
+
+@router.get("/projects")
+async def list_projects(
+    db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    result = await db.execute(select(Project).order_by(Project.created_at.desc()))
+    projects = result.scalars().all()
+    return {
+        "total": len(projects),
+        "items": [
+            {
+                "id": str(p.id), "name": p.name, "location": p.location,
+                "city": p.city, "rera_number": p.rera_number,
+                "is_active": p.is_active, "is_featured": p.is_featured,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in projects
+        ]
     }
