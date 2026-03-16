@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update as sql_update
 from uuid import UUID
 from decimal import Decimal
 from backend.app.core.database import get_db
@@ -60,22 +60,29 @@ async def update_unit(
         "dimensions", "images", "floor_plan_img", "floor_plans",
         "video_url", "walkthrough_url", "amenities",
     }
+    from sqlalchemy import update as sa_update
+    import json as _json
+    json_list_fields = {"dimensions", "images", "floor_plans", "amenities"}
+    scalar_updates = {}
+    json_updates = {}
     for k, v in data.items():
         if k in allowed:
             if k in decimal_fields and v is not None:
-                setattr(unit, k, Decimal(str(v)))
+                scalar_updates[k] = Decimal(str(v))
+            elif k in json_list_fields:
+                json_updates[k] = v if isinstance(v, list) else []
             else:
-                # For JSON/list fields, force new object to trigger SQLAlchemy change detection
-                if isinstance(v, list):
-                    setattr(unit, k, list(v))
-                else:
-                    setattr(unit, k, v)
-    # Mark all changed attributes as modified
-    from sqlalchemy import inspect as sa_inspect
-    insp = sa_inspect(unit)
-    for attr in insp.attrs:
-        if attr.history.has_changes():
-            pass
+                scalar_updates[k] = v
+    # Apply scalar updates via setattr
+    for k, v in scalar_updates.items():
+        setattr(unit, k, v)
+    # Apply JSON list updates via raw SQL to bypass mutation tracking
+    if json_updates:
+        from sqlalchemy.dialects.postgresql import JSON
+        set_clause = {k: _json.dumps(v) for k, v in json_updates.items()}
+        await db.execute(
+            sa_update(Unit).where(Unit.id == unit_id).values(**{k: v for k,v in json_updates.items()})
+        )
     await db.commit()
     await db.refresh(unit)
     return {
