@@ -52,20 +52,27 @@ async def update_unit(
     result = await db.execute(select(Unit).where(Unit.id == unit_id))
     unit = result.scalar_one_or_none()
     if not unit: raise HTTPException(404, "Unit not found")
-    allowed = ["status", "base_price", "emi_estimate", "down_payment",
-               "is_trending", "is_featured", "facing", "floor_number",
-               "dimensions", "images", "floor_plan_img", "floor_plans",
-               "video_url", "walkthrough_url", "amenities", "unit_type",
-               "bedrooms", "bathrooms", "area_sqft", "description"]
+    decimal_fields = {"base_price", "emi_estimate", "down_payment", "price_per_sqft", "area_sqft", "carpet_area"}
+    allowed = {
+        "status", "base_price", "emi_estimate", "down_payment", "price_per_sqft",
+        "is_trending", "is_featured", "facing", "floor_number", "unit_type",
+        "bedrooms", "bathrooms", "area_sqft", "carpet_area", "description",
+        "dimensions", "images", "floor_plan_img", "floor_plans",
+        "video_url", "walkthrough_url", "amenities",
+    }
     for k, v in data.items():
         if k in allowed:
-            if k in ["base_price","emi_estimate","down_payment"] and v:
+            if k in decimal_fields and v is not None:
                 setattr(unit, k, Decimal(str(v)))
             else:
                 setattr(unit, k, v)
-    await db.flush()
     await db.commit()
-    return {"id": str(unit.id), "status": unit.status, "dimensions": unit.dimensions}
+    await db.refresh(unit)
+    return {
+        "id": str(unit.id),
+        "status": unit.status,
+        "dimensions": unit.dimensions if unit.dimensions else [],
+    }
 
 @router.get("/projects")
 async def list_projects(
