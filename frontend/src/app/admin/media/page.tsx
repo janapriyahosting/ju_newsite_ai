@@ -23,6 +23,7 @@ const MEDIA_TYPES: Record<string, { key: string; label: string; multi: boolean; 
     { key: "floor_plans",     label: "Floor Plans",      multi: true,  accept: "image/*,application/pdf" },
     { key: "video_url",       label: "Video URL",        multi: false, accept: "" },
     { key: "walkthrough_url", label: "Walkthrough URL",  multi: false, accept: "" },
+    { key: "brochure_url",    label: "Brochure (PDF)",   multi: false, accept: "application/pdf" },
   ],
   unit: [
     { key: "images",          label: "Photos",           multi: true,  accept: "image/*" },
@@ -30,6 +31,7 @@ const MEDIA_TYPES: Record<string, { key: string; label: string; multi: boolean; 
     { key: "floor_plans",     label: "Floor Plans",      multi: true,  accept: "image/*,application/pdf" },
     { key: "video_url",       label: "Video URL",        multi: false, accept: "" },
     { key: "walkthrough_url", label: "Walkthrough URL",  multi: false, accept: "" },
+    { key: "brochure_url",    label: "Brochure (PDF)",   multi: false, accept: "application/pdf" },
   ],
 };
 

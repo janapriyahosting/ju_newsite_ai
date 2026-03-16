@@ -143,6 +143,7 @@ async def list_towers(
                 "total_floors": t.total_floors,
                 "total_units": t.total_units,
                 "amenities": t.amenities or [],
+                "brochure_url": t.brochure_url,
             }
             for t in towers
         ]
@@ -163,6 +164,7 @@ async def get_tower(
         "amenities": tower.amenities or [],
         "video_url": tower.video_url,
         "walkthrough_url": tower.walkthrough_url,
+        "brochure_url": tower.brochure_url,
     }
 
 @router.patch("/towers/{tower_id}")

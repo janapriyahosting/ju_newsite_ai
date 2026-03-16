@@ -295,6 +295,26 @@ export default function UnitDetailPage() {
                   📅 Book Site Visit
                 </Link>
               </div>
+              {/* Brochure Download */}
+              {unit.brochure_url && (
+                <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
+                  <p className="text-xs font-black mb-3" style={{color:"#2A3887"}}>📄 Project Brochure</p>
+                  <button
+                    onClick={() => {
+                      const user = typeof window !== 'undefined' ? localStorage.getItem('user_token') || localStorage.getItem('auth_token') : null;
+                      if (!user) {
+                        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=brochure';
+                      } else {
+                        window.open('http://173.168.0.81:8000' + unit.brochure_url, '_blank');
+                      }
+                    }}
+                    className="w-full py-3 text-white font-black rounded-xl text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                    style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)"}}>
+                    ⬇️ Download Brochure
+                  </button>
+                  <p className="text-xs text-center mt-2" style={{color:"#94a3b8"}}>Login required to download</p>
+                </div>
+              )}
 
               {/* Share Card */}
               <div className="rounded-2xl p-5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
