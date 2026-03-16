@@ -282,8 +282,7 @@ export default function UnitDetailPage() {
                       <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
                         <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:"#94a3b8"}}>{d.room}</p>
                         <p className="text-sm font-black whitespace-nowrap" style={{color:"#2A3887"}}>
-                          {toFtIn(d.width, d.unit)} <span className="font-normal" style={{color:"#cbd5e1"}}>×</span> {toFtIn(d.length, d.unit)}
-                        </p>
+                          {toFtIn(d.width, d.unit)}<span className="mx-0.5 font-normal" style={{color:"#94a3b8"}}>×</span>{toFtIn(d.length, d.unit)}</p>
                       </div>
                     ))}
                   </div>
