@@ -34,6 +34,7 @@ export default function UnitDetailPage() {
   const [unit, setUnit] = useState<any>(null);
   const [tower, setTower] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
+  const [towerAmenities, setTowerAmenities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [inCompare, setInCompare] = useState(false);
@@ -52,8 +53,16 @@ export default function UnitDetailPage() {
         setUnit(u);
         setSaved(isSaved(u.id));
         setInCompare(isInCompare(u.id));
-        // Load tower
+        // Load tower amenities
         if (u.tower_id) {
+          try {
+            const towerRes = await fetch(`${API}/admin/towers/${u.tower_id}`, {
+              headers: { Authorization: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : '') }
+            }).then(r=>r.json());
+            if (Array.isArray(towerRes.amenities)) setTowerAmenities(towerRes.amenities);
+          } catch {}
+        }
+        // Load tower
           const t = await fetch(`${API}/units?tower_id=${u.tower_id}&limit=1`).then(r=>r.json() as Promise<any>).catch(()=>null);
           // Try to get project from projects API
           try {
@@ -236,9 +245,9 @@ export default function UnitDetailPage() {
               <div className="rounded-2xl p-6" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
                 <h2 className="font-black text-lg mb-4" style={{ color: "#262262" }}>About This Unit</h2>
                 {unit.description && <p style={{ color: "#555" }} className="text-sm leading-relaxed mb-4">{unit.description}</p>}
-                {unit.amenities && Array.isArray(unit.amenities) && unit.amenities.length > 0 && (
+                {(towerAmenities.length > 0 || (unit.amenities && unit.amenities.length > 0)) && (
                   <div className="flex flex-wrap gap-2">
-                    {unit.amenities.map((a: string, i: number) => (
+                    {(towerAmenities.length > 0 ? towerAmenities : (unit.amenities || [])).map((a: string, i: number) => (
                       <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold"
                         style={{ background: "#E2F1FC", color: "#2A3887" }}>✓ {a}</span>
                     ))}

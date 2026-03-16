@@ -117,3 +117,77 @@ async def list_projects(
             for p in projects
         ]
     }
+
+
+from backend.app.models.tower import Tower
+
+@router.get("/towers")
+async def list_towers(
+    project_id: str = "",
+    db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    from sqlalchemy import select as sel
+    from backend.app.models.project import Project
+    q = sel(Tower)
+    if project_id:
+        from uuid import UUID as _UUID
+        q = q.where(Tower.project_id == _UUID(project_id))
+    result = await db.execute(q.order_by(Tower.created_at.desc()))
+    towers = result.scalars().all()
+    return {
+        "total": len(towers),
+        "items": [
+            {
+                "id": str(t.id), "name": t.name,
+                "project_id": str(t.project_id),
+                "total_floors": t.total_floors,
+                "total_units": t.total_units,
+                "amenities": t.amenities or [],
+            }
+            for t in towers
+        ]
+    }
+
+@router.get("/towers/{tower_id}")
+async def get_tower(
+    tower_id: UUID, db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    result = await db.execute(select(Tower).where(Tower.id == tower_id))
+    tower = result.scalar_one_or_none()
+    if not tower: raise HTTPException(404, "Tower not found")
+    return {
+        "id": str(tower.id), "name": tower.name,
+        "project_id": str(tower.project_id),
+        "total_floors": tower.total_floors,
+        "total_units": tower.total_units,
+        "amenities": tower.amenities or [],
+        "video_url": tower.video_url,
+        "walkthrough_url": tower.walkthrough_url,
+    }
+
+@router.patch("/towers/{tower_id}")
+async def update_tower(
+    tower_id: UUID, data: dict,
+    db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    result = await db.execute(select(Tower).where(Tower.id == tower_id))
+    tower = result.scalar_one_or_none()
+    if not tower: raise HTTPException(404, "Tower not found")
+    allowed = {"amenities", "video_url", "walkthrough_url", "images", "floor_plans"}
+    json_fields = {"amenities", "images", "floor_plans"}
+    import json as _json
+    json_updates = {}
+    for k, v in data.items():
+        if k in allowed:
+            if k in json_fields:
+                json_updates[k] = v if isinstance(v, list) else []
+            else:
+                setattr(tower, k, v)
+    if json_updates:
+        set_parts = ", ".join(f"{k} = :{k}" for k in json_updates)
+        params = {k: _json.dumps(v) for k, v in json_updates.items()}
+        params["tower_id"] = str(tower_id)
+        await db.execute(text(f"UPDATE towers SET {set_parts} WHERE id = :tower_id"), params)
+    await db.commit()
+    await db.refresh(tower)
+    return {"id": str(tower.id), "name": tower.name, "amenities": tower.amenities or []}
