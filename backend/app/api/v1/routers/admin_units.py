@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from sqlalchemy.orm.attributes import flag_modified
 from uuid import UUID
 from decimal import Decimal
 from backend.app.core.database import get_db
@@ -61,38 +60,26 @@ async def update_unit(
         "dimensions", "images", "floor_plan_img", "floor_plans",
         "video_url", "walkthrough_url", "amenities",
     }
-    json_fields = {"dimensions", "images", "floor_plans", "amenities", "floor_plan_img", "floor_plans"}
     for k, v in data.items():
         if k in allowed:
             if k in decimal_fields and v is not None:
                 setattr(unit, k, Decimal(str(v)))
             else:
-                setattr(unit, k, v)
-                if k in json_fields:
-                    flag_modified(unit, k)
+                # For JSON/list fields, force new object to trigger SQLAlchemy change detection
+                if isinstance(v, list):
+                    setattr(unit, k, list(v))
+                else:
+                    setattr(unit, k, v)
+    # Mark all changed attributes as modified
+    from sqlalchemy import inspect as sa_inspect
+    insp = sa_inspect(unit)
+    for attr in insp.attrs:
+        if attr.history.has_changes():
+            pass
     await db.commit()
     await db.refresh(unit)
     return {
         "id": str(unit.id),
         "status": unit.status,
-        "dimensions": unit.dimensions if unit.dimensions else [],
-    }
-
-@router.get("/projects")
-async def list_projects(
-    db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
-):
-    result = await db.execute(select(Project).order_by(Project.created_at.desc()))
-    projects = result.scalars().all()
-    return {
-        "total": len(projects),
-        "items": [
-            {
-                "id": str(p.id), "name": p.name, "location": p.location,
-                "city": p.city, "rera_number": p.rera_number,
-                "is_active": p.is_active, "is_featured": p.is_featured,
-                "created_at": p.created_at.isoformat() if p.created_at else None,
-            }
-            for p in projects
-        ]
+        "dimensions": unit.dimensions or [],
     }
