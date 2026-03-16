@@ -212,7 +212,7 @@ export default function MediaManagerPage() {
           ) : (
             <div className="space-y-4">
               {mediaTypes.map(mt => {
-                const isUrl = !mt.accept || mt.key.endsWith("_url");
+                const isUrl = !mt.accept; // URL input only for empty accept (video/walkthrough URLs)
                 const currentVal = selectedRecord?.[mt.key];
                 const items: string[] = mt.multi
                   ? (Array.isArray(currentVal) ? currentVal : [])
