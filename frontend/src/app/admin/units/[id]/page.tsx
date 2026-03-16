@@ -135,7 +135,7 @@ export default function UnitDimensionsPage() {
                 onChange={e => update(i, 'room', e.target.value)}
                 placeholder="e.g. Master Bedroom"
                 className="w-full px-3 py-2 rounded-xl text-sm text-white focus:outline-none focus:ring-1"
-                style={{ background: '#0d0d1a', border: '1px solid #333', focusRingColor: '#29A9DF' }} />
+                style={{ background: '#0d0d1a', border: '1px solid #333' }} />
             </div>
             {/* Width */}
             <input type="number" value={d.width} onChange={e => update(i, 'width', e.target.value)}

@@ -69,6 +69,9 @@ class UnitResponse(BaseResponseSchema):
     amenities: List
     images: List
     floor_plans: Optional[list] = []
+    floor_plans: Optional[list] = []
+    video_url: Optional[str] = None
+    walkthrough_url: Optional[str] = None
     dimensions: Optional[list] = []
     is_trending: bool
     is_featured: bool
