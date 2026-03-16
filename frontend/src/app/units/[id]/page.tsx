@@ -301,7 +301,7 @@ export default function UnitDetailPage() {
                   <p className="text-xs font-black mb-3" style={{color:"#2A3887"}}>📄 Project Brochure</p>
                   <button
                     onClick={() => {
-                      const user = typeof window !== 'undefined' ? localStorage.getItem('user_token') || localStorage.getItem('auth_token') : null;
+                      const user = typeof window !== 'undefined' ? localStorage.getItem('jp_token') : null;
                       if (!user) {
                         window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=brochure';
                       } else {
