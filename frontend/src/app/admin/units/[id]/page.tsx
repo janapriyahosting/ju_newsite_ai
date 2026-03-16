@@ -31,6 +31,9 @@ export default function UnitDimensionsPage() {
   const unitId = params?.id as string;
   const [unit, setUnit] = useState<any>(null);
   const [dims, setDims] = useState<Dim[]>([]);
+  const [amenities, setAmenities] = useState<string[]>([]);
+  const [newAmenity, setNewAmenity] = useState('');
+  const [activeTab, setActiveTab] = useState<'dimensions'|'amenities'>('dimensions');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState({ msg: '', ok: true });
   const [loading, setLoading] = useState(true);
@@ -45,6 +48,7 @@ export default function UnitDimensionsPage() {
     adminFetch('/admin/units/' + unitId).then(r => r.json()).then(d => {
       setUnit(d);
       const existing = Array.isArray(d.dimensions) ? d.dimensions : [];
+      setAmenities(Array.isArray(d.amenities) ? d.amenities : []);
       setDims(existing.map((x: any) => ({
         room: x.room || '',
         width: String(x.width || ''),
@@ -66,6 +70,11 @@ export default function UnitDimensionsPage() {
 
   const save = async () => {
     setSaving(true);
+    // Save amenities too
+    await adminFetch('/admin/units/' + unitId, {
+      method: 'PATCH',
+      body: JSON.stringify({ amenities }),
+    });
     const payload = dims.filter(d => d.room.trim()).map(d => ({
       room: d.room.trim(),
       width: parseFloat(d.width) || 0,
