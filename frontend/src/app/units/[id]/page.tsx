@@ -51,8 +51,9 @@ export default function UnitDetailPage() {
     if (!id) return;
     setLoading(true);
     fetch(`${API}/units/${id}`)
-      .then(r => r.json() as Promise<any>)
-      .then(async u => {
+      .then(async r => {
+        if (!r.ok) { setLoading(false); return; } // 404 → unit stays null → shows 404 page
+        const u = await r.json() as any;
         setUnit(u);
         setSaved(isSaved(u.id));
         setInCompare(isInCompare(u.id));
