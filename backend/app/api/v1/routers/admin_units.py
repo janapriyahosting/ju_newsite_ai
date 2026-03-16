@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm.attributes import flag_modified
 from uuid import UUID
 from decimal import Decimal
 from backend.app.core.database import get_db
@@ -60,12 +61,15 @@ async def update_unit(
         "dimensions", "images", "floor_plan_img", "floor_plans",
         "video_url", "walkthrough_url", "amenities",
     }
+    json_fields = {"dimensions", "images", "floor_plans", "amenities", "floor_plan_img", "floor_plans"}
     for k, v in data.items():
         if k in allowed:
             if k in decimal_fields and v is not None:
                 setattr(unit, k, Decimal(str(v)))
             else:
                 setattr(unit, k, v)
+                if k in json_fields:
+                    flag_modified(unit, k)
     await db.commit()
     await db.refresh(unit)
     return {
