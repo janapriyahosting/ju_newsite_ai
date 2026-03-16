@@ -35,6 +35,7 @@ export default function UnitDetailPage() {
   const [tower, setTower] = useState<any>(null);
   const [project, setProject] = useState<any>(null);
   const [towerAmenities, setTowerAmenities] = useState<string[]>([]);
+  const [towerData, setTowerData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [inCompare, setInCompare] = useState(false);
@@ -60,6 +61,7 @@ export default function UnitDetailPage() {
               headers: { Authorization: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : '') }
             }).then(r => r.json());
             if (Array.isArray(tRes.amenities)) setTowerAmenities(tRes.amenities);
+            setTowerData(tRes);
           } catch {}
         }
         // Load project
@@ -296,7 +298,7 @@ export default function UnitDetailPage() {
                 </Link>
               </div>
               {/* Brochure Download */}
-              {unit.brochure_url && (
+              {(unit.brochure_url || towerData?.brochure_url) && (
                 <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
                   <p className="text-xs font-black mb-3" style={{color:"#2A3887"}}>📄 Project Brochure</p>
                   <button
@@ -305,7 +307,7 @@ export default function UnitDetailPage() {
                       if (!user) {
                         window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=brochure';
                       } else {
-                        window.open('http://173.168.0.81:8000' + unit.brochure_url, '_blank');
+                        window.open('http://173.168.0.81:8000' + (unit.brochure_url || towerData?.brochure_url), '_blank');
                       }
                     }}
                     className="w-full py-3 text-white font-black rounded-xl text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
