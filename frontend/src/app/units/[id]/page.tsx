@@ -250,21 +250,6 @@ export default function UnitDetailPage() {
               {unit.dimensions && unit.dimensions.length > 0 && (
                 <div className="mt-8 pt-6 border-t" style={{borderColor:"#e2e8f0"}}>
                   <h3 className="text-lg font-black mb-4" style={{color:"#262262"}}>
-                    📐 Room Dimensions
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {unit.dimensions.map((d: any, idx: number) => (
-                      <div key={idx} className="rounded-xl px-4 py-3 border"
-                        style={{borderColor:"#e2e8f0", background:"#f8fafc"}}>
-                        <p className="text-xs font-bold uppercase tracking-wide mb-1"
-                          style={{color:"#94a3b8"}}>{d.room}</p>
-                        <p className="text-base font-black" style={{color:"#2A3887"}}>
-                          {toFtIn(d.width, d.unit)} <span className="font-normal mx-1" style={{color:"#cbd5e1"}}>×</span> {toFtIn(d.length, d.unit)}
-                          
-                        </p>
-                      </div>
-                    ))}
-                  </div>
                 </div>
               )}
 
