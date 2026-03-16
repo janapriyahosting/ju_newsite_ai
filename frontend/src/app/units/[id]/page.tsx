@@ -165,7 +165,7 @@ export default function UnitDetailPage() {
                 </div>
                 <div>
                   <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-sm uppercase tracking-wider mb-1">
-                    {unit.unit_type} {unit.bedrooms ? `· ${unit.bedrooms} BHK` : ""}
+                    {unit.unit_type && unit.unit_type.includes("BHK") ? unit.unit_type : `${unit.unit_type}${unit.bedrooms ? " · " + unit.bedrooms + " BHK" : ""}`}
                   </p>
                   <h1 className="text-3xl font-black text-white">{unit.unit_number}</h1>
                   {project && <p style={{ color: "rgba(255,255,255,0.7)" }} className="text-sm mt-1">📍 {project.name}</p>}
