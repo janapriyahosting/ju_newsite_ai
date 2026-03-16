@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/adminAuth';
 
@@ -75,7 +76,7 @@ export default function UnitsPage() {
             {!loading && units.length === 0 && <tr><td colSpan={9} className="text-center text-gray-500 py-10">No units found</td></tr>}
             {units.map(u => (
               <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
-                <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{u.unit_number}</td>
+                <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{u.unit_number}} <Link href={`/admin/units/${u.id}`} className="ml-1 text-xs px-1.5 py-0.5 rounded font-bold" style={{background:"rgba(41,169,223,0.12)",color:"#29A9DF"}}>📐</Link></td>
                 <td className="px-4 py-3 text-gray-300">{u.unit_type}</td>
                 <td className="px-4 py-3 text-gray-300">{u.floor_number}</td>
                 <td className="px-4 py-3 text-gray-300">{u.facing || '—'}</td>
