@@ -43,12 +43,17 @@ async def upload_media(
     _ensure(folder)
     with open(os.path.join(folder, filename), "wb") as f: f.write(content)
     url = f"/media/{entity}/{media_type}/{filename}"
+    import json as _json
+    from sqlalchemy import text as _text
     if media_type in ARRAY_FIELDS:
         current = getattr(obj, media_type, None) or []
         if not isinstance(current, list): current = []
-        setattr(obj, media_type, current + [url])
+        new_val = current + [url]
+        await db.execute(_text(f"UPDATE {Model.__tablename__} SET {media_type} = :v WHERE id = :id"),
+                         {"v": _json.dumps(new_val), "id": str(eid)})
     else:
-        setattr(obj, media_type, url)
+        await db.execute(_text(f"UPDATE {Model.__tablename__} SET {media_type} = :v WHERE id = :id"),
+                         {"v": url, "id": str(eid)})
     await db.commit(); await db.refresh(obj)
     return {"url": url, "filename": filename, "media_type": media_type, "entity": entity, "entity_id": entity_id}
 
@@ -65,11 +70,16 @@ async def delete_media(
     result = await db.execute(sa_select(Model).where(Model.id == eid))
     obj = result.scalar_one_or_none()
     if not obj: raise HTTPException(404, f"{entity} not found")
+    import json as _json
+    from sqlalchemy import text as _text
     if media_type in ARRAY_FIELDS:
         current = getattr(obj, media_type, None) or []
-        setattr(obj, media_type, [u for u in current if u != url])
+        new_val = [u for u in current if u != url]
+        await db.execute(_text(f"UPDATE {Model.__tablename__} SET {media_type} = :v WHERE id = :id"),
+                         {"v": _json.dumps(new_val), "id": str(eid)})
     else:
-        setattr(obj, media_type, None)
+        await db.execute(_text(f"UPDATE {Model.__tablename__} SET {media_type} = :v WHERE id = :id"),
+                         {"v": None, "id": str(eid)})
     await db.commit()
     if url.startswith("/media/"):
         fp = os.path.join(MEDIA_ROOT, url[len("/media/"):])
@@ -96,6 +106,7 @@ def _defaults(entity):
             {"key":"gallery","label":"Photos","visible":True,"fields":["images"]},
             {"key":"floor_plans","label":"Floor Plans","visible":True,"fields":["floor_plans","svg_floor_plan"]},
             {"key":"media","label":"Video & Tour","visible":True,"fields":["video_url","walkthrough_url"]},
+            {"key":"documents","label":"Brochure","visible":True,"fields":["brochure_url"]},
         ],
         "unit": [
             {"key":"overview","label":"Overview","visible":True,"fields":["unit_type","bedrooms","bathrooms","area_sqft","base_price","status"]},

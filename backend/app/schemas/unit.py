@@ -72,6 +72,7 @@ class UnitResponse(BaseResponseSchema):
     video_url: Optional[str] = None
     walkthrough_url: Optional[str] = None
     dimensions: List = []
+    brochure_url: Optional[str] = None
     is_trending: bool = False
     is_featured: bool = False
     view_count: int = 0

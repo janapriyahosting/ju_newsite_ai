@@ -18,6 +18,7 @@ class Tower(UUIDMixin, TimeStampMixin, Base):
     total_units:   Mapped[int]  = mapped_column(Integer, default=0)
     svg_floor_plan: Mapped[str] = mapped_column(Text, nullable=True)
     amenities:     Mapped[dict] = mapped_column(JSON, default=list)
+    brochure_url:  Mapped[str]  = mapped_column(String(500), nullable=True)
     images:        Mapped[dict] = mapped_column(JSON, default=list)
     video_url:     Mapped[str]  = mapped_column(Text, nullable=True)
     walkthrough_url: Mapped[str] = mapped_column(Text, nullable=True)
