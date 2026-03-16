@@ -118,6 +118,7 @@ async def get_unit(unit_id: UUID, db: AsyncSession = Depends(get_db)):
     unit.view_count += 1
     await db.flush()
     await db.refresh(unit)
+    await db.refresh(unit)
     return unit
 
 
