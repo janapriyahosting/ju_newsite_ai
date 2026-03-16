@@ -261,10 +261,8 @@ export default function UnitDetailPage() {
                         <p className="text-xs font-bold uppercase tracking-wide mb-1"
                           style={{color:"#94a3b8"}}>{d.room}</p>
                         <p className="text-base font-black" style={{color:"#2A3887"}}>
-                          {d.width}
-                          <span className="mx-1 font-normal text-sm" style={{color:"#cbd5e1"}}>×</span>
-                          {d.length}
-                          <span className="text-xs font-medium ml-1" style={{color:"#94a3b8"}}>{d.unit}</span>
+                          {toFtIn(d.width, d.unit)} <span className="font-normal mx-1" style={{color:"#cbd5e1"}}>×</span> {toFtIn(d.length, d.unit)}
+                          
                         </p>
                       </div>
                     ))}
