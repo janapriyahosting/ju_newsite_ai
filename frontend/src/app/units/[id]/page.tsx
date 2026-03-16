@@ -247,35 +247,29 @@ export default function UnitDetailPage() {
               </div>
             )}
           </div>
-              {unit.dimensions && unit.dimensions.length > 0 && (
-                <div className="mt-8 pt-6 border-t" style={{borderColor:"#e2e8f0"}}>
-                  <h3 className="text-lg font-black mb-4" style={{color:"#262262"}}>
-                </div>
-              )}
-
-          {/* Right: Sticky CTA */}
+{/* Right: Sticky CTA */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-4">
+{/* Price Card */}
+              
               {/* Room Dimensions */}
               {unit.dimensions && unit.dimensions.length > 0 && (
                 <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
-                  <h3 className="text-sm font-black mb-4 flex items-center gap-2" style={{color:"#262262"}}>
+                  <h3 className="text-sm font-black mb-3 flex items-center gap-2" style={{color:"#262262"}}>
                     📐 Room Dimensions
                   </h3>
                   <div className="grid grid-cols-2 gap-2">
                     {unit.dimensions.map((d: any, idx: number) => (
                       <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
                         <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:"#94a3b8"}}>{d.room}</p>
-                        <p className="text-sm font-black whitespace-nowrap" style={{color:"#2A3887"}}>
-                          {toFtIn(d.width, d.unit)}<span className="mx-0.5 font-normal" style={{color:"#94a3b8"}}>×</span>{toFtIn(d.length, d.unit)}</p>
+                        <p className="text-sm font-black" style={{color:"#2A3887", whiteSpace:"nowrap"}}>{toFtIn(d.width, d.unit)} <span style={{color:"#94a3b8", fontWeight:400}}>×</span> {toFtIn(d.length, d.unit)}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Price Card */}
-              <div className="rounded-2xl p-6" style={{ boxShadow: "0 8px 30px rgba(42,56,135,0.15)", border: "1px solid #E2F1FC" }}>
+<div className="rounded-2xl p-6" style={{ boxShadow: "0 8px 30px rgba(42,56,135,0.15)", border: "1px solid #E2F1FC" }}>
                 <p style={{ color: "#999" }} className="text-xs uppercase tracking-wide mb-1">Starting from</p>
                 <p className="text-3xl font-black mb-1" style={{ color: "#2A3887" }}>{formatPrice(unit.base_price)}</p>
                 {unit.area_sqft && unit.base_price && (
