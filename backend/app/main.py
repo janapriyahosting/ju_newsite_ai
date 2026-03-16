@@ -65,6 +65,6 @@ async def health():
     return {"status": "ok"}
 
 # Serve uploaded media files
-_media_dir = os.path.join(os.path.dirname(__file__), "../../media")
+_media_dir = os.path.join(os.path.dirname(__file__), "../../../media")
 os.makedirs(_media_dir, exist_ok=True)
 app.mount("/media", StaticFiles(directory=_media_dir), name="media")
