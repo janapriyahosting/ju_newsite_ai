@@ -34,6 +34,8 @@ class Unit(UUIDMixin, TimeStampMixin, Base):
     video_url:     Mapped[str]   = mapped_column(String(500), nullable=True)
     walkthrough_url: Mapped[str] = mapped_column(String(500), nullable=True)
     floor_plans:   Mapped[dict]  = mapped_column(JSON, default=list)
+    dimensions:      Mapped[dict]  = mapped_column(JSON, default=list)
+    dimensions:      Mapped[dict]  = mapped_column(JSON, default=list)
     is_trending:   Mapped[bool]  = mapped_column(Boolean, default=False)
     is_featured:   Mapped[bool]  = mapped_column(Boolean, default=False)
     view_count:    Mapped[int]   = mapped_column(Integer, default=0)
