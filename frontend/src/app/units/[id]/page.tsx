@@ -161,41 +161,44 @@ export default function UnitDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left: Main Info */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Hero Card */}
+            {/* Hero: Media Slider + Unit Info */}
             <div className="rounded-3xl overflow-hidden" style={{ boxShadow: "0 8px 40px rgba(42,56,135,0.15)" }}>
-              <div className="h-64 relative flex flex-col justify-between p-6"
-                style={{ background: "linear-gradient(135deg,#262262 0%,#2A3887 50%,#29A9DF 100%)" }}>
-                <div className="flex justify-between items-start">
-                  <span className="px-3 py-1.5 rounded-full text-sm font-black bg-white" style={{ color: statusColor }}>
+              {/* Media Slider */}
+              <UnitMediaSlider unit={unit} />
+
+              {/* Unit Title Bar */}
+              <div className="px-5 py-4 flex items-center justify-between"
+                style={{ background: "linear-gradient(135deg,#262262,#2A3887)" }}>
+                <div>
+                  <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-xs uppercase tracking-wider mb-0.5">
+                    {unit.unit_type && unit.unit_type.includes("BHK") ? unit.unit_type : `${unit.unit_type}${unit.bedrooms ? " · " + unit.bedrooms + " BHK" : ""}`}
+                  </p>
+                  <h1 className="text-2xl font-black text-white">{unit.unit_number}</h1>
+                  {project && <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-xs mt-0.5">📍 {project.name}</p>}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-3 py-1.5 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
                     ● {(unit.status || "available").charAt(0).toUpperCase() + (unit.status||"").slice(1)}
                   </span>
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     {[
                       { fn: handleSave, icon: saved ? "♥" : "♡", bg: saved ? "rgba(239,68,68,0.9)" : "rgba(255,255,255,0.2)", title: "Save" },
                       { fn: handleCompare, icon: "⇄", bg: inCompare ? "rgba(245,158,11,0.9)" : "rgba(255,255,255,0.2)", title: "Compare" },
                       { fn: handleShare, icon: "↗", bg: "rgba(255,255,255,0.2)", title: "Share" },
                     ].map((btn, i) => (
                       <button key={i} onClick={btn.fn} title={btn.title}
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white text-base transition-all hover:scale-110"
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm transition-all hover:scale-110"
                         style={{ background: btn.bg }}>
                         {btn.icon}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-sm uppercase tracking-wider mb-1">
-                    {unit.unit_type && unit.unit_type.includes("BHK") ? unit.unit_type : `${unit.unit_type}${unit.bedrooms ? " · " + unit.bedrooms + " BHK" : ""}`}
-                  </p>
-                  <h1 className="text-3xl font-black text-white">{unit.unit_number}</h1>
-                  {project && <p style={{ color: "rgba(255,255,255,0.7)" }} className="text-sm mt-1">📍 {project.name}</p>}
-                </div>
-                {toast && (
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-white rounded-full text-sm font-bold shadow-xl"
-                    style={{ color: "#2A3887" }}>{toast}</div>
-                )}
               </div>
+              {toast && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-white rounded-full text-sm font-bold shadow-xl"
+                  style={{ color: "#2A3887" }}>{toast}</div>
+              )}
             </div>
 
             {/* Specs Grid */}
