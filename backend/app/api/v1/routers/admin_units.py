@@ -45,6 +45,19 @@ async def list_units(
         ]
     }
 
+
+
+@router.get("/units/{unit_id}")
+async def get_unit_admin(
+    unit_id: UUID, db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    result = await db.execute(select(Unit).where(Unit.id == unit_id))
+    unit = result.scalar_one_or_none()
+    if not unit: raise HTTPException(404, "Unit not found")
+    cols = [c.name for c in Unit.__table__.columns]
+    return {c: str(getattr(unit, c)) if hasattr(getattr(unit, c, None), 'hex') else getattr(unit, c) 
+            for c in cols if c != 'embedding'}
+
 @router.patch("/units/{unit_id}")
 async def update_unit(
     unit_id: UUID, data: dict,
@@ -149,6 +162,13 @@ async def list_towers(
         ]
     }
 
+@router.get("/towers/list")
+async def list_towers_alias(
+    project_id: str = "",
+    db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    return await list_towers(project_id=project_id, db=db, admin=admin)
+
 @router.get("/towers/{tower_id}")
 async def get_tower(
     tower_id: UUID, db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
@@ -193,3 +213,24 @@ async def update_tower(
     await db.commit()
     await db.refresh(tower)
     return {"id": str(tower.id), "name": tower.name, "amenities": tower.amenities or []}
+
+
+@router.get("/projects/list")
+async def list_projects_alias(
+    db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    return await list_projects(db=db, admin=admin)
+
+@router.get("/projects/{project_id}")
+async def get_project_admin(
+    project_id: UUID, db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    from backend.app.models.project import Project as Proj
+    result = await db.execute(select(Proj).where(Proj.id == project_id))
+    proj = result.scalar_one_or_none()
+    if not proj: raise HTTPException(404, "Project not found")
+    import json as _json
+    from sqlalchemy import text as _t
+    row = (await db.execute(_t("SELECT * FROM projects WHERE id=:id"), {"id": str(project_id)})).mappings().fetchone()
+    return dict(row) if row else {}
+

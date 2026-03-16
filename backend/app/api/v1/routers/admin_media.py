@@ -54,7 +54,7 @@ async def upload_media(
     else:
         await db.execute(_text(f"UPDATE {Model.__tablename__} SET {media_type} = :v WHERE id = :id"),
                          {"v": url, "id": str(eid)})
-    await db.commit(); await db.refresh(obj)
+    await db.commit()
     return {"url": url, "filename": filename, "media_type": media_type, "entity": entity, "entity_id": entity_id}
 
 @router.delete("/upload")
