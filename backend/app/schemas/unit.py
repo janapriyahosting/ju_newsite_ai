@@ -68,6 +68,8 @@ class UnitResponse(BaseResponseSchema):
     status: str
     amenities: List
     images: List
+    floor_plans: Optional[list] = []
+    dimensions: Optional[list] = []
     is_trending: bool
     is_featured: bool
     view_count: int

@@ -40,7 +40,7 @@ def model_to_dict(obj):
 UNIT_FIELDS = ["tower_id","unit_number","floor_number","unit_type","bedrooms","bathrooms",
                "balconies","area_sqft","carpet_area","plot_area","base_price","price_per_sqft",
                "down_payment","emi_estimate","facing","status","amenities","images",
-               "is_trending","is_featured","description","floor_plan_img","floor_plans","video_url","walkthrough_url"]
+               "is_trending","is_featured","description","floor_plan_img","floor_plans","video_url","walkthrough_url","dimensions"]
 
 CSV_COLUMNS = ["unit_number","floor_number","unit_type","bedrooms","bathrooms","balconies",
                "area_sqft","carpet_area","base_price","price_per_sqft","down_payment",
