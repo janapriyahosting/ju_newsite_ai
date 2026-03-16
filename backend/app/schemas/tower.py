@@ -27,12 +27,17 @@ class TowerUpdate(BaseSchema):
 class TowerResponse(BaseResponseSchema):
     project_id: UUID
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     total_floors: int
-    total_units: int
-    svg_floor_plan: Optional[str]
-    images: List
-    is_active: bool
+    total_units: int = 0
+    svg_floor_plan: Optional[str] = None
+    images: List = []
+    floor_plans: List = []
+    video_url: Optional[str] = None
+    walkthrough_url: Optional[str] = None
+    amenities: List = []
+    brochure_url: Optional[str] = None
+    is_active: bool = True
 
 
 class TowerListResponse(BaseSchema):
