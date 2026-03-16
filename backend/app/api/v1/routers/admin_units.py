@@ -53,7 +53,10 @@ async def update_unit(
     unit = result.scalar_one_or_none()
     if not unit: raise HTTPException(404, "Unit not found")
     allowed = ["status", "base_price", "emi_estimate", "down_payment",
-               "is_trending", "is_featured", "facing", "floor_number"]
+               "is_trending", "is_featured", "facing", "floor_number",
+               "dimensions", "images", "floor_plan_img", "floor_plans",
+               "video_url", "walkthrough_url", "amenities", "unit_type",
+               "bedrooms", "bathrooms", "area_sqft", "description"]
     for k, v in data.items():
         if k in allowed:
             if k in ["base_price","emi_estimate","down_payment"] and v:
@@ -61,7 +64,8 @@ async def update_unit(
             else:
                 setattr(unit, k, v)
     await db.flush()
-    return {"id": str(unit.id), "status": unit.status}
+    await db.commit()
+    return {"id": str(unit.id), "status": unit.status, "dimensions": unit.dimensions}
 
 @router.get("/projects")
 async def list_projects(
