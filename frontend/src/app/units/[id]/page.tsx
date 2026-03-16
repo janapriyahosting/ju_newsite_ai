@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -127,19 +128,10 @@ export default function UnitDetailPage() {
     </main>
   );
 
-  if (!unit) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen">
-      <Navbar />
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8F9FB" }}>
-        <div className="text-center">
-          <div className="text-5xl mb-4">🏠</div>
-          <p className="font-bold text-lg mb-4" style={{ color: "#2A3887" }}>Unit not found</p>
-          <Link href="/store" className="px-6 py-3 text-white font-bold rounded-full"
-            style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>Browse All Units</Link>
-        </div>
-      </div>
-    </main>
-  );
+  if (!unit) {
+    notFound(); // Returns HTTP 404 to crawlers + shows not-found.tsx
+    return null;
+  }
 
   const statusColor = unit.status === "available" ? "#22c55e" : unit.status === "booked" ? "#ef4444" : "#f59e0b";
 
