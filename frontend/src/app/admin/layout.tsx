@@ -9,7 +9,7 @@ const navItems = [
   { href: '/admin/analytics',  label: 'Analytics',   icon: '📈' },
   { href: '/admin/customers',  label: 'Customers',   icon: '👥' },
   { href: '/admin/leads',      label: 'Leads',       icon: '📋' },
-  { href: '/admin/site-visits',label: 'Site Visits', icon: '🏡' },
+  { href: '/admin/visits',label: 'Site Visits', icon: '🏡' },
   { href: '/admin/units',      label: 'Units',       icon: '🏠' },
   { href: '/admin/crud',       label: 'Data Manager',icon: '🗄️' },
   { href: '/admin/fields',     label: 'Fields',      icon: '⚙️' },

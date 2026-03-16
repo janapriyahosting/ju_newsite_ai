@@ -4,10 +4,26 @@
     "label": "Overview",
     "visible": true,
     "fields": [
-      "description",
-      "location",
-      "city",
-      "rera_number"
+      "unit_type",
+      "bedrooms",
+      "bathrooms",
+      "area_sqft",
+      "base_price",
+      "status"
+    ]
+  },
+  {
+    "key": "details",
+    "label": "Details",
+    "visible": true,
+    "fields": [
+      "floor_number",
+      "facing",
+      "carpet_area",
+      "price_per_sqft",
+      "down_payment",
+      "emi_estimate",
+      "balconies"
     ]
   },
   {
@@ -19,10 +35,11 @@
     ]
   },
   {
-    "key": "floor_plans",
-    "label": "Floor Plans",
+    "key": "floor_plan",
+    "label": "Floor Plan",
     "visible": true,
     "fields": [
+      "floor_plan_img",
       "floor_plans"
     ]
   },

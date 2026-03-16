@@ -5,9 +5,8 @@
     "visible": true,
     "fields": [
       "description",
-      "location",
-      "city",
-      "rera_number"
+      "total_floors",
+      "total_units"
     ]
   },
   {
@@ -23,7 +22,8 @@
     "label": "Floor Plans",
     "visible": true,
     "fields": [
-      "floor_plans"
+      "floor_plans",
+      "svg_floor_plan"
     ]
   },
   {
@@ -33,14 +33,6 @@
     "fields": [
       "video_url",
       "walkthrough_url"
-    ]
-  },
-  {
-    "key": "amenities",
-    "label": "Amenities",
-    "visible": true,
-    "fields": [
-      "amenities"
     ]
   }
 ]
