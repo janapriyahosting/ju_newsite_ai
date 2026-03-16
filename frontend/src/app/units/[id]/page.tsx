@@ -56,10 +56,10 @@ export default function UnitDetailPage() {
         // Load tower amenities
         if (u.tower_id) {
           try {
-            const towerRes = await fetch(`${API}/admin/towers/${u.tower_id}`, {
+            const tRes = await fetch(API + '/admin/towers/' + u.tower_id, {
               headers: { Authorization: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : '') }
-            }).then(r=>r.json());
-            if (Array.isArray(towerRes.amenities)) setTowerAmenities(towerRes.amenities);
+            }).then(r => r.json());
+            if (Array.isArray(tRes.amenities)) setTowerAmenities(tRes.amenities);
           } catch {}
         }
         // Load tower
