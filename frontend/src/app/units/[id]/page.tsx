@@ -16,6 +16,18 @@ function formatPrice(p: any) {
   return `₹${n.toLocaleString()}`;
 }
 
+
+function toFtIn(val: any, unit: string): string {
+  const n = parseFloat(val) || 0;
+  if (unit === 'ft') {
+    const feet = Math.floor(n);
+    const inches = Math.round((n - feet) * 12);
+    return `${feet}'${inches.toString().padStart(2,'0')}"`;
+  }
+  if (unit === 'm') return `${n.toFixed(2)}m`;
+  return `${n}"`;
+}
+
 export default function UnitDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
