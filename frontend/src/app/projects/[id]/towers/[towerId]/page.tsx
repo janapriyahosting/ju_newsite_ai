@@ -234,5 +234,21 @@ export default function TowerDetailPage() {
         </div>
       </section>
     </div>
+      {/* Brochure Download */}
+      {tower?.brochure_url && (
+        <div className="mt-8 p-5 rounded-2xl max-w-sm" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
+          <p className="text-sm font-black mb-3" style={{color:"#2A3887"}}>📄 Tower Brochure</p>
+          <button onClick={() => {
+            const user = typeof window !== 'undefined' ? localStorage.getItem('jp_token') : null;
+            if (!user) window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=brochure';
+            else window.open('http://173.168.0.81:8000' + tower.brochure_url, '_blank');
+          }} className="w-full py-3 font-black rounded-xl text-sm flex items-center justify-center gap-2"
+          style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)", color:"white"}}>
+            ⬇️ Download Brochure
+          </button>
+          <p className="text-xs text-center mt-2" style={{color:"#94a3b8"}}>Login required to download</p>
+        </div>
+      )}
+
   );
 }
