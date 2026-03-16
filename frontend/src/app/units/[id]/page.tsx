@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { isSaved, toggleSaved, toggleCompare, isInCompare } from "@/lib/savedProperties";
+import UnitMediaSlider from "@/components/UnitMediaSlider";
 
 const API = "http://173.168.0.81:8000/api/v1";
 
