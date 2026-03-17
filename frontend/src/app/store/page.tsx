@@ -112,11 +112,11 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
             )}
           </div>
           <div className="flex gap-2">
+            <div onClick={e=>{e.preventDefault();e.stopPropagation();}}>
+              <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
+            </div>
             <Link href={`/contact?unit=${unit.id}`}
               className="px-3 py-1.5 text-xs font-bold rounded-xl"
-              <div onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
-                <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
-              </div>
               style={{ border:"1.5px solid #2A3887",color:"#2A3887" }}>Enquire</Link>
             <Link href={`/units/${unit.id}`}
               className="px-3 py-1.5 text-xs font-bold text-white rounded-xl"
