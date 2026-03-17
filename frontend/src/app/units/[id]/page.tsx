@@ -342,6 +342,22 @@ export default function UnitDetailPage() {
                   style={{ border: "2px solid #2A3887", color: "#2A3887" }}>
                   📅 Book Site Visit
                 </Link>
+
+                {/* Add to Cart + Book Now */}
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <button onClick={addToCart} disabled={cartLoading || cartAdded}
+                    className="py-3 rounded-xl font-black text-sm flex items-center justify-center gap-1.5 border-2 transition-all"
+                    style={{ borderColor: cartAdded ? '#16A34A' : '#2A3887',
+                             color: cartAdded ? '#16A34A' : '#2A3887',
+                             background: cartAdded ? 'rgba(22,163,74,0.06)' : 'white' }}>
+                    {cartLoading ? '⏳' : cartAdded ? '✓ In Cart' : '🛒 Add to Cart'}
+                  </button>
+                  <Link href={`/booking/${unit.id}`}
+                    className="py-3 rounded-xl font-black text-sm flex items-center justify-center gap-1.5"
+                    style={{ background: 'linear-gradient(135deg,#16A34A,#22c55e)', color: 'white' }}>
+                    🏷️ Book Now
+                  </Link>
+                </div>
               </div>
               {/* Brochure Download */}
               {(unit.brochure_url || towerData?.brochure_url) && (
