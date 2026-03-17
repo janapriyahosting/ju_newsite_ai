@@ -1,5 +1,4 @@
 'use client';
-import AddToCartBtn from '@/components/AddToCartBtn';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
