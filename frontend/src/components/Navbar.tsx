@@ -108,7 +108,10 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/login"
+              <Link href="/cart" className="relative p-2 rounded-full transition-all hover:bg-gray-100" title="My Cart">
+            🛒
+          </Link>
+          <Link href="/login"
                 className="px-4 py-2 text-sm font-bold rounded-full transition-all"
                 style={{ color: transparent ? "white" : "#2A3887" }}>
                 Sign In
