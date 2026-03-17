@@ -1,4 +1,5 @@
 'use client';
+import AddToCartBtn from '@/components/AddToCartBtn';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -85,6 +86,9 @@ function UnitCard({ unit }: { unit: any }) {
       </div>
       {price && <p className="font-bold mt-3" style={{ color:'#2A3887' }}>{price}</p>}
     </Link>
+    <div className="mt-2 flex justify-end" onClick={e=>e.stopPropagation()}>
+      <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
+    </div>
   );
 }
 

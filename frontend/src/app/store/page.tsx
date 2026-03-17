@@ -1,4 +1,5 @@
 "use client";
+import AddToCartBtn from '@/components/AddToCartBtn';
 import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
