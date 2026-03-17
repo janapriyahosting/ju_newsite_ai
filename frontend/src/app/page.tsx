@@ -232,14 +232,6 @@ export default function HomePage() {
                       </span>
                     </div>
                   </div>
-                
-                  <div className="mt-3 flex justify-end" onClick={e=>e.preventDefault()}>
-                    <AddToCartBtn unitId={u.id} size="sm" />
-                  </div>
-                
-                  <div className="mt-3 flex justify-end" onClick={e=>e.preventDefault()}>
-                    <AddToCartBtn unitId={u.id} size="sm" />
-                  </div>
                 </Link>
               ))}
             </div>
