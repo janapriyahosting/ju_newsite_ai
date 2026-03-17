@@ -1,4 +1,5 @@
 "use client";
+import AddToCartBtn from '@/components/AddToCartBtn';
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { isSaved, toggleSaved, isInCompare, toggleCompare } from "@/lib/savedProperties";
@@ -118,10 +119,10 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
               className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
               style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
               Details →
+            </Link>
           <div className="mt-2 flex justify-end" onClick={e=>e.preventDefault()}>
             <AddToCartBtn unitId={unit.id} size="sm" />
           </div>
-            </Link>
           </div>
         </div>
       </div>
