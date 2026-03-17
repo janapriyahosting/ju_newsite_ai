@@ -68,6 +68,7 @@ export default function AddToCartBtn({ unitId, status = 'available', size = 'md'
       )}
       <button
         onMouseDown={handle}
+        onClick={handle}
         disabled={state === 'loading' || state === 'added'}
         title={state === 'added' ? 'In Cart' : 'Add to Cart'}
         style={{
