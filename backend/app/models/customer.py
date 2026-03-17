@@ -15,6 +15,7 @@ class Customer(UUIDMixin, TimeStampMixin, Base):
     password_hash: Mapped[str]  = mapped_column(String(255), nullable=True)
     sf_contact_id: Mapped[str]  = mapped_column(String(50), nullable=True)   # Salesforce ID
     is_verified:   Mapped[bool] = mapped_column(Boolean, default=False)
+    marketing_consent: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active:     Mapped[bool] = mapped_column(Boolean, default=True)
     last_login: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     preferences:   Mapped[dict] = mapped_column(JSON, default=dict)          # search preferences

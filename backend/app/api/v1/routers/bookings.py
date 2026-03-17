@@ -7,6 +7,9 @@ from backend.app.core.database import get_db
 from backend.app.models.booking import Booking
 from backend.app.models.unit import Unit
 from backend.app.models.coupon import Coupon
+from backend.app.api.v1.routers.auth import get_current_customer
+from backend.app.models.customer import Customer
+from fastapi import Header
 from backend.app.schemas.booking import BookingCreate, BookingResponse
 from datetime import datetime
 
@@ -14,7 +17,7 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
 @router.post("", response_model=BookingResponse, status_code=201)
-async def create_booking(data: BookingCreate, db: AsyncSession = Depends(get_db)):
+async def create_booking(data: BookingCreate, customer: Customer = Depends(get_current_customer), db: AsyncSession = Depends(get_db)):
     # Get unit
     result = await db.execute(select(Unit).where(Unit.id == data.unit_id))
     unit = result.scalar_one_or_none()
@@ -48,6 +51,7 @@ async def create_booking(data: BookingCreate, db: AsyncSession = Depends(get_db)
             coupon.used_count += 1
 
     booking = Booking(
+        customer_id=customer.id,
         unit_id=data.unit_id,
         coupon_id=coupon_id,
         booking_amount=booking_amount,
