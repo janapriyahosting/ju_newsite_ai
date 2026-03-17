@@ -6,7 +6,7 @@ const API = 'http://173.168.0.81:8000/api/v1';
 
 interface Props {
   unitId: string;
-  status?: string;   // unit status - only show for 'available'
+  status?: string;
   size?: 'sm' | 'md';
 }
 
@@ -14,7 +14,6 @@ export default function AddToCartBtn({ unitId, status = 'available', size = 'md'
   const [state, setState] = useState<'idle'|'loading'|'added'>('idle');
   const [toast, setToast] = useState('');
 
-  // Only show for available units
   if (status && status !== 'available') return null;
 
   function showToast(msg: string) {
@@ -22,59 +21,82 @@ export default function AddToCartBtn({ unitId, status = 'available', size = 'md'
     setTimeout(() => setToast(''), 3500);
   }
 
-  async function handle(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
+  function handle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (state !== 'idle') return;
+
     const token = localStorage.getItem('jp_token');
     if (!token) {
       window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=cart';
       return;
     }
     setState('loading');
-    try {
-      const r = await fetch(API + '/cart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ unit_id: unitId })
-      });
+    fetch(API + '/cart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ unit_id: unitId })
+    }).then(r => {
       if (r.ok) { setState('added'); showToast('Added to cart!'); }
       else if (r.status === 400) { setState('added'); showToast('Already in cart'); }
-      else { setState('idle'); }
-    } catch { setState('idle'); }
+      else setState('idle');
+    }).catch(() => setState('idle'));
   }
 
   const sm = size === 'sm';
+  const bg = state === 'added' ? 'rgba(22,163,74,0.12)' : 'rgba(42,56,135,0.09)';
+  const border = state === 'added' ? '#16A34A' : '#2A3887';
+  const color = state === 'added' ? '#16A34A' : '#2A3887';
 
   return (
     <>
       {toast && (
         <div style={{
           position:'fixed', top:'80px', right:'20px', zIndex:9999,
-          background: '#16A34A', color:'white',
+          background:'#16A34A', color:'white',
           padding:'12px 16px', borderRadius:'14px',
           fontWeight:700, fontSize:'14px',
           boxShadow:'0 8px 30px rgba(0,0,0,0.15)',
-          display:'flex', alignItems:'center', gap:'10px'
+          display:'flex', alignItems:'center', gap:'10px',
+          pointerEvents: 'none',
         }}>
           <span>✅ {toast}</span>
-          <Link href="/cart" style={{ color:'white', textDecoration:'underline', fontSize:'12px' }}>
+          <a href="/cart" style={{color:'white', textDecoration:'underline', fontSize:'12px', pointerEvents:'all'}}>
             View Cart →
-          </Link>
+          </a>
         </div>
       )}
-      <button onClick={handle} disabled={state === 'loading' || state === 'added'}
+      <button
+        onMouseDown={handle}
+        disabled={state === 'loading' || state === 'added'}
         title={state === 'added' ? 'In Cart' : 'Add to Cart'}
         style={{
-          display:'inline-flex', alignItems:'center', justifyContent:'center', gap:'4px',
-          padding: sm ? '5px 10px' : '8px 14px',
-          borderRadius:'999px', fontWeight:800, fontSize: sm ? '11px' : '13px',
-          border:'1.5px solid ' + (state === 'added' ? '#16A34A' : '#2A3887'),
-          background: state === 'added' ? 'rgba(22,163,74,0.1)' : 'rgba(42,56,135,0.07)',
-          color: state === 'added' ? '#16A34A' : '#2A3887',
-          cursor: state === 'added' || state === 'loading' ? 'default' : 'pointer',
-          transition:'all 0.2s', whiteSpace:'nowrap',
+          display:'inline-flex', alignItems:'center', justifyContent:'center',
+          gap:'4px',
+          padding: sm ? '7px 12px' : '9px 16px',
+          borderRadius:'999px',
+          fontWeight:800,
+          fontSize: sm ? '12px' : '14px',
+          border:'2px solid ' + border,
+          background: bg,
+          color: color,
+          cursor: state !== 'idle' ? 'default' : 'pointer',
+          transition:'all 0.15s',
+          whiteSpace:'nowrap',
+          position:'relative',
+          zIndex: 10,
+          pointerEvents: 'all',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
+          minHeight: sm ? '32px' : '38px',
+          minWidth: sm ? '40px' : '80px',
         }}>
-        {state === 'loading' ? '⏳' : state === 'added' ? '✓' : '🛒'}
-        {!sm && <span style={{marginLeft:'2px'}}>{state === 'added' ? ' In Cart' : ' Add'}</span>}
+        <span style={{fontSize: sm ? '14px' : '16px'}}>
+          {state === 'loading' ? '⏳' : state === 'added' ? '✓' : '🛒'}
+        </span>
+        {!sm && (
+          <span>{state === 'added' ? ' In Cart' : ' Add'}</span>
+        )}
       </button>
     </>
   );
