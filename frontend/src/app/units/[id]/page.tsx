@@ -46,6 +46,8 @@ export default function UnitDetailPage() {
   const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [cartAdded, setCartAdded] = useState(false);
+  const [cartLoading, setCartLoading] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -115,6 +117,27 @@ export default function UnitDetailPage() {
       setSubmitted(true);
     } catch {}
     setSubmitting(false);
+  }
+
+  async function addToCart() {
+    const token = localStorage.getItem('jp_token');
+    if (!token) {
+      window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=cart';
+      return;
+    }
+    setCartLoading(true);
+    try {
+      const r = await fetch(API + '/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ unit_id: id })
+      });
+      if (r.ok || r.status === 400) { // 400 means already in cart
+        setCartAdded(true);
+        showToast('Added to cart 🛒');
+      }
+    } catch {}
+    setCartLoading(false);
   }
 
   if (loading) return (
