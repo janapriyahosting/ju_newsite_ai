@@ -34,7 +34,7 @@ async def add_to_cart(
         raise HTTPException(400, "Unit already in cart")
     item = CartItem(customer_id=customer.id, unit_id=data.unit_id)
     db.add(item)
-    await db.flush()
+    await db.commit()
     await db.refresh(item)
     return item
 
