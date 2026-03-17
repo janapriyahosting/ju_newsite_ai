@@ -132,9 +132,12 @@ export default function UnitDetailPage() {
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body: JSON.stringify({ unit_id: id })
       });
-      if (r.ok || r.status === 400) { // 400 means already in cart
+      if (r.ok) {
         setCartAdded(true);
-        showToast('Added to cart 🛒');
+        showToast('✅ Added to cart! View in 🛒 Cart');
+      } else if (r.status === 400) {
+        setCartAdded(true);
+        showToast('Already in cart 🛒');
       }
     } catch {}
     setCartLoading(false);
@@ -239,8 +242,10 @@ export default function UnitDetailPage() {
                 </div>
               </div>
               {toast && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-white rounded-full text-sm font-bold shadow-xl"
-                  style={{ color: "#2A3887" }}>{toast}</div>
+                <div className="fixed top-20 right-6 z-50 px-5 py-3 rounded-2xl text-sm font-bold shadow-2xl flex items-center gap-2 animate-bounce"
+                  style={{ background: toast.includes('✅') ? '#16A34A' : '#2A3887', color: 'white', maxWidth: '280px' }}>
+                  {toast}
+                </div>
               )}
             </div>
 
