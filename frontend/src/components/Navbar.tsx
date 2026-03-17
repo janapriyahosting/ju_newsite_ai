@@ -72,6 +72,11 @@ export default function Navbar() {
 
         {/* CTA / User */}
         <div className="hidden md:flex items-center gap-3">
+          {/* Cart icon - always visible */}
+          <Link href="/cart" className="relative flex items-center justify-center w-9 h-9 rounded-full transition-all hover:bg-blue-50" title="My Cart"
+            style={{ color: transparent ? "white" : "#2A3887" }}>
+            🛒
+          </Link>
           {loggedIn && customer ? (
             <div className="relative">
               <button onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -108,10 +113,7 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/cart" className="relative p-2 rounded-full transition-all hover:bg-gray-100" title="My Cart">
-            🛒
-          </Link>
-          <Link href="/login"
+              <Link href="/login"
                 className="px-4 py-2 text-sm font-bold rounded-full transition-all"
                 style={{ color: transparent ? "white" : "#2A3887" }}>
                 Sign In
