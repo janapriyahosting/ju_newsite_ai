@@ -119,10 +119,13 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
               className="px-3 py-1.5 text-xs font-bold text-white rounded-lg"
               style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
               Details →
-            </Link>
           <div className="mt-2 flex justify-end" onClick={e=>e.preventDefault()}>
             <AddToCartBtn unitId={unit.id} size="sm" />
           </div>
+            </Link>
+            <div className="mt-2 px-4 pb-3 flex justify-end" onClick={e=>{e.preventDefault();e.stopPropagation();}}>
+              <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
+            </div>
           </div>
         </div>
       </div>
