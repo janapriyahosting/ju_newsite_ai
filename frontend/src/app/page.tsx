@@ -226,10 +226,13 @@ export default function HomePage() {
                           </p>
                         )}
                       </div>
+                      <div className="flex items-center gap-2" onClick={e => e.preventDefault()}>
+                        <AddToCartBtn unitId={u.id} size="sm" />
                       <span className="text-xs font-bold px-3 py-1.5 rounded-xl text-white group-hover:scale-105 transition-all"
                         style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                         View →
                       </span>
+                      </div>
                     </div>
                   </div>
                 </Link>
