@@ -77,9 +77,20 @@ async def duplicate_project(project_id:str, db:AsyncSession=Depends(get_db), _:d
 
 @router.post("/projects",status_code=201)
 async def create_project(data:dict, db:AsyncSession=Depends(get_db), _:dict=Depends(verify_admin_token)):
+    import re as _re
     allowed=["name","slug","location","address","city","state","pincode","rera_number",
              "description","amenities","lat","lng","is_active","is_featured","images","brochure_url","video_url"]
-    p=Project(**{k:v for k,v in data.items() if k in allowed})
+    filtered = {k:v for k,v in data.items() if k in allowed}
+    # Auto-generate slug from name if not provided
+    if not filtered.get("slug") and filtered.get("name"):
+        base = _re.sub(r"[^a-z0-9]+", "-", filtered["name"].lower()).strip("-")
+        # Ensure uniqueness by checking DB
+        from sqlalchemy import func as _func
+        count = (await db.execute(
+            select(_func.count()).select_from(Project).where(Project.slug.like(f"{base}%"))
+        )).scalar()
+        filtered["slug"] = f"{base}-{count+1}" if count else base
+    p=Project(**filtered)
     db.add(p); await db.commit(); await db.refresh(p); return model_to_dict(p)
 
 @router.get("/projects/{project_id}")
