@@ -30,10 +30,14 @@ def paginate(total, page, page_size):
 
 def model_to_dict(obj):
     result = {}
+    bool_default_true = {"is_active"}
     for col in obj.__table__.columns:
         val = getattr(obj, col.name)
         if hasattr(val, 'hex'): val = str(val)
         elif hasattr(val, 'isoformat'): val = val.isoformat()
+        # Treat NULL boolean fields as True for is_active
+        if val is None and col.name in bool_default_true:
+            val = True
         result[col.name] = val
     return result
 
