@@ -47,6 +47,17 @@ async def list_units(
 
 
 
+@router.get("/units/all")
+async def list_units_all(
+    page: int = 1, page_size: int = 20,
+    status: str = "", unit_type: str = "",
+    tower_id: str = "", project_id: str = "",
+    db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
+):
+    """Alias for list_units — /units/all maps to the same list endpoint."""
+    return await list_units(page=page, page_size=page_size, status=status,
+                            unit_type=unit_type, db=db, admin=admin)
+
 @router.get("/units/{unit_id}")
 async def get_unit_admin(
     unit_id: UUID, db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
