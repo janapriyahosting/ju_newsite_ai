@@ -168,6 +168,7 @@ async def list_towers(
                 "total_units": t.total_units,
                 "amenities": t.amenities or [],
                 "brochure_url": t.brochure_url,
+                "is_active": bool(t.is_active) if t.is_active is not None else True,
             }
             for t in towers
         ]
