@@ -206,16 +206,31 @@ async def update_tower(
     result = await db.execute(select(Tower).where(Tower.id == tower_id))
     tower = result.scalar_one_or_none()
     if not tower: raise HTTPException(404, "Tower not found")
-    allowed = {"amenities", "video_url", "walkthrough_url", "images", "floor_plans"}
+    scalar_fields = {"name", "description", "video_url", "walkthrough_url", "svg_floor_plan", "is_active"}
+    int_fields = {"total_floors", "total_units"}
     json_fields = {"amenities", "images", "floor_plans"}
+    allowed = scalar_fields | int_fields | json_fields | {"brochure_url"}
     import json as _json
     json_updates = {}
+    scalar_updates = {}
     for k, v in data.items():
-        if k in allowed:
-            if k in json_fields:
-                json_updates[k] = v if isinstance(v, list) else []
-            else:
-                setattr(tower, k, v)
+        if k not in allowed:
+            continue
+        if k in json_fields:
+            json_updates[k] = v if isinstance(v, list) else []
+        elif k in int_fields:
+            # Cast to int, skip if empty/invalid
+            try:
+                scalar_updates[k] = int(v) if v not in (None, "", []) else None
+            except (ValueError, TypeError):
+                pass
+        else:
+            scalar_updates[k] = v
+    # Apply scalar updates via setattr
+    for k, v in scalar_updates.items():
+        if v is not None:
+            setattr(tower, k, v)
+    # Apply JSON updates via raw SQL
     if json_updates:
         set_parts = ", ".join(f"{k} = :{k}" for k in json_updates)
         params = {k: _json.dumps(v) for k, v in json_updates.items()}
@@ -223,7 +238,12 @@ async def update_tower(
         await db.execute(text(f"UPDATE towers SET {set_parts} WHERE id = :tower_id"), params)
     await db.commit()
     await db.refresh(tower)
-    return {"id": str(tower.id), "name": tower.name, "amenities": tower.amenities or []}
+    return {
+        "id": str(tower.id), "name": tower.name,
+        "total_floors": tower.total_floors, "total_units": tower.total_units,
+        "description": tower.description, "is_active": tower.is_active,
+        "amenities": tower.amenities or [], "brochure_url": tower.brochure_url,
+    }
 
 
 @router.get("/projects/list")

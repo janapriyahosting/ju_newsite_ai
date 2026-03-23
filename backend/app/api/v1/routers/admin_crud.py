@@ -168,7 +168,14 @@ async def update_tower(tower_id:str, data:dict, db:AsyncSession=Depends(get_db),
     t=r.scalar_one_or_none()
     if not t: raise HTTPException(404,"Tower not found")
     allowed=["name","total_floors","total_units","description","is_active","images","video_url","walkthrough_url","floor_plans","svg_floor_plan"]
-    [setattr(t,k,v) for k,v in data.items() if k in allowed]
+    int_fields = {"total_floors","total_units"}
+    for k,v in data.items():
+        if k not in allowed: continue
+        if k in int_fields:
+            try: setattr(t, k, int(v)) if v not in (None,"") else None
+            except (ValueError,TypeError): pass
+        else:
+            setattr(t, k, v)
     await db.commit(); await db.refresh(t); return model_to_dict(t)
 
 @router.delete("/towers/{tower_id}",status_code=204)
