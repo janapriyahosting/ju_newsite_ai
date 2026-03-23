@@ -249,8 +249,10 @@ async def update_tower(
     return {
         "id": str(tower.id), "name": tower.name,
         "total_floors": tower.total_floors, "total_units": tower.total_units,
-        "description": tower.description, "is_active": tower.is_active,
+        "description": tower.description,
+        "is_active": bool(tower.is_active),
         "amenities": tower.amenities or [], "brochure_url": tower.brochure_url,
+        "video_url": tower.video_url, "walkthrough_url": tower.walkthrough_url,
     }
 
 
