@@ -106,7 +106,15 @@ async def update_project(project_id:str, data:dict, db:AsyncSession=Depends(get_
     p=r.scalar_one_or_none()
     if not p: raise HTTPException(404,"Project not found")
     allowed=["name","slug","description","city","location","address","state","pincode","locality","rera_number","total_units","possession_date","is_active","is_featured","images","video_url","walkthrough_url","brochure_url","floor_plans","amenities","lat","lng"]
-    [setattr(p,k,v) for k,v in data.items() if k in allowed]
+    bool_fields_p = {"is_active","is_featured"}
+    for k,v in data.items():
+        if k not in allowed: continue
+        if k in bool_fields_p:
+            if isinstance(v, bool): setattr(p, k, v)
+            elif isinstance(v, str): setattr(p, k, v.lower() in ("true","1","yes"))
+            elif isinstance(v, int): setattr(p, k, bool(v))
+        else:
+            setattr(p, k, v)
     await db.commit(); await db.refresh(p); return model_to_dict(p)
 
 @router.delete("/projects/{project_id}",status_code=204)
@@ -169,11 +177,16 @@ async def update_tower(tower_id:str, data:dict, db:AsyncSession=Depends(get_db),
     if not t: raise HTTPException(404,"Tower not found")
     allowed=["name","total_floors","total_units","description","is_active","images","video_url","walkthrough_url","floor_plans","svg_floor_plan"]
     int_fields = {"total_floors","total_units"}
+    bool_fields = {"is_active","is_featured"}
     for k,v in data.items():
         if k not in allowed: continue
         if k in int_fields:
             try: setattr(t, k, int(v)) if v not in (None,"") else None
             except (ValueError,TypeError): pass
+        elif k in bool_fields:
+            if isinstance(v, bool): setattr(t, k, v)
+            elif isinstance(v, str): setattr(t, k, v.lower() in ("true","1","yes"))
+            elif isinstance(v, int): setattr(t, k, bool(v))
         else:
             setattr(t, k, v)
     await db.commit(); await db.refresh(t); return model_to_dict(t)

@@ -206,10 +206,11 @@ async def update_tower(
     result = await db.execute(select(Tower).where(Tower.id == tower_id))
     tower = result.scalar_one_or_none()
     if not tower: raise HTTPException(404, "Tower not found")
-    scalar_fields = {"name", "description", "video_url", "walkthrough_url", "svg_floor_plan", "is_active"}
+    scalar_fields = {"name", "description", "video_url", "walkthrough_url", "svg_floor_plan"}
     int_fields = {"total_floors", "total_units"}
+    bool_fields = {"is_active"}
     json_fields = {"amenities", "images", "floor_plans"}
-    allowed = scalar_fields | int_fields | json_fields | {"brochure_url"}
+    allowed = scalar_fields | int_fields | bool_fields | json_fields | {"brochure_url"}
     import json as _json
     json_updates = {}
     scalar_updates = {}
@@ -219,11 +220,18 @@ async def update_tower(
         if k in json_fields:
             json_updates[k] = v if isinstance(v, list) else []
         elif k in int_fields:
-            # Cast to int, skip if empty/invalid
             try:
                 scalar_updates[k] = int(v) if v not in (None, "", []) else None
             except (ValueError, TypeError):
                 pass
+        elif k in bool_fields:
+            # Coerce string "true"/"false" to bool
+            if isinstance(v, bool):
+                scalar_updates[k] = v
+            elif isinstance(v, str):
+                scalar_updates[k] = v.lower() in ("true", "1", "yes")
+            elif isinstance(v, int):
+                scalar_updates[k] = bool(v)
         else:
             scalar_updates[k] = v
     # Apply scalar updates via setattr
