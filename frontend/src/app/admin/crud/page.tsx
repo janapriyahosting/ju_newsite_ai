@@ -233,12 +233,15 @@ function DynamicFormModal({mode,entity,entityKey,record,projects,towers,fieldCon
     try {
       const ep=entity==="projects"?"projects":entity==="towers"?"towers":"units";
       let recordId=record?.id;
+      // Only send schema-defined fields to avoid corrupting unrelated fields
+      const allowedKeys = schemaFieldDefs.map((f:any) => f.key);
+      const filteredForm = Object.fromEntries(Object.entries(form).filter(([k]) => allowedKeys.includes(k)));
       if (mode==="create") {
-        const res=await adminApi(`/admin/${ep}`,{method:"POST",body:JSON.stringify(form)});
+        const res=await adminApi(`/admin/${ep}`,{method:"POST",body:JSON.stringify(filteredForm)});
         if (!res.ok) { const e=await res.json(); throw new Error(e.detail||"Create failed"); }
         recordId=(await res.json()).id;
       } else {
-        const res=await adminApi(`/admin/${ep}/${record.id}`,{method:"PATCH",body:JSON.stringify(form)});
+        const res=await adminApi(`/admin/${ep}/${record.id}`,{method:"PATCH",body:JSON.stringify(filteredForm)});
         if (!res.ok) { const e=await res.json(); throw new Error(e.detail||"Update failed"); }
       }
       if (customFieldDefs.length>0&&recordId) {
