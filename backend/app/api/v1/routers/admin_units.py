@@ -117,12 +117,14 @@ async def update_unit(
 
     await db.commit()
     await db.refresh(unit)
-    return {
-        "id": str(unit.id),
-        "status": unit.status,
-        "dimensions": unit.dimensions or [],
-    }
-
+    from decimal import Decimal as _D
+    import uuid as _uuid
+    def _sv(v):
+        if isinstance(v, _D): return str(v)
+        if isinstance(v, _uuid.UUID): return str(v)
+        return v
+    cols = [col.name for col in unit.__table__.columns if col.name != 'embedding']
+    return {col: _sv(getattr(unit, col)) for col in cols}
 @router.get("/projects")
 async def list_projects(
     db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
