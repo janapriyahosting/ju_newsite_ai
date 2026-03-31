@@ -37,8 +37,10 @@ async def list_units(
                 "area_sqft": str(u.area_sqft) if u.area_sqft else None,
                 "base_price": str(u.base_price) if u.base_price else None,
                 "emi_estimate": str(u.emi_estimate) if u.emi_estimate else None,
-                "status": u.status, "is_trending": u.is_trending,
-                "view_count": u.view_count,
+                "status": u.status,
+                "is_trending": bool(u.is_trending) if u.is_trending is not None else False,
+                "is_featured": bool(u.is_featured) if u.is_featured is not None else False,
+                "view_count": u.view_count or 0,
                 "tower_id": str(u.tower_id) if u.tower_id else None,
             }
             for u in units
