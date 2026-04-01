@@ -82,29 +82,7 @@ export default function HomePage() {
           style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.3) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.3) 1px,transparent 1px)", backgroundSize: "50px 50px" }} />
 
         <div className="relative z-10 max-w-4xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold tracking-widest uppercase mb-8 border"
-            style={{ background: "rgba(41,169,223,0.15)", borderColor: "rgba(41,169,223,0.4)", color: "#29A9DF" }}>
-            ✦ RERA Registered · 40 Years of Excellence · Hyderabad
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-4">
-            Ask More<br />
-            <span style={{ color: "#29A9DF" }}>of Life.</span>
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.75)" }} className="text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-            Premium apartments, villas and plots crafted for families who believe home is more than just a place — it's where life truly begins.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link href="/projects"
-              className="px-8 py-4 text-white font-bold rounded-full text-sm tracking-wide transition-all hover:scale-105 hover:shadow-2xl"
-              style={{ background: "linear-gradient(135deg, #29A9DF, #00C2FF)", boxShadow: "0 8px 30px rgba(41,169,223,0.4)" }}>
-              Explore Projects →
-            </Link>
-            <Link href="/contact"
-              className="px-8 py-4 font-bold rounded-full text-sm tracking-wide transition-all hover:bg-white"
-              style={{ background: "rgba(255,255,255,0.1)", color: "white", border: "2px solid rgba(255,255,255,0.3)" }}>
-              Book a Site Visit
-            </Link>
-          </div>
+       
 
           {/* ── AI Search ────────────────────────────────────────────────── */}
           <div className="w-full max-w-2xl mx-auto">
