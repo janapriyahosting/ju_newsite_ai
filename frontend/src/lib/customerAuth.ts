@@ -15,6 +15,14 @@ export async function customerApi(path: string, options: RequestInit = {}) {
       ...(options.headers || {}),
     },
   });
+  if (res.status === 401) {
+    // Token expired or invalid — clear session and redirect to login
+    clearSession();
+    if (typeof window !== "undefined") {
+      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}&reason=session_expired`;
+    }
+    throw new Error("Session expired. Please login again.");
+  }
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || "Request failed");
   return data;

@@ -12,7 +12,7 @@ from backend.app.core.config import settings
 from backend.app.models.customer import Customer
 from backend.app.schemas.customer import CustomerResponse, TokenResponse
 from backend.app.services.sms import send_otp_sms, generate_otp
-from backend.app.schemas.base import validate_phone
+from backend.app.schemas.base import validate_phone, validate_email_format, validate_name
 from passlib.context import CryptContext
 import re
 
@@ -107,7 +107,11 @@ async def verify_otp(data: dict, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "OTP must be exactly 6 digits")
     mode = data.get("mode", "register")  # default to register for backward compat
     name = data.get("name", "").strip()[:255]
-    email = data.get("email", "").strip()[:255] or None
+    email_raw = data.get("email", "").strip()[:255] or None
+    try:
+        email = validate_email_format(email_raw) if email_raw else None
+    except ValueError:
+        raise HTTPException(400, "Invalid email address format.")
     consent = bool(data.get("consent", False))
 
     stored = _otp_store.get(phone)

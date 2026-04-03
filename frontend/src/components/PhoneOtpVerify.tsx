@@ -90,6 +90,7 @@ export default function PhoneOtpVerify({
   async function sendOtp() {
     const cleaned = phone.replace(/\D/g, "").replace(/^91/, "");
     if (cleaned.length !== 10) { setError("Enter a valid 10-digit mobile number"); return; }
+    if (!/^[6-9]/.test(cleaned)) { setError("Indian mobile numbers start with 6, 7, 8, or 9"); return; }
     setError(""); setLoading(true);
     try {
       const res = await customerApi("/auth/send-otp", {
