@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import Link from "next/link";
@@ -7,8 +7,11 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { isSaved, toggleSaved, toggleCompare, isInCompare } from "@/lib/savedProperties";
 import UnitMediaSlider from "@/components/UnitMediaSlider";
+import RiseUpCalculator from "@/components/RiseUpCalculator";
+import DynamicFields from "@/components/DynamicFields";
+import { customerApi } from "@/lib/customerAuth";
 
-const API = "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
 
 function formatPrice(p: any) {
   if (!p) return "Price on request";
@@ -18,6 +21,16 @@ function formatPrice(p: any) {
   return `₹${n.toLocaleString()}`;
 }
 
+
+const MEDIA_BASE = "http://173.168.0.81:8000";
+function mUrl(u: string) { return u?.startsWith('/media') ? `${MEDIA_BASE}${u}` : u; }
+function toEmbed(url: string): string {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  const vm = url.match(/vimeo\.com\/(\d+)/);
+  if (vm) return `https://player.vimeo.com/video/${vm[1]}`;
+  return url;
+}
 
 function toFtIn(val: any, unit: string): string {
   const n = parseFloat(val) || 0;
@@ -43,15 +56,35 @@ export default function UnitDetailPage() {
   const [inCompare, setInCompare] = useState(false);
   const [toast, setToast] = useState("");
   const [enquireOpen, setEnquireOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "" });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+
+  // Auto-open enquiry modal if ?enquire=true in URL
+  useEffect(() => {
+    if (!loading && unit && typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("enquire") === "true") setEnquireOpen(true);
+    }
+  }, [loading, unit]);
   const [cartAdded, setCartAdded] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
+  const [unitSections, setUnitSections] = useState<any[]>([]);
+  const [customFieldMap, setCustomFieldMap] = useState<Record<string, { value: any; field_type: string; label: string }>>({});
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+    fetch(`${API}/admin/sections/public/unit`)
+      .then(r => r.ok ? r.json() : Promise.reject(`sections fetch failed: ${r.status}`))
+      .then(s => setUnitSections(Array.isArray(s) ? s : []))
+      .catch(e => console.error('[UnitDetail] sections load error:', e));
+    fetch(`${API}/admin/fields/public-values/unit/${id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((vals: any[]) => {
+        if (!Array.isArray(vals)) return;
+        const map: Record<string, { value: any; field_type: string; label: string }> = {};
+        vals.forEach(v => { map[v.field_key] = { value: v.value, field_type: v.field_type || 'text', label: v.label }; });
+        setCustomFieldMap(map);
+      })
+      .catch(() => {});
     fetch(`${API}/units/${id}`)
       .then(async r => {
         if (!r.ok) { setLoading(false); return; } // 404 → unit stays null → shows 404 page
@@ -105,19 +138,7 @@ export default function UnitDetailPage() {
     else { navigator.clipboard.writeText(`${text}\n${url}`); showToast("Link copied! 📋"); }
   }
 
-  async function handleEnquire(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await fetch(`${API}/leads`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, unit_id: id, source: "unit_detail" }),
-      });
-      setSubmitted(true);
-    } catch {}
-    setSubmitting(false);
-  }
+  // handleEnquire is now inside UnitEnquiryModal
 
   async function addToCart() {
     const token = localStorage.getItem('jp_token');
@@ -188,6 +209,56 @@ export default function UnitDetailPage() {
 
   const statusColor = unit.status === "available" ? "#22c55e" : unit.status === "booked" ? "#ef4444" : "#f59e0b";
 
+  // Build spec lookup once — outside the section render loop
+  const SPEC_MAP: Record<string, { icon: string; label: string; val: string | null }> = {
+    unit_type:      { icon: '🏘', label: 'Type',          val: unit.unit_type || null },
+    bedrooms:       { icon: '🛏', label: 'Bedrooms',      val: unit.bedrooms != null ? String(unit.bedrooms) : null },
+    bathrooms:      { icon: '🚿', label: 'Bathrooms',     val: unit.bathrooms != null ? String(unit.bathrooms) : null },
+    area_sqft:      { icon: '📐', label: 'Super Area',    val: unit.area_sqft ? `${parseFloat(unit.area_sqft).toFixed(0)} sqft` : null },
+    carpet_area:    { icon: '🏠', label: 'Carpet Area',   val: unit.carpet_area ? `${parseFloat(unit.carpet_area).toFixed(0)} sqft` : null },
+    plot_area:      { icon: '🌱', label: 'Plot Area',     val: unit.plot_area ? `${parseFloat(unit.plot_area).toFixed(0)} sqft` : null },
+    floor_number:   { icon: '🏢', label: 'Floor',         val: unit.floor_number != null ? String(unit.floor_number) : null },
+    facing:         { icon: '🧭', label: 'Facing',        val: unit.facing || null },
+    balconies:      { icon: '🏡', label: 'Balconies',     val: unit.balconies != null ? String(unit.balconies) : null },
+    status:         { icon: '●',  label: 'Status',        val: unit.status ? unit.status.charAt(0).toUpperCase() + unit.status.slice(1) : null },
+    base_price:     { icon: '💰', label: 'Base Price',    val: unit.base_price ? formatPrice(unit.base_price) : null },
+    price_per_sqft: { icon: '📊', label: 'Price / sqft', val: unit.price_per_sqft
+      ? `₹${parseFloat(unit.price_per_sqft).toLocaleString()}`
+      : (unit.area_sqft && unit.base_price ? `₹${Math.round(parseFloat(unit.base_price) / parseFloat(unit.area_sqft)).toLocaleString()}` : null) },
+    down_payment:   { icon: '💳', label: 'Down Payment',  val: unit.down_payment ? formatPrice(unit.down_payment) : null },
+    emi_estimate:   { icon: '📅', label: 'EMI / mo',      val: unit.emi_estimate ? `₹${parseFloat(unit.emi_estimate).toLocaleString()}` : null },
+  };
+
+  // Fields that have dedicated renderers — don't treat as generic custom fields
+  const SPECIAL_FIELDS = new Set(['images', 'floor_plan_img', 'floor_plans', 'video_url', 'walkthrough_url', 'amenities', 'description']);
+
+  // All field keys assigned to any section — used to hide them from "Additional Details"
+  const fieldsInSections = new Set(unitSections.flatMap((s: any) => s.fields || []));
+
+  function renderCustomVal(item: { value: any; field_type: string; label: string }) {
+    const { value, field_type } = item;
+    if (value === null || value === undefined || value === '') return null;
+    if (field_type === 'boolean' || typeof value === 'boolean') {
+      const yes = value === true || value === 'true' || value === 'Yes';
+      return <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: yes ? '#dcfce7' : '#fee2e2', color: yes ? '#16a34a' : '#dc2626' }}>{yes ? 'Yes' : 'No'}</span>;
+    }
+    if (field_type === 'currency') {
+      const n = parseFloat(value);
+      if (isNaN(n)) return <span>{String(value)}</span>;
+      const fmt = n >= 10000000 ? `₹${(n/10000000).toFixed(2)} Cr` : n >= 100000 ? `₹${(n/100000).toFixed(2)} L` : `₹${n.toLocaleString('en-IN')}`;
+      return <span className="font-black" style={{ color: '#2A3887' }}>{fmt}</span>;
+    }
+    if ((field_type === 'url' || (typeof value === 'string' && value.startsWith('http'))) && /\.(png|jpg|jpeg|webp|gif|svg)(\?.*)?$/i.test(String(value))) {
+      return <a href={String(value)} target="_blank" rel="noopener noreferrer"><img src={String(value)} alt={item.label} className="rounded-lg object-contain max-h-40" style={{ background: '#f8fafc' }} /></a>;
+    }
+    if (field_type === 'url' || (typeof value === 'string' && value.startsWith('http'))) {
+      return <a href={String(value)} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold underline break-all" style={{ color: '#29A9DF' }}>{String(value)}</a>;
+    }
+    if (field_type === 'number' || field_type === 'decimal') return <span className="font-bold">{Number(value).toLocaleString('en-IN')}</span>;
+    if (Array.isArray(value)) return <div className="flex flex-wrap gap-1 justify-end">{value.map((v: string, i: number) => <span key={i} className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#E2F1FC', color: '#2A3887' }}>{v}</span>)}</div>;
+    return <span className="font-semibold text-right" style={{ color: '#333' }}>{String(value)}</span>;
+  }
+
   return (
     <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
       <Navbar />
@@ -249,87 +320,127 @@ export default function UnitDetailPage() {
               )}
             </div>
 
-            {/* Specs Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { icon: "🛏", label: "Bedrooms", value: unit.bedrooms || "—" },
-                { icon: "🚿", label: "Bathrooms", value: unit.bathrooms || "—" },
-                { icon: "📐", label: "Super Area", value: unit.area_sqft ? `${parseFloat(unit.area_sqft).toFixed(0)} sqft` : "—" },
-                { icon: "🏠", label: "Carpet Area", value: unit.carpet_area ? `${parseFloat(unit.carpet_area).toFixed(0)} sqft` : "—" },
-                { icon: "🏢", label: "Floor", value: unit.floor_number ?? "—" },
-                { icon: "🧭", label: "Facing", value: unit.facing || "—" },
-                { icon: "🏡", label: "Balconies", value: unit.balconies ?? "—" },
-                { icon: "🌱", label: "Plot Area", value: unit.plot_area ? `${parseFloat(unit.plot_area).toFixed(0)} sqft` : "—" },
-              ].map(s => (
-                <div key={s.label} className="rounded-2xl p-4 text-center" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
-                  <div className="text-2xl mb-1">{s.icon}</div>
-                  <div className="font-black text-sm" style={{ color: "#2A3887" }}>{s.value}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "#999" }}>{s.label}</div>
+            {/* Section-driven content — ordered and visibility controlled by admin Sections */}
+            {unitSections.filter((s: any) => s.visible).map((s: any) => {
+              const fields: string[] = s.fields || [];
+
+              // gallery — images already shown in the media slider above
+              if (fields.length > 0 && fields.every((f: string) => f === 'images')) return null;
+
+              // Built-in spec cards (bedrooms, price, etc.)
+              const specItems = fields
+                .filter((f: string) => SPEC_MAP[f] && SPEC_MAP[f].val !== null)
+                .map((f: string) => ({ key: f, ...SPEC_MAP[f] }));
+
+              // Custom field rows for anything not in SPEC_MAP and not a special renderer
+              const customItems = fields
+                .filter((f: string) => !SPEC_MAP[f] && !SPECIAL_FIELDS.has(f) && customFieldMap[f] !== undefined
+                  && customFieldMap[f].value !== null && customFieldMap[f].value !== undefined && customFieldMap[f].value !== '')
+                .map((f: string) => ({ key: f, ...customFieldMap[f] }));
+
+              const hasFloorPlan   = (fields.includes('floor_plan_img') && unit.floor_plan_img)
+                || (fields.includes('floor_plans') && unit.floor_plans?.length > 0);
+              const hasVideo       = fields.includes('video_url') && unit.video_url;
+              const hasWalkthrough = fields.includes('walkthrough_url') && unit.walkthrough_url;
+              const hasAmenities   = fields.includes('amenities') && (towerAmenities.length > 0 || unit.amenities?.length > 0);
+              const hasDescription = fields.includes('description') && unit.description;
+
+              // Skip section if nothing to show
+              if (!specItems.length && !customItems.length && !hasFloorPlan && !hasVideo && !hasWalkthrough && !hasAmenities && !hasDescription) return null;
+
+              return (
+                <div key={s.key} className="rounded-2xl p-6" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
+                  <h2 className="font-black text-lg mb-4" style={{ color: "#262262" }}>{s.label}</h2>
+
+                  {/* Built-in spec cards */}
+                  {specItems.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      {specItems.map((item: any) => (
+                        <div key={item.key} className="rounded-xl p-4 text-center bg-white" style={{ border: "1px solid #E2F1FC" }}>
+                          <div className="text-2xl mb-1">{item.icon}</div>
+                          <div className="font-black text-sm" style={{ color: "#2A3887" }}>{item.val}</div>
+                          <div className="text-xs mt-0.5" style={{ color: "#999" }}>{item.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Custom field key-value rows */}
+                  {customItems.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 mb-4">
+                      {customItems.map((item: any) => (
+                        <div key={item.key} className="flex justify-between items-center py-2.5 gap-4" style={{ borderBottom: "1px solid #E2F1FC" }}>
+                          <span className="text-sm flex-shrink-0" style={{ color: "#888" }}>{item.label}</span>
+                          {renderCustomVal(item)}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Description */}
+                  {hasDescription && (
+                    <p style={{ color: "#555" }} className="text-sm leading-relaxed mb-4">{unit.description}</p>
+                  )}
+
+                  {/* Amenities tags */}
+                  {hasAmenities && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {(towerAmenities.length > 0 ? towerAmenities : (unit.amenities || [])).map((a: string, i: number) => (
+                        <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold"
+                          style={{ background: "#E2F1FC", color: "#2A3887" }}>✓ {a}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Floor plans */}
+                  {hasFloorPlan && (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        {unit.floor_plan_img && (
+                          <div className="rounded-xl overflow-hidden" style={{ background: "#f1f5f9" }}>
+                            <img src={mUrl(unit.floor_plan_img)} alt="Floor Plan" className="w-full object-contain max-h-52" />
+                          </div>
+                        )}
+                        {(unit.floor_plans || []).map((img: string, i: number) => (
+                          <div key={i} className="rounded-xl overflow-hidden" style={{ background: "#f1f5f9" }}>
+                            <img src={mUrl(img)} alt={`Floor Plan ${i + 1}`} className="w-full object-contain max-h-52" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Video */}
+                  {hasVideo && (
+                    <div className={hasFloorPlan ? "mt-5" : ""}>
+                      <p className="text-sm font-bold mb-2" style={{ color: "#555" }}>📹 Unit Video</p>
+                      <div className="rounded-2xl overflow-hidden" style={{ aspectRatio: "16/9", background: "#111" }}>
+                        <iframe src={toEmbed(unit.video_url)} className="w-full h-full" allowFullScreen title="Video" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3D Walkthrough */}
+                  {hasWalkthrough && (
+                    <div className={hasVideo || hasFloorPlan ? "mt-5" : ""}>
+                      <p className="text-sm font-bold mb-2" style={{ color: "#555" }}>🥽 3D Walkthrough</p>
+                      <div className="rounded-2xl overflow-hidden" style={{ height: 400, background: "#111" }}>
+                        <iframe src={unit.walkthrough_url} className="w-full h-full" allowFullScreen title="Walkthrough" />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
 
-            {/* Price Breakdown */}
-            <div className="rounded-2xl p-6" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
-              <h2 className="font-black text-lg mb-4" style={{ color: "#262262" }}>Price Details</h2>
-              <div className="space-y-3">
-                {[
-                  { label: "Base Price", value: formatPrice(unit.base_price), highlight: true },
-                  { label: "Price per sqft", value: unit.area_sqft && unit.base_price ? `₹${Math.round(parseFloat(unit.base_price)/parseFloat(unit.area_sqft)).toLocaleString()}` : "—" },
-                  { label: "Floor Premium", value: unit.floor_premium ? formatPrice(unit.floor_premium) : "Nil" },
-                  { label: "Parking", value: unit.parking_price ? formatPrice(unit.parking_price) : "Included" },
-                ].map(row => (
-                  <div key={row.label} className="flex justify-between items-center py-2"
-                    style={{ borderBottom: "1px solid #E2F1FC" }}>
-                    <span className="text-sm" style={{ color: "#555" }}>{row.label}</span>
-                    <span className={`font-black text-sm ${row.highlight ? "text-2xl" : ""}`}
-                      style={{ color: row.highlight ? "#2A3887" : "#333" }}>
-                      {row.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Additional Info */}
-            {(unit.amenities || unit.description) && (
-              <div className="rounded-2xl p-6" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
-                <h2 className="font-black text-lg mb-4" style={{ color: "#262262" }}>About This Unit</h2>
-                {unit.description && <p style={{ color: "#555" }} className="text-sm leading-relaxed mb-4">{unit.description}</p>}
-                {(towerAmenities.length > 0 || (unit.amenities && unit.amenities.length > 0)) && (
-                  <div className="flex flex-wrap gap-2">
-                    {(towerAmenities.length > 0 ? towerAmenities : (unit.amenities || [])).map((a: string, i: number) => (
-                      <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold"
-                        style={{ background: "#E2F1FC", color: "#2A3887" }}>✓ {a}</span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Remaining custom fields not assigned to any section */}
+            <DynamicFields entity="unit" entityId={unit.id} entityData={unit} excludeKeys={fieldsInSections} />
           </div>
           {/* Right: Sticky CTA */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-4">
               {/* Price Card */}
-              
-              {/* Room Dimensions */}
-              {unit.dimensions && unit.dimensions.length > 0 && (
-                <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
-                  <h3 className="text-sm font-black mb-3 flex items-center gap-2" style={{color:"#262262"}}>
-                    📐 Room Dimensions
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {unit.dimensions.map((d: any, idx: number) => (
-                      <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
-                        <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:"#94a3b8"}}>{d.room}</p>
-                        <p className="text-sm font-black" style={{color:"#2A3887", whiteSpace:"nowrap"}}>{toFtIn(d.width, d.unit)} <span style={{color:"#94a3b8", fontWeight:400}}>×</span> {toFtIn(d.length, d.unit)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-<div className="rounded-2xl p-6" style={{ boxShadow: "0 8px 30px rgba(42,56,135,0.15)", border: "1px solid #E2F1FC" }}>
+              <div className="rounded-2xl p-6" style={{ boxShadow: "0 8px 30px rgba(42,56,135,0.15)", border: "1px solid #E2F1FC" }}>
                 <p style={{ color: "#999" }} className="text-xs uppercase tracking-wide mb-1">Starting from</p>
                 <p className="text-3xl font-black mb-1" style={{ color: "#2A3887" }}>{formatPrice(unit.base_price)}</p>
                 {unit.area_sqft && unit.base_price && (
@@ -337,12 +448,12 @@ export default function UnitDetailPage() {
                     ₹{Math.round(parseFloat(unit.base_price)/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
                   </p>
                 )}
-                <button onClick={() => setEnquireOpen(true)}
+                <button data-enquire-trigger onClick={() => setEnquireOpen(true)}
                   className="w-full py-3.5 text-white font-black rounded-xl text-sm mb-3 transition-all hover:opacity-90"
                   style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                   Enquire Now
                 </button>
-                <Link href={`/contact?unit=${unit.id}&visit=1`}
+                <Link href="/site-visit"
                   className="block w-full py-3.5 text-center font-black rounded-xl text-sm transition-all"
                   style={{ border: "2px solid #2A3887", color: "#2A3887" }}>
                   📅 Book Site Visit
@@ -364,25 +475,32 @@ export default function UnitDetailPage() {
                   </Link>
                 </div>
               </div>
+
+              {/* Room Dimensions */}
+              {unit.dimensions && unit.dimensions.length > 0 && (
+                <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
+                  <h3 className="text-sm font-black mb-3 flex items-center gap-2" style={{color:"#262262"}}>
+                    📐 Room Dimensions
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {unit.dimensions.map((d: any, idx: number) => (
+                      <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
+                        <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:"#94a3b8"}}>{d.room}</p>
+                        <p className="text-sm font-black" style={{color:"#2A3887", whiteSpace:"nowrap"}}>{toFtIn(d.width, d.unit)} <span style={{color:"#94a3b8", fontWeight:400}}>×</span> {toFtIn(d.length, d.unit)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* RiseUp Calculator */}
+              {unit.base_price && parseFloat(unit.base_price) > 100_000 && (
+                <RiseUpCalculator unitPrice={parseFloat(unit.base_price)} unitName={unit.unit_number} />
+              )}
+
               {/* Brochure Download */}
               {(unit.brochure_url || towerData?.brochure_url) && (
-                <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
-                  <p className="text-xs font-black mb-3" style={{color:"#2A3887"}}>📄 Project Brochure</p>
-                  <button
-                    onClick={() => {
-                      const user = typeof window !== 'undefined' ? localStorage.getItem('jp_token') : null;
-                      if (!user) {
-                        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=brochure';
-                      } else {
-                        window.open('http://173.168.0.81:8000' + (unit.brochure_url || towerData?.brochure_url), '_blank');
-                      }
-                    }}
-                    className="w-full py-3 text-white font-black rounded-xl text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
-                    style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)"}}>
-                    ⬇️ Download Brochure
-                  </button>
-                  <p className="text-xs text-center mt-2" style={{color:"#94a3b8"}}>Login required to download</p>
-                </div>
+                <BrochureDownload url={unit.brochure_url || towerData?.brochure_url} />
               )}
 
               {/* Share Card */}
@@ -426,60 +544,244 @@ export default function UnitDetailPage() {
       </div>
 
       {/* Enquire Modal */}
-      {enquireOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
-          <div className="bg-white rounded-3xl p-6 w-full max-w-md" style={{ boxShadow: "0 25px 60px rgba(0,0,0,0.3)" }}>
-            {submitted ? (
-              <div className="text-center py-4">
-                <div className="text-5xl mb-3">✅</div>
-                <h3 className="font-black text-xl mb-2" style={{ color: "#2A3887" }}>Enquiry Submitted!</h3>
-                <p style={{ color: "#555" }} className="text-sm mb-4">Our team will contact you shortly.</p>
-                <button onClick={() => { setEnquireOpen(false); setSubmitted(false); }}
-                  className="px-6 py-2.5 text-white font-bold rounded-full"
-                  style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>Close</button>
-              </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-start mb-5">
-                  <div>
-                    <h3 className="font-black text-lg" style={{ color: "#2A3887" }}>Enquire About This Unit</h3>
-                    <p style={{ color: "#555" }} className="text-sm">{unit.unit_number} · {formatPrice(unit.base_price)}</p>
-                  </div>
-                  <button onClick={() => setEnquireOpen(false)} style={{ color: "#999" }} className="hover:text-gray-600">✕</button>
-                </div>
-                <form onSubmit={handleEnquire} className="space-y-3">
-                  {[
-                    {key:"name",label:"Your Name",type:"text",req:true},
-                    {key:"phone",label:"Phone Number",type:"tel",req:true},
-                    {key:"email",label:"Email Address",type:"email",req:false},
-                  ].map(f => (
-                    <div key={f.key}>
-                      <label className="block text-xs font-bold mb-1" style={{ color: "#2A3887" }}>{f.label}</label>
-                      <input type={f.type} required={f.req} value={(form as any)[f.key]}
-                        onChange={e => setForm(p => ({...p, [f.key]: e.target.value}))}
-                        className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none"
-                        style={{ background: "#F8F9FB", border: "1.5px solid #E2F1FC" }}
-                        onFocus={e => e.target.style.borderColor="#29A9DF"}
-                        onBlur={e => e.target.style.borderColor="#E2F1FC"} />
-                    </div>
-                  ))}
-                  <textarea value={(form as any).message} onChange={e => setForm(p => ({...p, message: e.target.value}))}
-                    placeholder="Any specific questions? (optional)"
-                    rows={2} className="w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none resize-none"
-                    style={{ background: "#F8F9FB", border: "1.5px solid #E2F1FC" }} />
-                  <button type="submit" disabled={submitting}
-                    className="w-full py-3 text-white font-black rounded-xl transition-all disabled:opacity-60"
-                    style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-                    {submitting ? "Submitting..." : "Submit Enquiry"}
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        </div>
+      {enquireOpen && unit && (
+        <UnitEnquiryModal
+          unitId={id as string}
+          unitNumber={unit.unit_number}
+          unitType={unit.unit_type}
+          unitPrice={unit.base_price}
+          projectName={towerData?.project_name || ""}
+          onClose={() => setEnquireOpen(false)}
+        />
       )}
 
       <Footer />
     </main>
+  );
+}
+
+function BrochureDownload({ url }: { url: string }) {
+  const [showOtp, setShowOtp] = useState(false);
+  const isLoggedIn = typeof window !== 'undefined' && !!localStorage.getItem('jp_token');
+
+  function handleDownload() {
+    window.open(MEDIA_BASE + url, '_blank');
+  }
+
+  if (showOtp) {
+    return (
+      <div className="rounded-2xl p-5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
+        <p className="text-xs font-black mb-3" style={{ color: "#2A3887" }}>📄 Verify to Download</p>
+        <PhoneOtpVerify
+          purpose="brochure"
+          onVerified={() => { setShowOtp(false); handleDownload(); }}
+          buttonLabel="Verify & Download"
+        />
+        <button onClick={() => setShowOtp(false)} className="mt-3 text-xs text-gray-400 hover:text-gray-600 w-full text-center">Cancel</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
+      <p className="text-xs font-black mb-3" style={{ color: "#2A3887" }}>📄 Project Brochure</p>
+      <button
+        onClick={() => {
+          if (isLoggedIn) handleDownload();
+          else setShowOtp(true);
+        }}
+        className="w-full py-3 text-white font-black rounded-xl text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
+        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+        ⬇️ Download Brochure
+      </button>
+      {!isLoggedIn && <p className="text-xs text-center mt-2" style={{ color: "#94a3b8" }}>Phone verification required</p>}
+    </div>
+  );
+}
+
+function UnitEnquiryModal({ unitId, unitNumber, unitType, unitPrice, projectName, onClose }: {
+  unitId: string; unitNumber: string; unitType: string; unitPrice: any; projectName: string; onClose: () => void;
+}) {
+  const [form, setForm] = useState({ name: "", phone: "", email: "", message: "", consent: false });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [otpStep, setOtpStep] = useState(false);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [countdown, setCountdown] = useState(0);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => { if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); } }, [countdown]);
+  useEffect(() => { if (otpStep) otpRefs.current[0]?.focus(); }, [otpStep]);
+
+  const cleanPhone = (p: string) => p.replace(/\D/g, "").replace(/^91/, "");
+  const up = (k: string, v: any) => { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: "" })); };
+
+  function validate() {
+    const e: Record<string, string> = {};
+    if (!form.name.trim() || form.name.trim().length < 2) e.name = "Name required (min 2 chars)";
+    const ph = cleanPhone(form.phone);
+    if (!ph || !/^[6-9]\d{9}$/.test(ph)) e.phone = "Valid 10-digit Indian mobile required";
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Invalid email";
+    if (!form.consent) e.consent = "Consent required";
+    setErrors(e); return Object.keys(e).length === 0;
+  }
+
+  async function handleSendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validate()) return;
+    setOtpLoading(true); setOtpError("");
+    try {
+      const r = await customerApi("/auth/send-otp", { method: "POST", body: JSON.stringify({ phone: cleanPhone(form.phone), purpose: "lead" }) });
+      if (r.dev_otp) setDevOtp(r.dev_otp);
+      setOtpStep(true); setCountdown(30);
+    } catch (err: any) { setOtpError(err.message || "Failed"); }
+    finally { setOtpLoading(false); }
+  }
+
+  async function resendOtp() {
+    setOtpLoading(true); setOtpError(""); setDevOtp(null);
+    try {
+      const r = await customerApi("/auth/send-otp", { method: "POST", body: JSON.stringify({ phone: cleanPhone(form.phone), purpose: "lead" }) });
+      if (r.dev_otp) setDevOtp(r.dev_otp);
+      setOtp(["", "", "", "", "", ""]); setCountdown(30);
+    } catch (err: any) { setOtpError(err.message || "Failed"); }
+    finally { setOtpLoading(false); }
+  }
+
+  async function doSubmit(code: string) {
+    setOtpLoading(true); setOtpError("");
+    try {
+      await customerApi("/auth/verify-phone", { method: "POST", body: JSON.stringify({ phone: cleanPhone(form.phone), otp: code }) });
+      // Get UTM from URL
+      const sp = new URLSearchParams(window.location.search);
+      const utm: any = {};
+      if (sp.get("utm_source")) utm.utm_source = sp.get("utm_source");
+      if (sp.get("utm_medium")) utm.utm_medium = sp.get("utm_medium");
+      if (sp.get("utm_campaign")) utm.utm_campaign = sp.get("utm_campaign");
+
+      await fetch(`${API}/leads`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.trim(), phone: cleanPhone(form.phone),
+          email: form.email.trim() || undefined, message: form.message.trim(),
+          source: utm.utm_source ? "campaign" : "unit_detail",
+          project_interest: projectName || undefined,
+          interest: unitType || undefined,
+          extra_data: { unit_id: unitId, unit_number: unitNumber, unit_type: unitType, unit_price: unitPrice },
+          ...utm,
+        }),
+      });
+      setDone(true);
+    } catch (err: any) { setOtpError(err.message || "Failed"); }
+    finally { setOtpLoading(false); }
+  }
+
+  function handleOtpChange(i: number, v: string) {
+    if (v && !/^\d$/.test(v)) return;
+    const n = [...otp]; n[i] = v; setOtp(n);
+    if (v && i < 5) otpRefs.current[i + 1]?.focus();
+    if (v && i === 5 && n.join("").length === 6) setTimeout(() => doSubmit(n.join("")), 100);
+  }
+  function handleOtpKeyDown(i: number, e: React.KeyboardEvent) { if (e.key === "Backspace" && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus(); }
+  function handleOtpPaste(ev: React.ClipboardEvent) { ev.preventDefault(); const p = ev.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6); if (p.length === 6) { const d = p.split(""); setOtp(d); otpRefs.current[5]?.focus(); setTimeout(() => doSubmit(d.join("")), 100); } }
+
+  const ic = "w-full px-4 py-2.5 rounded-xl text-sm focus:outline-none";
+  const is = { background: "#F8F9FB", border: "1.5px solid #E2F1FC" };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.6)" }}>
+      <div className="bg-white rounded-3xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" style={{ boxShadow: "0 25px 60px rgba(0,0,0,0.3)" }}>
+        {done ? (
+          <div className="text-center py-4">
+            <div className="text-5xl mb-3">✅</div>
+            <h3 className="font-black text-xl mb-2" style={{ color: "#2A3887" }}>Enquiry Submitted!</h3>
+            <p style={{ color: "#555" }} className="text-sm mb-1">We received your enquiry about <strong>{unitNumber}</strong>.</p>
+            <p style={{ color: "#888" }} className="text-xs mb-4">Our team will contact you shortly.</p>
+            <button onClick={onClose} className="px-6 py-2.5 text-white font-bold rounded-full"
+              style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-start mb-5">
+              <div>
+                <h3 className="font-black text-lg" style={{ color: "#2A3887" }}>Enquire About This Unit</h3>
+                <p style={{ color: "#555" }} className="text-sm">{unitNumber} · {unitType} · {formatPrice(unitPrice)}</p>
+                {projectName && <p style={{ color: "#888" }} className="text-xs">{projectName}</p>}
+              </div>
+              <button onClick={onClose} style={{ color: "#999" }} className="hover:text-gray-600 text-xl">✕</button>
+            </div>
+            {otpError && <div className="mb-3 px-3 py-2 rounded-xl text-sm" style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5" }}>{otpError}</div>}
+            {devOtp && <div className="mb-3 px-3 py-1.5 rounded-lg text-xs" style={{ background: "#FEF9C3", color: "#92400E", border: "1px solid #FDE68A" }}>Dev OTP: <strong>{devOtp}</strong></div>}
+            <form onSubmit={handleSendOtp} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#2A3887" }}>Your Name *</label>
+                <input value={form.name} onChange={e => up("name", e.target.value)} disabled={otpStep}
+                  className={`${ic} disabled:opacity-60 disabled:bg-gray-100`} style={{ ...is, borderColor: errors.name ? "#f87171" : "#E2F1FC" }}
+                  onFocus={e => e.target.style.borderColor = "#29A9DF"} onBlur={e => e.target.style.borderColor = errors.name ? "#f87171" : "#E2F1FC"} />
+                {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#2A3887" }}>Phone Number *</label>
+                <input value={form.phone} onChange={e => up("phone", e.target.value)} disabled={otpStep} maxLength={13}
+                  className={`${ic} disabled:opacity-60 disabled:bg-gray-100`} style={{ ...is, borderColor: errors.phone ? "#f87171" : "#E2F1FC" }} placeholder="98765 43210"
+                  onFocus={e => e.target.style.borderColor = "#29A9DF"} onBlur={e => e.target.style.borderColor = errors.phone ? "#f87171" : "#E2F1FC"} />
+                {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1" style={{ color: "#2A3887" }}>Email</label>
+                <input type="email" value={form.email} onChange={e => up("email", e.target.value)} disabled={otpStep}
+                  className={`${ic} disabled:opacity-60 disabled:bg-gray-100`} style={{ ...is, borderColor: errors.email ? "#f87171" : "#E2F1FC" }}
+                  onFocus={e => e.target.style.borderColor = "#29A9DF"} onBlur={e => e.target.style.borderColor = "#E2F1FC"} />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+              </div>
+              <textarea value={form.message} onChange={e => up("message", e.target.value)} disabled={otpStep}
+                placeholder="Any specific questions? (optional)" rows={2}
+                className={`${ic} resize-none disabled:opacity-60 disabled:bg-gray-100`} style={is} />
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" checked={form.consent} onChange={e => up("consent", e.target.checked)} disabled={otpStep}
+                  className="mt-0.5 w-4 h-4 accent-amber-500" />
+                <span className={`text-xs leading-relaxed ${errors.consent ? "text-red-500" : "text-gray-500"}`}>
+                  I consent to Janapriya contacting me via calls, SMS, WhatsApp, and email.
+                </span>
+              </label>
+              {errors.consent && <p className="text-red-500 text-xs ml-6">{errors.consent}</p>}
+
+              {otpStep ? (
+                <div className="border-t pt-4 space-y-3" style={{ borderColor: "#E2F1FC" }}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-gray-600">OTP sent to <strong>+91 {cleanPhone(form.phone)}</strong></p>
+                    <button type="button" onClick={() => { setOtpStep(false); setOtp(["","","","","",""]); setOtpError(""); setDevOtp(null); }}
+                      className="text-xs hover:underline" style={{ color: "#29A9DF" }}>Change</button>
+                  </div>
+                  <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+                    {otp.map((d, i) => (
+                      <input key={i} ref={el => { otpRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1} value={d}
+                        onChange={e => handleOtpChange(i, e.target.value)} onKeyDown={e => handleOtpKeyDown(i, e)}
+                        className="w-11 h-13 text-center text-lg font-bold rounded-xl focus:outline-none"
+                        style={{ background: "#fff", border: `1.5px solid ${d ? "#F59E0B" : "#E2F1FC"}`, color: "#333" }} />
+                    ))}
+                  </div>
+                  {otpLoading && <p className="text-center text-sm text-gray-400 animate-pulse">Verifying...</p>}
+                  <div className="text-center">
+                    {countdown > 0
+                      ? <p className="text-xs text-gray-400">Resend in {countdown}s</p>
+                      : <button type="button" onClick={resendOtp} disabled={otpLoading} className="text-xs font-bold hover:underline" style={{ color: "#29A9DF" }}>Resend OTP</button>}
+                  </div>
+                </div>
+              ) : (
+                <button type="submit" disabled={otpLoading}
+                  className="w-full py-3 text-white font-black rounded-xl transition-all disabled:opacity-60"
+                  style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                  {otpLoading ? "Sending OTP..." : "Submit Enquiry"}
+                </button>
+              )}
+            </form>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

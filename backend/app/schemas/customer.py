@@ -23,8 +23,8 @@ class CustomerUpdate(BaseSchema):
 
 class CustomerResponse(BaseResponseSchema):
     name: str
-    email: str
-    phone: Optional[str]
+    email: Optional[str] = None
+    phone: Optional[str] = None
     is_verified: bool
     is_active: bool
     preferences: Dict

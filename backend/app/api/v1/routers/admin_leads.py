@@ -5,6 +5,7 @@ from uuid import UUID
 from backend.app.core.database import get_db
 from backend.app.api.v1.routers.admin_auth import verify_admin_token
 from backend.app.models.lead import Lead
+from backend.app.services.lead_scoring import compute_lead_score, score_all_leads
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -30,10 +31,19 @@ async def list_leads(
             {
                 "id": str(l.id), "name": l.name, "phone": l.phone,
                 "email": l.email, "interest": l.interest,
+                "project_interest": l.project_interest,
                 "budget_min": str(l.budget_min) if l.budget_min else None,
                 "budget_max": str(l.budget_max) if l.budget_max else None,
                 "status": l.status, "source": l.source,
-                "message": l.message,
+                "message": l.message, "notes": l.notes,
+                "assigned_to": l.assigned_to,
+                "lead_score": l.lead_score,
+                "score_details": l.score_details,
+                "sf_lead_id": l.sf_lead_id,
+                "extra_data": l.extra_data,
+                "utm_source": l.utm_source,
+                "utm_medium": l.utm_medium,
+                "utm_campaign": l.utm_campaign,
                 "created_at": l.created_at.isoformat() if l.created_at else None,
             }
             for l in leads
@@ -66,3 +76,28 @@ async def delete_lead(
     if not lead: raise HTTPException(404, "Lead not found")
     await db.delete(lead)
     return {"deleted": True}
+
+@router.post("/leads/rescore")
+async def rescore_all_leads(
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(verify_admin_token)
+):
+    """Recompute lead scores for all leads."""
+    count = await score_all_leads(db)
+    return {"rescored": count}
+
+@router.post("/leads/{lead_id}/rescore")
+async def rescore_one_lead(
+    lead_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(verify_admin_token)
+):
+    """Recompute score for a single lead."""
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalar_one_or_none()
+    if not lead: raise HTTPException(404, "Lead not found")
+    score, details = await compute_lead_score(lead, db)
+    lead.lead_score = score
+    lead.score_details = details
+    await db.commit()
+    return {"lead_id": str(lead.id), "score": score, "details": details}

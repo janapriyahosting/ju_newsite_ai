@@ -30,11 +30,14 @@ async def parse_with_groq(query: str) -> dict | None:
 Extract search filters from the query. Return ONLY valid JSON.
 
 CRITICAL PRICE RULES:
-- "budget is X", "under X", "below X", "upto X", "within X", "max X", "not more than X" → max_price
+- "budget is X", "my budget is X", "under X", "below X", "upto X", "within X", "max X", "not more than X" → max_price
 - "above X", "minimum X", "at least X", "more than X", "starting from X" → min_price
 - "between X and Y", "X to Y" → both min_price AND max_price
 - 1 lakh = 100000, 1 crore = 10000000
 - Always convert to full rupee integer (50 lakh = 5000000)
+- "l" or "L" suffix means lakhs: "80l" = 80 lakhs = 8000000, "50l" = 5000000
+- "cr" or "c" suffix means crore: "1cr" = 10000000
+- Numbers attached to unit without space are still valid: "80l" = "80 lakh"
 
 JSON fields (only include if clearly mentioned):
 {{
@@ -55,6 +58,9 @@ JSON fields (only include if clearly mentioned):
 Examples:
 "2bhk under 60 lakhs" → {{"unit_type":"2BHK","bedrooms":2,"max_price":6000000,"message":"2BHK under ₹60L"}}
 "budget is under 50 lakh" → {{"max_price":5000000,"message":"Budget under ₹50L"}}
+"my budget is 80l" → {{"max_price":8000000,"message":"Budget ₹80L"}}
+"my budget is 80 lakhs" → {{"max_price":8000000,"message":"Budget ₹80L"}}
+"budget 60l" → {{"max_price":6000000,"message":"Budget ₹60L"}}
 "3bhk above 80 lakhs east facing" → {{"unit_type":"3BHK","bedrooms":3,"min_price":8000000,"facing":"East","message":"3BHK above ₹80L East facing"}}
 "emi under 40000" → {{"max_emi":40000,"message":"EMI under ₹40,000/month"}}
 
@@ -81,6 +87,17 @@ Return only the JSON object, nothing else."""
             # Groq confused min/max — swap it
             result["max_price"] = result.pop("min_price")
             print(f"[Groq] ⚠️ Auto-corrected min_price → max_price")
+
+        # Safety check: if query mentions price but Groq extracted no price fields, supplement with regex
+        price_keywords = ["lakh","lakhs","lac","crore","crores"," l "," cr ","budget"]
+        price_fields = {"min_price","max_price","max_emi","max_down_payment"}
+        has_price_keyword = any(w in f" {q} " for w in price_keywords) or re.search(r'\d+\s*l\b|\d+\s*cr\b', q)
+        if has_price_keyword and not any(k in result for k in price_fields):
+            regex_filters, _ = parse_with_regex(query)
+            for field in price_fields:
+                if field in regex_filters:
+                    result[field] = regex_filters[field]
+                    print(f"[Groq] ⚠️ Groq missed price — supplemented {field}={regex_filters[field]} via regex")
 
         print(f"[Search] Using Groq ✅ | {result.get('message','')}")
         return result
@@ -134,33 +151,52 @@ def parse_with_spacy(query: str) -> dict | None:
         is_max = any(w in q for w in under_words)
         is_min = any(w in q for w in above_words)
 
-        # Find number + unit pairs: "60 lakhs", "50 lakh", "1.5 cr"
-        for i, token in enumerate(doc):
-            if token.like_num or (token.is_digit):
-                # Look ahead for unit
-                next_tokens = [doc[j].text.lower() for j in range(i+1, min(i+3, len(doc)))]
-                unit_found = None
-                for nt in next_tokens:
-                    if nt in ["lakh","lakhs","lac","l"]: unit_found = "lakh"; break
-                    if nt in ["crore","crores","cr"]:    unit_found = "crore"; break
+        # Pre-pass: regex to catch combined tokens like "80l", "1.5cr", "50L"
+        price_found = False
+        for pm in re.finditer(r'(\d+(?:\.\d+)?)\s*(lakh|lakhs|lac|l\b|crore|crores|cr\b)', q):
+            try:
+                val = float(pm.group(1))
+                unit_found = "crore" if pm.group(2).startswith("cr") else "lakh"
+                mult = CRORE if unit_found == "crore" else LAKH
+                price = int(val * mult)
+                if is_max and not is_min:
+                    filters["max_price"] = price
+                    hints.append(f"under ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                elif is_min and not is_max:
+                    filters["min_price"] = price
+                    hints.append(f"above ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                else:
+                    # "my budget is 80l" — budget implies max, treat as max_price only
+                    filters["max_price"] = price
+                    hints.append(f"budget ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                price_found = True
+                break
+            except: pass
 
-                if unit_found:
-                    try:
-                        val = float(token.text.replace(",",""))
-                        mult = CRORE if unit_found == "crore" else LAKH
-                        price = int(val * mult)
-                        if is_max and not is_min:
-                            filters["max_price"] = price
-                            hints.append(f"under ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
-                        elif is_min and not is_max:
-                            filters["min_price"] = price
-                            hints.append(f"above ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
-                        else:
-                            # ambiguous — treat as max with buffer
-                            filters["max_price"] = int(price * 1.05)
-                            filters["min_price"] = int(price * 0.95)
-                            hints.append(f"~₹{val}{'Cr' if unit_found=='crore' else 'L'}")
-                    except: pass
+        # Token-based fallback: "60 lakhs" where number and unit are separate tokens
+        if not price_found:
+            for i, token in enumerate(doc):
+                if token.like_num or token.is_digit:
+                    next_tokens = [doc[j].text.lower() for j in range(i+1, min(i+3, len(doc)))]
+                    unit_found = None
+                    for nt in next_tokens:
+                        if nt in ["lakh","lakhs","lac","l"]: unit_found = "lakh"; break
+                        if nt in ["crore","crores","cr"]:    unit_found = "crore"; break
+                    if unit_found:
+                        try:
+                            val = float(token.text.replace(",",""))
+                            mult = CRORE if unit_found == "crore" else LAKH
+                            price = int(val * mult)
+                            if is_max and not is_min:
+                                filters["max_price"] = price
+                                hints.append(f"under ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                            elif is_min and not is_max:
+                                filters["min_price"] = price
+                                hints.append(f"above ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                            else:
+                                filters["max_price"] = price
+                                hints.append(f"budget ₹{val}{'Cr' if unit_found=='crore' else 'L'}")
+                        except: pass
 
         # EMI detection
         if "emi" in q:
@@ -377,19 +413,24 @@ async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_
     )
     sess = res.scalar_one_or_none()
 
+    # Validate customer_id exists before using it
+    cid = None
+    if data.customer_id:
+        try:
+            cid_uuid = _u.UUID(data.customer_id)
+            from backend.app.models.customer import Customer
+            cust = (await db.execute(select(Customer).where(Customer.id == cid_uuid))).scalar_one_or_none()
+            if cust: cid = cid_uuid
+        except Exception: pass
+
     if sess:
         sess.last_seen_at = now
         sess.duration_seconds = data.duration_seconds
         sess.page_path = data.page_path
         sess.page_views = (sess.page_views or 1) + 1
-        if data.customer_id and not sess.customer_id:
-            try: sess.customer_id = _u.UUID(data.customer_id); sess.is_customer = True
-            except Exception: pass
+        if cid and not sess.customer_id:
+            sess.customer_id = cid; sess.is_customer = True
     else:
-        cid = None
-        if data.customer_id:
-            try: cid = _u.UUID(data.customer_id)
-            except Exception: pass
         sess = SessionLog(
             session_id=data.session_id, visitor_id=data.visitor_id,
             page_path=data.page_path, referrer=data.referrer,

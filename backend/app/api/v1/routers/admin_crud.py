@@ -11,6 +11,7 @@ from backend.app.api.v1.routers.admin_auth import verify_admin_token, require_su
 from backend.app.models.project import Project
 from backend.app.models.tower import Tower
 from backend.app.models.unit import Unit
+from backend.app.models.field_config import FieldConfig, CustomFieldValue
 
 router = APIRouter(prefix="/admin", tags=["Admin - CRUD"])
 
@@ -226,9 +227,32 @@ async def list_units_admin(page:int=Query(1,ge=1), page_size:int=Query(20,ge=1,l
     return {"items":[model_to_dict(u) for u in items],**paginate(total,page,page_size)}
 
 @router.get("/units/csv-template")
-async def get_csv_template(_:dict=Depends(verify_admin_token)):
-    out=io.StringIO(); w=csv.writer(out); w.writerow(CSV_COLUMNS)
-    w.writerow(["A101","1","1BHK","1","1","1","650","580","4500000","6923","900000","35000","East","available","false","false","Sample unit"])
+async def get_csv_template(db:AsyncSession=Depends(get_db), _:dict=Depends(verify_admin_token)):
+    # Fetch custom fields for 'unit' entity dynamically
+    result = await db.execute(
+        select(FieldConfig).where(
+            FieldConfig.entity == "unit",
+            FieldConfig.is_custom == True,
+            FieldConfig.is_visible == True,
+        ).order_by(FieldConfig.sort_order)
+    )
+    custom_fields = result.scalars().all()
+    custom_keys = [cf.field_key for cf in custom_fields]
+    custom_labels = [cf.label for cf in custom_fields]
+
+    # Build header: base columns + custom field keys
+    all_columns = CSV_COLUMNS + custom_keys
+
+    # Build sample row
+    base_sample = ["A101","1","1BHK","1","1","1","650","580","4500000","6923","900000","35000","East","available","false","false","Sample unit"]
+    # Add empty placeholders for custom fields
+    sample_row = base_sample + ["" for _ in custom_keys]
+
+    out = io.StringIO(); w = csv.writer(out)
+    # Row 1: column keys (used for import mapping)
+    w.writerow(all_columns)
+    # Row 2: sample data
+    w.writerow(sample_row)
     out.seek(0)
     return StreamingResponse(io.BytesIO(out.getvalue().encode()),media_type="text/csv",
         headers={"Content-Disposition":"attachment; filename=units_import_template.csv"})
@@ -258,11 +282,26 @@ async def csv_import_units(tower_id:str, file:UploadFile=File(...),
     except: raise HTTPException(400,"Invalid tower_id")
     tower=(await db.execute(select(Tower).where(Tower.id==tower_uuid))).scalar_one_or_none()
     if not tower: raise HTTPException(404,"Tower not found")
+
+    # Fetch custom fields for 'unit' entity
+    cf_result = await db.execute(
+        select(FieldConfig).where(
+            FieldConfig.entity == "unit",
+            FieldConfig.is_custom == True,
+        )
+    )
+    custom_fields = {cf.field_key: cf for cf in cf_result.scalars().all()}
+
     content=await file.read(); text=content.decode("utf-8-sig")
     reader=csv.DictReader(io.StringIO(text))
     created=0; errors=[]
     bool_f={"is_trending","is_featured"}; int_f={"floor_number","bedrooms","bathrooms","balconies"}
     float_f={"area_sqft","carpet_area","plot_area","base_price","price_per_sqft","down_payment","emi_estimate"}
+
+    # Detect which CSV headers are custom fields
+    csv_headers = reader.fieldnames or []
+    custom_cols_in_csv = [h for h in csv_headers if h in custom_fields]
+
     for i,row in enumerate(reader,start=2):
         try:
             ud={"tower_id":tower_uuid}
@@ -272,10 +311,33 @@ async def csv_import_units(tower_id:str, file:UploadFile=File(...),
                 elif col in int_f: ud[col]=int(val) if val else None
                 elif col in float_f: ud[col]=float(val) if val else None
                 else: ud[col]=val if val else None
-            db.add(Unit(**{k:v for k,v in ud.items() if k in UNIT_FIELDS+["tower_id"]})); created+=1
+            unit = Unit(**{k:v for k,v in ud.items() if k in UNIT_FIELDS+["tower_id"]})
+            db.add(unit)
+            await db.flush()  # get unit.id for custom field values
+
+            # Process custom fields from CSV row
+            for ckey in custom_cols_in_csv:
+                raw_val = row.get(ckey, "").strip()
+                if not raw_val:
+                    continue
+                cf = custom_fields[ckey]
+                # Convert value based on field type
+                if cf.field_type in ("number", "currency", "decimal"):
+                    parsed_val = float(raw_val) if "." in raw_val else int(raw_val)
+                elif cf.field_type == "boolean":
+                    parsed_val = raw_val.lower() in ("true", "1", "yes")
+                else:
+                    parsed_val = raw_val
+                db.add(CustomFieldValue(
+                    field_config_id=cf.id,
+                    entity_id=unit.id,
+                    value=parsed_val,
+                ))
+            created+=1
         except Exception as e: errors.append({"row":i,"error":str(e)})
     if created>0: await db.commit()
-    return {"created":created,"errors":errors,"total_rows":created+len(errors)}
+    return {"created":created,"errors":errors,"total_rows":created+len(errors),
+            "custom_fields_detected":custom_cols_in_csv}
 
 @router.post("/units/{unit_id}/duplicate",status_code=201)
 async def duplicate_unit(unit_id:str, db:AsyncSession=Depends(get_db), _:dict=Depends(verify_admin_token)):

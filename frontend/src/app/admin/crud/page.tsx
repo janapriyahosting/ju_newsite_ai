@@ -113,7 +113,7 @@ export default function CrudManagerPage() {
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div><h1 className="text-2xl font-bold text-gray-900">Data Manager</h1><p className="text-sm text-gray-500 mt-1">Click any cell to edit inline · ✏️ opens full form with custom fields</p></div>
         <div className="flex gap-2 flex-wrap">
-          {activeTab==="units"&&<><a href={`${process.env.NEXT_PUBLIC_API_URL}/admin/units/csv-template`} className="px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">⬇ CSV Template</a><button onClick={()=>setShowImportModal(true)} className="px-3 py-2 text-sm border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50">📥 Import CSV</button></>}
+          {activeTab==="units"&&<><button onClick={async()=>{try{const res=await adminApi("/admin/units/csv-template");if(!res.ok){const err=await res.json().catch(()=>({detail:"Download failed"}));throw new Error(err.detail||`HTTP ${res.status}`);}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="units_import_template.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}catch(e:any){setError(e.message||"Failed to download template");}}} className="px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">⬇ CSV Template</button><button onClick={()=>setShowImportModal(true)} className="px-3 py-2 text-sm border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50">📥 Import CSV</button></>}
           <button onClick={()=>setShowCreateModal(true)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">＋ New {entityLabel}</button>
         </div>
       </div>
@@ -181,7 +181,7 @@ export default function CrudManagerPage() {
       </div>}
       {showCreateModal&&<DynamicFormModal mode="create" entity={activeTab} entityKey={entityKey} projects={projects} towers={towers} fieldConfigs={fieldConfigs} onClose={()=>setShowCreateModal(false)} onSaved={()=>{setShowCreateModal(false);loadData(1);flash("Created successfully");}}/>}
       {editRecord&&<DynamicFormModal mode="edit" entity={activeTab} entityKey={entityKey} record={editRecord} projects={projects} towers={towers} fieldConfigs={fieldConfigs} onClose={()=>setEditRecord(null)} onSaved={()=>{setEditRecord(null);loadData(data.page);flash("Updated successfully");}}/>}
-      {showImportModal&&activeTab==="units"&&<CsvImportModal towers={towers} onClose={()=>setShowImportModal(false)} onImported={(r)=>{setShowImportModal(false);loadData(1);flash(`Imported ${r.created} units`);}}/>}
+      {showImportModal&&activeTab==="units"&&<CsvImportModal towers={towers} fieldConfigs={fieldConfigs} onClose={()=>setShowImportModal(false)} onImported={(r)=>{setShowImportModal(false);loadData(1);flash(`Imported ${r.created} units`);}}/>}
     </div>
   );
 }
@@ -338,9 +338,10 @@ function buildSchemaFieldDefs(entity:EntityType,projects:any[],towers:any[],enti
   ];
 }
 
-function CsvImportModal({towers,onClose,onImported}:{towers:any[];onClose:()=>void;onImported:(r:any)=>void;}) {
+function CsvImportModal({towers,onClose,onImported,fieldConfigs}:{towers:any[];onClose:()=>void;onImported:(r:any)=>void;fieldConfigs?:Record<string,any[]>;}) {
   const [towerId,setTowerId]=useState(""); const [file,setFile]=useState<File|null>(null);
   const [loading,setLoading]=useState(false); const [err,setErr]=useState<string|null>(null); const [result,setResult]=useState<any>(null);
+  const customFields = ((fieldConfigs?.["unit"]||[]) as any[]).filter((f:any)=>f.is_custom&&f.is_visible);
   async function doImport() {
     if (!towerId){setErr("Select a tower");return;} if (!file){setErr("Select a CSV file");return;}
     setLoading(true); setErr(null);
@@ -353,12 +354,12 @@ function CsvImportModal({towers,onClose,onImported}:{towers:any[];onClose:()=>vo
   }
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="text-lg font-bold">Import Units from CSV</h2><button onClick={onClose} className="text-gray-400 text-xl">✕</button></div>
         <div className="px-6 py-4 space-y-4">
           {err&&<div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{err}</div>}
-          {result?<div><div className="p-4 bg-green-50 border border-green-200 rounded-lg"><p className="text-green-700 font-medium">✓ Import Complete</p><p className="text-sm text-green-600">Created: {result.created} units</p>{result.errors.length>0&&<p className="text-sm text-red-600">Errors: {result.errors.length} rows</p>}</div><button onClick={()=>onImported(result)} className="mt-3 w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-medium">Done</button></div>
-          :<><div><label className="block text-sm font-medium text-gray-700 mb-1">Tower *</label><select value={towerId} onChange={e=>setTowerId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Select tower…</option>{towers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 mb-1">CSV File *</label><input type="file" accept=".csv" onChange={e=>setFile(e.target.files?.[0]||null)} className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-amber-50 file:text-amber-600"/></div><div className="flex justify-end gap-3"><button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">Cancel</button><button onClick={doImport} disabled={loading} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg disabled:opacity-50">{loading?"Importing…":"Import"}</button></div></>}
+          {result?<div><div className="p-4 bg-green-50 border border-green-200 rounded-lg"><p className="text-green-700 font-medium">✓ Import Complete</p><p className="text-sm text-green-600">Created: {result.created} units</p>{result.errors?.length>0&&<p className="text-sm text-red-600 mt-1">Errors: {result.errors.length} rows</p>}{result.custom_fields_detected?.length>0&&<p className="text-sm text-amber-600 mt-1">Custom fields imported: {result.custom_fields_detected.join(", ")}</p>}</div>{result.errors?.length>0&&<div className="mt-2 max-h-32 overflow-y-auto text-xs text-red-600 space-y-1">{result.errors.map((e:any,i:number)=><p key={i}>Row {e.row}: {e.error}</p>)}</div>}<button onClick={()=>onImported(result)} className="mt-3 w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-medium">Done</button></div>
+          :<><div><label className="block text-sm font-medium text-gray-700 mb-1">Tower *</label><select value={towerId} onChange={e=>setTowerId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Select tower…</option>{towers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 mb-1">CSV File *</label><input type="file" accept=".csv" onChange={e=>setFile(e.target.files?.[0]||null)} className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-amber-50 file:text-amber-600"/><p className="text-xs text-gray-400 mt-1">Download the CSV Template first — it includes all custom fields automatically.</p></div>{customFields.length>0&&<div className="p-3 bg-amber-50 border border-amber-200 rounded-lg"><p className="text-xs font-semibold text-amber-700 mb-1">Custom fields included in template:</p><div className="flex flex-wrap gap-1">{customFields.map((f:any)=><span key={f.field_key} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">{f.label} ({f.field_type})</span>)}</div></div>}<div className="flex justify-end gap-3"><button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">Cancel</button><button onClick={doImport} disabled={loading} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg disabled:opacity-50">{loading?"Importing…":"Import"}</button></div></>}
         </div>
       </div>
     </div>

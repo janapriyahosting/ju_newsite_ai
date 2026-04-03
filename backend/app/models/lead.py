@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import String, Text, ForeignKey, JSON
+from sqlalchemy import String, Text, ForeignKey, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from backend.app.models.base import UUIDMixin, TimeStampMixin
@@ -18,6 +18,7 @@ class Lead(UUIDMixin, TimeStampMixin, Base):
     source:         Mapped[str]  = mapped_column(String(50), nullable=True)   # website, referral, walk-in
     status:         Mapped[str]  = mapped_column(String(30), default="new")   # new, contacted, qualified, lost, converted
     interest:       Mapped[str]  = mapped_column(String(100), nullable=True)  # 2BHK, 3BHK etc
+    project_interest: Mapped[str] = mapped_column(String(255), nullable=True)  # e.g. "Janapriya Meadows"
     budget_min:     Mapped[str]  = mapped_column(String(50), nullable=True)
     budget_max:     Mapped[str]  = mapped_column(String(50), nullable=True)
     message:        Mapped[str]  = mapped_column(Text, nullable=True)
@@ -27,6 +28,8 @@ class Lead(UUIDMixin, TimeStampMixin, Base):
     utm_source:     Mapped[str]  = mapped_column(String(100), nullable=True)
     utm_medium:     Mapped[str]  = mapped_column(String(100), nullable=True)
     utm_campaign:   Mapped[str]  = mapped_column(String(100), nullable=True)
+    lead_score:     Mapped[int]  = mapped_column(Integer, default=0)    # 0-100
+    score_details:  Mapped[dict] = mapped_column(JSON, default=dict)  # breakdown
     extra_data:     Mapped[dict] = mapped_column(JSON, default=dict)
 
     # Relationships

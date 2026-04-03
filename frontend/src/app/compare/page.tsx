@@ -95,7 +95,7 @@ function CompareContent() {
                   <td className="py-4 pr-6"></td>
                   {units.map((u, i) => (
                     <td key={i} className="py-4 px-4 text-center">
-                      <Link href={`/contact?unit=${u.id}`}
+                      <Link href={`/units/${u.id}?enquire=true`}
                         className="inline-block px-5 py-2.5 text-white text-sm font-bold rounded-xl"
                         style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                         Enquire Now

@@ -77,6 +77,15 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
 
+    # SmartPing SMS
+    SMARTPING_URL: str = "https://pgapi.smartping.ai/fe/api/v1/multiSend"
+    SMARTPING_USERNAME: str = "janaptnpg.trans"
+    SMARTPING_PASSWORD: str = "bugmp"
+    SMARTPING_SENDER_ID: str = "JPTOWN"
+    SMARTPING_DLT_CONTENT_ID: str = "1707174280396973930"
+    SMARTPING_DLT_TELEMARKETER_ID: str = "b574ada9ce06225d66465806bef68e5c37271cee88f8a73a4f8ee9a22b576b88"
+    SMARTPING_DLT_ENTITY_ID: str = "1701166339309356089"
+
     # SMTP
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

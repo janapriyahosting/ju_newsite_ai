@@ -110,7 +110,7 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
         <div className="flex items-center justify-between mt-3">
           <span className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(unit.base_price)}</span>
           <div className="flex gap-2">
-            <Link href={`/contact?unit=${unit.id}`}
+            <Link href={`/units/${unit.id}?enquire=true`}
               className="px-3 py-1.5 text-xs font-bold rounded-lg"
               style={{ border: "1px solid #2A3887", color: "#2A3887" }}>
               Enquire

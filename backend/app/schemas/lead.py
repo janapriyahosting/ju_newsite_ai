@@ -1,13 +1,20 @@
 from typing import Optional, Dict, Any
-from backend.app.schemas.base import BaseSchema, BaseResponseSchema
+from pydantic import field_validator
+from backend.app.schemas.base import BaseSchema, BaseResponseSchema, validate_phone
 
 
 class LeadCreate(BaseSchema):
     name: str
     phone: str
+
+    @field_validator("phone")
+    @classmethod
+    def check_phone(cls, v: str) -> str:
+        return validate_phone(v)
     email: Optional[str] = None
     source: Optional[str] = "website"
     interest: Optional[str] = None
+    project_interest: Optional[str] = None
     budget_min: Optional[str] = None
     budget_max: Optional[str] = None
     message: Optional[str] = None
@@ -27,12 +34,19 @@ class LeadUpdate(BaseSchema):
 class LeadResponse(BaseResponseSchema):
     name: str
     phone: str
-    email: Optional[str]
-    source: Optional[str]
+    email: Optional[str] = None
+    source: Optional[str] = None
     status: str
-    interest: Optional[str]
-    budget_min: Optional[str]
-    budget_max: Optional[str]
-    message: Optional[str]
-    sf_lead_id: Optional[str]
-    assigned_to: Optional[str]
+    interest: Optional[str] = None
+    project_interest: Optional[str] = None
+    budget_min: Optional[str] = None
+    budget_max: Optional[str] = None
+    message: Optional[str] = None
+    notes: Optional[str] = None
+    lead_score: int = 0
+    score_details: Optional[Dict[str, Any]] = None
+    sf_lead_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+    utm_source: Optional[str] = None
+    utm_medium: Optional[str] = None
+    utm_campaign: Optional[str] = None

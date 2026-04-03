@@ -71,6 +71,14 @@ async def create_booking(data: BookingCreate, customer: Customer = Depends(get_c
     return booking
 
 
+@router.get("", response_model=list[BookingResponse])
+async def list_my_bookings(customer: Customer = Depends(get_current_customer), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Booking).where(Booking.customer_id == customer.id).order_by(Booking.created_at.desc())
+    )
+    return result.scalars().all()
+
+
 @router.get("/{booking_id}", response_model=BookingResponse)
 async def get_booking(booking_id: UUID, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Booking).where(Booking.id == booking_id))

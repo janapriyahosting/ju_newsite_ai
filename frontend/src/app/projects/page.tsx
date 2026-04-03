@@ -104,7 +104,7 @@ export default function ProjectsPage() {
                 <div className="flex gap-2">
                   <Link href={`/projects/${p.slug}`} className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors"
                     style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>View Details</Link>
-                  <Link href="/contact" className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors"
+                  <Link href={`/projects/${p.slug}#enquire`} className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors"
                     style={{ border:"1px solid #2A3887", color:"#2A3887" }}>Enquire</Link>
                 </div>
               </div>

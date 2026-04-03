@@ -6,6 +6,7 @@ from uuid import UUID
 from backend.app.core.database import get_db
 from backend.app.models.lead import Lead
 from backend.app.schemas.lead import LeadCreate, LeadUpdate, LeadResponse
+from backend.app.services.lead_scoring import compute_lead_score
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -18,6 +19,12 @@ async def create_lead(
 ):
     lead = Lead(**data.model_dump())
     db.add(lead)
+    await db.flush()
+    await db.refresh(lead)
+    # Auto-compute lead score
+    score, details = await compute_lead_score(lead, db)
+    lead.lead_score = score
+    lead.score_details = details
     await db.flush()
     await db.refresh(lead)
     return lead

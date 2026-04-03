@@ -142,7 +142,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   {icon:"🔍",label:"Browse Units",href:"/store"},
-                  {icon:"📅",label:"Book Site Visit",href:"/contact"},
+                  {icon:"📅",label:"Book Site Visit",href:"/site-visit"},
                   {icon:"🏘️",label:"Our Projects",href:"/projects"},
                   {icon:"⇄",label:"Compare",href:"/store"},
                 ].map(a => (
@@ -406,7 +406,7 @@ function SiteVisitsTab({ visits, loading, onRefresh }: { visits: any[]; loading:
     <div>
       <div className="flex items-center justify-between mb-5">
         <h2 className="text-lg font-black" style={{ color: "#262262" }}>My Site Visits</h2>
-        <Link href="/contact" className="px-4 py-2 text-sm font-bold text-white rounded-xl"
+        <Link href="/site-visit" className="px-4 py-2 text-sm font-bold text-white rounded-xl"
           style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
           + New Visit
         </Link>
@@ -419,7 +419,7 @@ function SiteVisitsTab({ visits, loading, onRefresh }: { visits: any[]; loading:
           <div className="text-5xl mb-4">📅</div>
           <p className="font-bold text-lg mb-2" style={{ color: "#555" }}>No site visits scheduled</p>
           <p style={{ color: "#999" }} className="text-sm mb-5">Come visit our projects in person — we'll guide you through</p>
-          <Link href="/contact" className="inline-block px-8 py-3 text-white font-bold rounded-full"
+          <Link href="/site-visit" className="inline-block px-8 py-3 text-white font-bold rounded-full"
             style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>Schedule a Visit</Link>
         </div>
       ) : (
