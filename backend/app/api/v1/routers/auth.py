@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+import os
+import re
+import uuid
+import asyncio
+import warnings
+import mimetypes
+from fastapi import APIRouter, Depends, HTTPException, status, Header, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
-import uuid
-import warnings
 warnings.filterwarnings("ignore", ".*bcrypt.*")
 
 from backend.app.core.database import get_db
@@ -14,7 +18,6 @@ from backend.app.schemas.customer import CustomerResponse, TokenResponse
 from backend.app.services.sms import send_otp_sms, generate_otp
 from backend.app.schemas.base import validate_phone, validate_email_format, validate_name
 from passlib.context import CryptContext
-import re
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -139,6 +142,16 @@ async def verify_otp(data: dict, db: AsyncSession = Depends(get_db)):
         db.add(customer)
         await db.flush()
         await db.refresh(customer)
+        # Fire welcome notification for new registration
+        from backend.app.services.notification_engine import fire_notification_background
+        asyncio.create_task(fire_notification_background(
+            "welcome", {
+                "customer_name": customer.name,
+                "customer_phone": customer.phone or "",
+                "customer_email": customer.email or "",
+            },
+            recipient_phone=customer.phone, recipient_email=customer.email,
+        ))
     else:
         # Existing user — update
         customer.is_verified = True
@@ -163,6 +176,7 @@ async def verify_otp(data: dict, db: AsyncSession = Depends(get_db)):
             "name": customer.name,
             "email": customer.email,
             "phone": customer.phone,
+            "profile_pic": customer.profile_pic,
             "is_verified": customer.is_verified,
             "is_active": customer.is_active,
             "preferences": customer.preferences or {},
@@ -200,6 +214,237 @@ async def verify_phone_only(data: dict):
 
 # ── Get Current User ─────────────────────────────────────────────────────────
 
-@router.get("/me", response_model=CustomerResponse)
+@router.get("/me")
 async def get_me(customer: Customer = Depends(get_current_customer)):
-    return customer
+    return {
+        "id": str(customer.id),
+        "name": customer.name,
+        "email": customer.email,
+        "phone": customer.phone,
+        "profile_pic": customer.profile_pic,
+        "is_verified": customer.is_verified,
+        "is_active": customer.is_active,
+        "preferences": customer.preferences or {},
+        "created_at": customer.created_at.isoformat() if customer.created_at else None,
+    }
+
+
+# ── Profile: Update Name ────────────────────────────────────────────────────
+
+@router.patch("/profile")
+async def update_profile(
+    data: dict,
+    customer: Customer = Depends(get_current_customer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update customer name (no OTP needed)."""
+    name = data.get("name", "").strip()
+    if name:
+        try:
+            name = validate_name(name)
+        except (ValueError, TypeError):
+            raise HTTPException(400, "Name must be 2-255 characters")
+        customer.name = name
+        await db.commit()
+        await db.refresh(customer)
+    return {
+        "id": str(customer.id), "name": customer.name,
+        "email": customer.email, "phone": customer.phone,
+        "profile_pic": customer.profile_pic,
+        "is_verified": customer.is_verified, "is_active": customer.is_active,
+    }
+
+
+# ── Profile: Upload Profile Pic ─────────────────────────────────────────────
+
+MEDIA_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "media")
+ALLOWED_IMG = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+@router.post("/profile/pic")
+async def upload_profile_pic(
+    file: UploadFile = File(...),
+    customer: Customer = Depends(get_current_customer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload or replace profile picture."""
+    ct = file.content_type or mimetypes.guess_type(file.filename or "")[0] or ""
+    if ct not in ALLOWED_IMG:
+        raise HTTPException(400, "Only JPEG, PNG, WebP, and GIF images are allowed")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "Image too large (max 5MB)")
+
+    ext = os.path.splitext(file.filename or "photo.jpg")[1].lower() or ".jpg"
+    filename = f"{uuid.uuid4().hex}{ext}"
+    folder = os.path.join(MEDIA_ROOT, "customer", "profile")
+    os.makedirs(folder, exist_ok=True)
+
+    # Delete old pic if exists
+    if customer.profile_pic:
+        old_path = os.path.join(MEDIA_ROOT, "..", customer.profile_pic.lstrip("/"))
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
+
+    filepath = os.path.join(folder, filename)
+    with open(filepath, "wb") as f:
+        f.write(content)
+
+    url = f"/media/customer/profile/{filename}"
+    customer.profile_pic = url
+    await db.commit()
+    await db.refresh(customer)
+    return {"profile_pic": url}
+
+
+@router.delete("/profile/pic")
+async def delete_profile_pic(
+    customer: Customer = Depends(get_current_customer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remove profile picture."""
+    if customer.profile_pic:
+        old_path = os.path.join(MEDIA_ROOT, "..", customer.profile_pic.lstrip("/"))
+        if os.path.exists(old_path):
+            try:
+                os.remove(old_path)
+            except OSError:
+                pass
+        customer.profile_pic = None
+        await db.commit()
+    return {"profile_pic": None}
+
+
+# ── Profile: Send OTP for Phone/Email Change ────────────────────────────────
+
+@router.post("/profile/send-otp")
+async def profile_send_otp(
+    data: dict,
+    customer: Customer = Depends(get_current_customer),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Send OTP to verify a new phone or email before updating.
+    Body: { "type": "phone", "value": "9876543210" }
+       or { "type": "email", "value": "new@email.com" }
+    """
+    change_type = data.get("type", "").strip()
+    value = data.get("value", "").strip()
+
+    if change_type == "phone":
+        try:
+            phone = validate_phone(value)
+        except (ValueError, TypeError):
+            raise HTTPException(400, "Invalid phone number")
+        # Check if already taken by another customer
+        existing = await db.execute(
+            select(Customer).where(Customer.phone == phone, Customer.id != customer.id)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(400, "This phone number is already registered to another account")
+        # Rate limit
+        stored = _otp_store.get(f"profile_{phone}")
+        if stored and (datetime.utcnow() - stored.get("sent_at", datetime.min)).total_seconds() < 30:
+            raise HTTPException(429, "OTP already sent. Wait 30 seconds.")
+        otp = generate_otp(6)
+        _otp_store[f"profile_{phone}"] = {
+            "otp": otp, "exp": datetime.utcnow() + timedelta(minutes=5),
+            "purpose": "profile_phone", "sent_at": datetime.utcnow(),
+            "customer_id": str(customer.id),
+        }
+        sent = await send_otp_sms(phone, otp)
+        if not sent:
+            print(f"[DEV OTP] Profile phone change: {phone} OTP: {otp}")
+        return {"sent": True, "type": "phone", "dev_otp": otp if settings.DEBUG and not sent else None}
+
+    elif change_type == "email":
+        try:
+            email = validate_email_format(value)
+        except (ValueError, TypeError):
+            raise HTTPException(400, "Invalid email address")
+        existing = await db.execute(
+            select(Customer).where(Customer.email == email, Customer.id != customer.id)
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(400, "This email is already registered to another account")
+        otp = generate_otp(6)
+        _otp_store[f"profile_{email}"] = {
+            "otp": otp, "exp": datetime.utcnow() + timedelta(minutes=5),
+            "purpose": "profile_email", "sent_at": datetime.utcnow(),
+            "customer_id": str(customer.id),
+        }
+        print(f"[Profile] Sending email OTP to {email}: {otp}")
+        from backend.app.services.email import _send_email_sync
+        html = (
+            '<div style="font-family:Lato,Arial,sans-serif;max-width:500px;margin:0 auto;padding:24px;">'
+            '<h2 style="color:#2A3887;">Verify Your Email</h2>'
+            '<p>Your OTP for verifying your new email on Janapriya Upscale is:</p>'
+            f'<div style="background:#F0F4FF;border-radius:12px;padding:20px;text-align:center;margin:20px 0;">'
+            f'<span style="font-size:32px;font-weight:700;letter-spacing:8px;color:#2A3887;">{otp}</span>'
+            '</div>'
+            '<p style="color:#666;font-size:13px;">Valid for 5 minutes. Do not share this code.</p>'
+            '</div>'
+        )
+        import asyncio as _aio
+        sent = await _aio.to_thread(
+            _send_email_sync, email, "Verify Your Email - Janapriya Upscale", html
+        )
+        print(f"[Profile] Email OTP send result: {sent}")
+        if not sent:
+            print(f"[DEV OTP] Profile email change: {email} OTP: {otp}")
+        return {"sent": True, "type": "email", "dev_otp": otp if settings.DEBUG and not sent else None}
+
+    else:
+        raise HTTPException(400, "type must be 'phone' or 'email'")
+
+
+# ── Profile: Verify OTP and Update Phone/Email ──────────────────────────────
+
+@router.post("/profile/verify-update")
+async def profile_verify_and_update(
+    data: dict,
+    customer: Customer = Depends(get_current_customer),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Verify OTP and update phone or email.
+    Body: { "type": "phone", "value": "9876543210", "otp": "123456" }
+       or { "type": "email", "value": "new@email.com", "otp": "123456" }
+    """
+    change_type = data.get("type", "").strip()
+    value = data.get("value", "").strip()
+    otp_code = data.get("otp", "").strip()
+
+    if not re.match(r"^\d{6}$", otp_code):
+        raise HTTPException(400, "OTP must be exactly 6 digits")
+
+    key = f"profile_{value}"
+    stored = _otp_store.get(key)
+    if not stored or stored["otp"] != otp_code or datetime.utcnow() > stored["exp"]:
+        raise HTTPException(400, "Invalid or expired OTP")
+    if stored.get("customer_id") != str(customer.id):
+        raise HTTPException(400, "OTP does not match your account")
+
+    del _otp_store[key]
+
+    if change_type == "phone":
+        phone = validate_phone(value)
+        customer.phone = phone
+    elif change_type == "email":
+        email = validate_email_format(value)
+        customer.email = email
+    else:
+        raise HTTPException(400, "type must be 'phone' or 'email'")
+
+    await db.commit()
+    await db.refresh(customer)
+    return {
+        "updated": True, "type": change_type,
+        "id": str(customer.id), "name": customer.name,
+        "email": customer.email, "phone": customer.phone,
+        "profile_pic": customer.profile_pic,
+        "is_verified": customer.is_verified, "is_active": customer.is_active,
+    }

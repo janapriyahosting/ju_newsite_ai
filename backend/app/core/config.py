@@ -85,12 +85,21 @@ class Settings(BaseSettings):
     SMARTPING_DLT_CONTENT_ID: str = "1707174280396973930"
     SMARTPING_DLT_TELEMARKETER_ID: str = "b574ada9ce06225d66465806bef68e5c37271cee88f8a73a4f8ee9a22b576b88"
     SMARTPING_DLT_ENTITY_ID: str = "1701166339309356089"
+    SMARTPING_DLT_BOOKING_CONTENT_ID: str = "1707177528503543610"
+    SMARTPING_DLT_PAYMENT_CONTENT_ID: str = "1707177528535228397"
 
-    # SMTP
-    SMTP_HOST: str = "smtp.gmail.com"
+    # SMTP (Office 365)
+    SMTP_HOST: str = "smtp.office365.com"
     SMTP_PORT: int = 587
-    SMTP_USER: str = ""
-    SMTP_PASSWORD: str = ""
+    SMTP_USER: str = "no-reply@janapriya.com"
+    SMTP_PASSWORD: str = "xnlxgncxktslnpsp"
+
+    # Chat360 WhatsApp API
+    CHAT360_API_URL: str = "https://app.chat360.io/service/v2/task"
+    CHAT360_API_KEY: str = "hv3frTUh.iKymHoGygCxAbS6wAsETc9UHKgfXVtr8"
+    CHAT360_BUSINESS_NUMBER: str = "916309810044"
+    CHAT360_BOOKING_TEMPLATE: str = "bookingconfirmaton"
+    CHAT360_PAYMENT_TEMPLATE: str = "paymentconfirmation"
 
     model_config = {
         "env_file": ".env",

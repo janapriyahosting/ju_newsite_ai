@@ -76,5 +76,6 @@ class CustomFieldValueOut(BaseModel):
     value:           Any
     field_key:       Optional[str] = None   # populated from join
     label:           Optional[str] = None
+    field_type:      Optional[str] = None   # populated from join
 
     model_config = {"from_attributes": True}

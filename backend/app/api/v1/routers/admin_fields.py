@@ -279,6 +279,50 @@ async def upsert_custom_field_value(
     return out
 
 
+@router.get("/fields/public-values/{entity}/{entity_id}")
+async def get_public_custom_field_values(
+    entity: str,
+    entity_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public endpoint — no auth. Returns custom field values for customer-facing pages.
+    Only returns values for fields where show_on_customer=True."""
+    configs_result = await db.execute(
+        select(FieldConfig).where(
+            FieldConfig.entity == entity,
+            FieldConfig.is_custom == True,
+            FieldConfig.is_visible == True,
+            FieldConfig.show_on_customer == True,
+        )
+    )
+    configs = {c.id: c for c in configs_result.scalars().all()}
+    if not configs:
+        return []
+
+    values_result = await db.execute(
+        select(CustomFieldValue).where(
+            CustomFieldValue.entity_id == entity_id,
+            CustomFieldValue.field_config_id.in_(list(configs.keys())),
+        )
+    )
+    values = values_result.scalars().all()
+
+    output = []
+    for v in values:
+        config = configs.get(v.field_config_id)
+        if not config:
+            continue
+        out = CustomFieldValueOut.model_validate(v)
+        out.field_key = config.field_key
+        out.label = config.label
+        out.field_type = config.field_type
+        output.append(out)
+
+    # Sort by field config sort_order
+    output.sort(key=lambda x: next((c.sort_order for c in configs.values() if c.field_key == x.field_key), 999))
+    return output
+
+
 @router.get("/custom-values/{entity}/{entity_id}", response_model=List[CustomFieldValueOut])
 async def get_custom_field_values(
     entity: str,

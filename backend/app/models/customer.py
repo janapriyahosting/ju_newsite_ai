@@ -19,6 +19,7 @@ class Customer(UUIDMixin, TimeStampMixin, Base):
     is_active:     Mapped[bool] = mapped_column(Boolean, default=True)
     last_login: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     preferences:   Mapped[dict] = mapped_column(JSON, default=dict)          # search preferences
+    profile_pic:   Mapped[str]  = mapped_column(String(500), nullable=True)  # /media/customer/profile/xxx.jpg
     otp:           Mapped[str]  = mapped_column(String(10), nullable=True)
     otp_expiry:    Mapped[str]  = mapped_column(String(50), nullable=True)
 

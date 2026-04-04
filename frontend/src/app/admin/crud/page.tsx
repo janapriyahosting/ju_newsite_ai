@@ -331,6 +331,7 @@ function buildSchemaFieldDefs(entity:EntityType,projects:any[],towers:any[],enti
     {key:"price_per_sqft",label:"Basic Rate per sqft (₹)",type:"currency"},
     {key:"down_payment",label:"Down Payment (₹)",type:"currency"},
     {key:"emi_estimate",label:"EMI Estimate (₹/month)",type:"currency"},
+    {key:"token_amount",label:"Token Amount (₹)",type:"currency"},
     {key:"facing",label:"Facing",type:"select",options:getFieldOptions("facing",entityFields,["East","West","North","South","NE","NW","SE","SW"])},
     {key:"status",label:"Status",type:"select",options:getFieldOptions("status",entityFields,["available","booked","reserved","sold"])},
     {key:"is_trending",label:"Trending",type:"boolean"},

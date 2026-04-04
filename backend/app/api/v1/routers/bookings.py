@@ -1,5 +1,6 @@
 import hmac
 import hashlib
+import asyncio
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,10 +22,21 @@ from backend.app.models.customer import Customer
 from backend.app.schemas.booking import BookingCreate, BookingResponse, PaymentVerify
 from backend.app.models.booking_kyc import BookingKYC
 from backend.app.schemas.booking_kyc import BookingKYCCreate, BookingKYCResponse
+from backend.app.services.notification_engine import fire_notification_background
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 RZP_API = "https://api.razorpay.com/v1"
+
+
+def _fmt_amount(amount) -> str:
+    """Format amount to readable INR string."""
+    n = float(amount) if amount else 0
+    if n >= 10000000:
+        return f"Rs.{n/10000000:.2f} Cr"
+    if n >= 100000:
+        return f"Rs.{n/100000:.1f} L"
+    return f"Rs.{n:,.0f}"
 
 
 @router.post("", status_code=201)
@@ -42,7 +54,7 @@ async def create_booking(
         raise HTTPException(status_code=400, detail="Unit is not available")
 
     total_amount = unit.base_price or Decimal('0')
-    booking_amount = total_amount * Decimal('0.1')
+    booking_amount = Decimal(str(unit.token_amount)) if unit.token_amount else Decimal('20000')
     discount_amount = Decimal('0')
     coupon_id = None
 
@@ -88,10 +100,17 @@ async def create_booking(
                 auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET),
             )
             if resp.status_code != 200:
-                raise HTTPException(status_code=502, detail=f"Razorpay error: {resp.text}")
+                try:
+                    rzp_err = resp.json()
+                    err_desc = rzp_err.get("error", {}).get("description", "Unknown payment error")
+                except Exception:
+                    err_desc = "Payment gateway returned an error"
+                raise HTTPException(status_code=400, detail=err_desc)
             rzp_order = resp.json()
+    except HTTPException:
+        raise
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"Payment gateway error: {str(e)}")
+        raise HTTPException(status_code=502, detail="Unable to connect to payment gateway. Please try again.")
 
     booking = Booking(
         customer_id=customer.id,
@@ -182,6 +201,40 @@ async def verify_payment(
     await db.commit()
     await db.refresh(booking)
 
+    # Send booking confirmation notifications via engine
+    if unit:
+        project_name = "Janapriya Upscale"
+        try:
+            tower = (await db.execute(select(Tower).where(Tower.id == unit.tower_id))).scalar_one_or_none()
+            if tower:
+                proj = (await db.execute(select(Project).where(Project.id == tower.project_id))).scalar_one_or_none()
+                if proj:
+                    project_name = proj.name
+        except Exception:
+            pass
+        booking_ctx = {
+            "customer_name": customer.name,
+            "customer_email": customer.email or "",
+            "customer_phone": customer.phone or "",
+            "unit_number": unit.unit_number,
+            "project_name": project_name,
+            "booking_amount": _fmt_amount(booking.booking_amount),
+            "total_amount": _fmt_amount(booking.total_amount),
+            "payment_id": data.razorpay_payment_id,
+            "booking_id": str(booking.id)[:8].upper(),
+            "booked_at": booking.confirmed_at.strftime("%d %b %Y") if booking.confirmed_at else "",
+            "amount": str(int(float(booking.booking_amount))) if booking.booking_amount else "0",
+            "transaction_id": data.razorpay_payment_id,
+        }
+        asyncio.create_task(fire_notification_background(
+            "booking_confirmed", booking_ctx,
+            recipient_phone=customer.phone, recipient_email=customer.email,
+        ))
+        asyncio.create_task(fire_notification_background(
+            "payment_received", booking_ctx,
+            recipient_phone=customer.phone, recipient_email=customer.email,
+        ))
+
     return {
         "status": "success",
         "booking_id": str(booking.id),
@@ -189,6 +242,85 @@ async def verify_payment(
         "booking_status": booking.status,
         "payment_status": booking.payment_status,
     }
+
+
+@router.get("/{booking_id}/receipt")
+async def get_payment_receipt(
+    booking_id: UUID,
+    customer: Customer = Depends(get_current_customer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get payment receipt for a confirmed booking."""
+    result = await db.execute(
+        select(Booking).where(Booking.id == booking_id, Booking.customer_id == customer.id)
+    )
+    booking = result.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    if booking.payment_status != "paid" or not booking.razorpay_payment_id:
+        raise HTTPException(status_code=400, detail="No payment found for this booking")
+
+    # Fetch payment details from Razorpay
+    razorpay_data = None
+    if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(
+                    f"{RZP_API}/payments/{booking.razorpay_payment_id}",
+                    auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET),
+                )
+                if resp.status_code == 200:
+                    razorpay_data = resp.json()
+        except Exception as e:
+            print(f"[Receipt] Razorpay fetch error: {e}")
+
+    # Load unit, tower, project
+    unit = (await db.execute(select(Unit).where(Unit.id == booking.unit_id))).scalar_one_or_none()
+    project_name = "Janapriya Upscale"
+    tower_name = ""
+    if unit:
+        tower = (await db.execute(select(Tower).where(Tower.id == unit.tower_id))).scalar_one_or_none()
+        if tower:
+            tower_name = tower.name
+            proj = (await db.execute(select(Project).where(Project.id == tower.project_id))).scalar_one_or_none()
+            if proj:
+                project_name = proj.name
+
+    receipt = {
+        "booking_id": str(booking.id),
+        "customer_name": customer.name,
+        "customer_email": customer.email,
+        "customer_phone": customer.phone,
+        "unit_number": unit.unit_number if unit else None,
+        "unit_type": unit.unit_type if unit else None,
+        "project_name": project_name,
+        "tower_name": tower_name,
+        "booking_amount": str(booking.booking_amount),
+        "total_amount": str(booking.total_amount),
+        "discount_amount": str(booking.discount_amount),
+        "payment_status": booking.payment_status,
+        "booking_status": booking.status,
+        "razorpay_payment_id": booking.razorpay_payment_id,
+        "razorpay_order_id": booking.razorpay_order_id,
+        "booked_at": booking.booked_at.isoformat() if booking.booked_at else None,
+        "confirmed_at": booking.confirmed_at.isoformat() if booking.confirmed_at else None,
+    }
+
+    # Add Razorpay payment details if available
+    if razorpay_data:
+        receipt["payment_method"] = razorpay_data.get("method", "")
+        receipt["payment_amount_paise"] = razorpay_data.get("amount", 0)
+        receipt["payment_currency"] = razorpay_data.get("currency", "INR")
+        receipt["payment_email"] = razorpay_data.get("email", "")
+        receipt["payment_contact"] = razorpay_data.get("contact", "")
+        receipt["payment_created_at"] = razorpay_data.get("created_at", None)
+        receipt["bank"] = razorpay_data.get("bank", "")
+        receipt["wallet"] = razorpay_data.get("wallet", "")
+        receipt["vpa"] = razorpay_data.get("vpa", "")
+        receipt["card_last4"] = razorpay_data.get("card", {}).get("last4", "") if razorpay_data.get("card") else ""
+        receipt["card_network"] = razorpay_data.get("card", {}).get("network", "") if razorpay_data.get("card") else ""
+
+    return receipt
 
 
 @router.post("/kyc", response_model=BookingKYCResponse, status_code=201)

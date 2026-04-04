@@ -29,8 +29,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans:  ['Inter', 'sans-serif'],
-        serif: ['Playfair Display', 'serif'],
+        sans:  ['Lato', 'sans-serif'],
+        serif: ['Lato', 'sans-serif'],
       },
     },
   },

@@ -42,7 +42,7 @@ function CompareContent() {
   ];
 
   return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
       <div className="pt-20 pb-6 px-6" style={{ background: "linear-gradient(135deg,#262262,#2A3887)" }}>
         <div className="max-w-7xl mx-auto">

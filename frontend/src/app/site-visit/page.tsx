@@ -112,12 +112,12 @@ export default function SiteVisitPage() {
     } finally { setOtpLoading(false) }
   }
 
-  const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white'
+  const inputCls = 'w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#29A9DF] bg-white'
   const labelCls = 'block text-sm font-medium text-gray-700 mb-1'
   const errCls = 'text-red-500 text-xs mt-1'
 
   if (submitted) return (
-    <main className="min-h-screen bg-brand-light flex items-center justify-center px-4">
+    <main className="min-h-screen flex items-center justify-center px-4" style={{ background: "#F8F9FB" }}>
       <div className="text-center max-w-md">
         <div className="text-6xl mb-6">🏠</div>
         <h1 className="text-3xl font-serif font-bold text-gray-900 mb-3">Visit Confirmed!</h1>
@@ -125,7 +125,7 @@ export default function SiteVisitPage() {
           Thank you <strong>{form.name}</strong>! Your site visit is scheduled for
         </p>
         <div className="bg-white rounded-2xl p-6 shadow-md my-6 space-y-2">
-          <p className="text-brand-gold font-bold text-lg">
+          <p className="font-bold text-lg" style={{ color: "#2A3887" }}>
             {new Date(form.visit_date).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
           <p className="text-gray-600">{form.visit_time}</p>
@@ -140,18 +140,18 @@ export default function SiteVisitPage() {
   )
 
   return (
-    <main className="min-h-screen bg-brand-light">
-      <header className="bg-brand-dark text-white shadow-lg">
+    <main className="min-h-screen" style={{ background: "#F8F9FB" }}>
+      <header className="text-white shadow-lg" style={{ background: "linear-gradient(135deg, #262262, #2A3887)" }}>
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-serif font-bold text-brand-gold">Janapriya Upscale</Link>
-          <Link href="/" className="text-sm text-gray-300 hover:text-brand-gold">← Back to Home</Link>
+          <Link href="/" className="text-2xl font-serif font-bold" style={{ color: "#29A9DF" }}>Janapriya Upscale</Link>
+          <Link href="/" className="text-sm text-gray-300 hover:text-[#29A9DF]">← Back to Home</Link>
         </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
           <div className="text-5xl mb-4">🏠</div>
-          <h1 className="text-4xl font-serif font-bold text-gray-900 mb-3">Book a Site Visit</h1>
+          <h1 className="text-4xl font-serif font-bold mb-3" style={{ color: "#2A3887" }}>Book a Site Visit</h1>
           <p className="text-gray-500">Come see your dream home in person. Our team will guide you through the property.</p>
         </div>
 
@@ -213,8 +213,9 @@ export default function SiteVisitPage() {
                   <button key={slot} type="button" disabled={otpStep}
                     onClick={() => update('visit_time', slot)}
                     className={`py-2 px-3 rounded-lg text-sm border transition-colors disabled:opacity-60 ${
-                      form.visit_time === slot ? 'bg-brand-gold text-white border-brand-gold' : 'border-gray-300 text-gray-600 hover:border-brand-gold'
-                    }`}>{slot}</button>
+                      form.visit_time === slot ? 'text-white border-[#2A3887]' : 'border-gray-300 text-gray-600 hover:border-[#29A9DF]'
+                    }`}
+                    style={form.visit_time === slot ? { background: "#2A3887" } : {}}>{slot}</button>
                 ))}
               </div>
               {errors.visit_time && <p className={errCls}>{errors.visit_time}</p>}
@@ -231,7 +232,7 @@ export default function SiteVisitPage() {
             <div>
               <label className="flex items-start gap-3 cursor-pointer">
                 <input type="checkbox" checked={form.consent} onChange={e => update('consent', e.target.checked)}
-                  disabled={otpStep} className="mt-0.5 w-4 h-4 accent-amber-500 flex-shrink-0" />
+                  disabled={otpStep} className="mt-0.5 w-4 h-4 accent-[#2A3887] flex-shrink-0" />
                 <span className={`text-xs leading-relaxed ${errors.consent ? 'text-red-500' : 'text-gray-500'}`}>
                   I consent to Janapriya contacting me via phone calls, SMS, WhatsApp, and email regarding my site visit and property updates. I can opt out at any time.
                 </span>
@@ -254,7 +255,7 @@ export default function SiteVisitPage() {
                       onChange={e => handleOtpChange(i, e.target.value)}
                       onKeyDown={e => handleOtpKeyDown(i, e)}
                       className="w-12 h-14 text-center text-xl font-bold rounded-xl focus:outline-none transition-all"
-                      style={{ background: '#fff', border: `1.5px solid ${digit ? '#F59E0B' : '#E2F1FC'}`, color: '#333' }} />
+                      style={{ background: '#fff', border: `1.5px solid ${digit ? '#2A3887' : '#E2F1FC'}`, color: '#333' }} />
                   ))}
                 </div>
                 <button type="button" onClick={handleVerifyAndSubmit} disabled={otpLoading || otp.join('').length !== 6}

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -34,11 +34,20 @@ export default function DashboardPage() {
   const [pwForm, setPwForm] = useState({ current: "", newpw: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState({ text: "", ok: false });
   const [pwLoading, setPwLoading] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isLoggedIn()) { router.replace("/login"); return; }
     setCustomer(getCustomer());
     setSavedIds(getSaved());
+    // Check URL for tab param
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const t = sp.get('tab');
+      if (t && TABS.some(tt => tt.id === t)) setTab(t);
+    }
     loadData();
   }, [router]);
 
@@ -55,6 +64,40 @@ export default function DashboardPage() {
       else { console.error("[Dashboard] visits fetch failed:", v.reason); }
     } catch {}
     setLoading(false);
+  }
+
+  async function fetchReceipt(bookingId: string) {
+    setReceiptLoading(true);
+    setReceiptOpen(bookingId);
+    try {
+      const data = await customerApi(`/bookings/${bookingId}/receipt`);
+      setReceiptData(data);
+    } catch (e: any) {
+      setReceiptData(null);
+    }
+    setReceiptLoading(false);
+  }
+
+  function printReceipt() {
+    const el = document.getElementById('receipt-print');
+    if (!el) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<html><head><title>Payment Receipt</title><style>
+      body { font-family: 'Lato', sans-serif; margin: 0; padding: 20px; color: #333; }
+      table { width: 100%; border-collapse: collapse; }
+      td { padding: 8px 0; font-size: 14px; }
+      .label { color: #666; }
+      .value { text-align: right; font-weight: 700; }
+      .header { background: #2A3887; color: white; padding: 24px; text-align: center; margin: -20px -20px 20px; }
+      .header h1 { margin: 0; font-size: 20px; color: #29A9DF; }
+      .header p { margin: 4px 0 0; opacity: 0.7; font-size: 13px; }
+      .section { border: 1px solid #E2F1FC; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+      .section-title { font-weight: 700; color: #2A3887; margin-bottom: 10px; font-size: 14px; }
+      .footer { text-align: center; color: #999; font-size: 11px; margin-top: 20px; }
+    </style></head><body>${el.innerHTML}</body></html>`);
+    win.document.close();
+    win.print();
   }
 
   async function handleChangePassword(e: React.FormEvent) {
@@ -83,7 +126,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <main style={{ fontFamily: "'Lato',sans-serif", background: "#F8F9FB" }} className="min-h-screen">
+    <main style={{ background: "#F8F9FB" }} className="min-h-screen">
       <Navbar />
 
       {/* Top Banner */}
@@ -260,7 +303,7 @@ export default function DashboardPage() {
                   <div className="rounded-xl p-4 mb-4" style={{ background: "#F0F4FF", border: "1px solid #E2F1FC" }}>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div><p className="text-xs text-gray-400">Total Price</p><p className="font-black" style={{ color: "#2A3887" }}>{fmtP(b.total_amount)}</p></div>
-                      <div><p className="text-xs text-gray-400">Booking (10%)</p><p className="font-black" style={{ color: "#16A34A" }}>{fmtP(b.booking_amount)}</p></div>
+                      <div><p className="text-xs text-gray-400">Token Amount</p><p className="font-black" style={{ color: "#16A34A" }}>{fmtP(b.booking_amount)}</p></div>
                       {parseFloat(b.discount_amount) > 0 && <div><p className="text-xs text-gray-400">Discount</p><p className="font-black text-green-600">- {fmtP(b.discount_amount)}</p></div>}
                       {u.price_per_sqft && <div><p className="text-xs text-gray-400">Rate/sqft</p><p className="font-black" style={{ color: "#2A3887" }}>{fmtP(u.price_per_sqft)}</p></div>}
                     </div>
@@ -299,6 +342,13 @@ export default function DashboardPage() {
                       style={{ background: b.kyc_submitted ? "#DCFCE7" : "#FEF3C7", color: b.kyc_submitted ? "#16A34A" : "#92400E" }}>
                       {b.kyc_submitted ? '✓ KYC Submitted — Edit' : '📄 Upload KYC Documents'}
                     </button>
+                    {b.payment_status === 'paid' && (
+                      <button onClick={() => fetchReceipt(b.id)}
+                        className="px-4 py-2.5 text-xs font-bold rounded-xl text-center"
+                        style={{ background: "#F0F4FF", border: "1px solid #29A9DF", color: "#2A3887" }}>
+                        🧾 Receipt
+                      </button>
+                    )}
                     <Link href={`/units/${b.unit_id}`}
                       className="px-4 py-2.5 text-xs font-bold rounded-xl text-center"
                       style={{ border: "1px solid #2A3887", color: "#2A3887" }}>
@@ -308,6 +358,101 @@ export default function DashboardPage() {
                 </div>
               </div>);
             })}
+          </div>
+        )}
+
+        {/* ── Payment Receipt Modal ── */}
+        {receiptOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => { setReceiptOpen(null); setReceiptData(null); }}>
+            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}>
+              {receiptLoading ? (
+                <div className="p-12 text-center">
+                  <div className="text-4xl animate-spin mb-3">⟳</div>
+                  <p className="text-gray-500">Loading receipt...</p>
+                </div>
+              ) : !receiptData ? (
+                <div className="p-12 text-center">
+                  <div className="text-4xl mb-3">❌</div>
+                  <p className="text-gray-500">Could not load receipt</p>
+                  <button onClick={() => { setReceiptOpen(null); setReceiptData(null); }}
+                    className="mt-4 px-6 py-2 text-sm font-bold rounded-lg" style={{ color: "#2A3887" }}>Close</button>
+                </div>
+              ) : (
+                <div>
+                  <div id="receipt-print">
+                    <div className="header" style={{ background: "linear-gradient(135deg,#262262,#2A3887)", padding: "24px", textAlign: "center" }}>
+                      <h1 style={{ color: "#29A9DF", fontSize: "20px", margin: 0, fontWeight: 700 }}>Janapriya Upscale</h1>
+                      <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "13px", marginTop: 4 }}>Payment Receipt</p>
+                    </div>
+
+                    <div style={{ padding: "20px 24px" }}>
+                      {/* Property Details */}
+                      <p style={{ fontWeight: 700, color: "#2A3887", fontSize: 13, marginBottom: 10 }}>Property Details</p>
+                      <div style={{ background: "#F0F4FF", border: "1px solid #E2F1FC", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                          <tbody>
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Unit</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 700, color: "#2A3887" }}>{receiptData.unit_number}</td></tr>
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Type</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 600 }}>{receiptData.unit_type}</td></tr>
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Project</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 600 }}>{receiptData.project_name}</td></tr>
+                            {receiptData.tower_name && <tr><td style={{ padding: "6px 0", color: "#666" }}>Tower</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 600 }}>{receiptData.tower_name}</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Payment Details */}
+                      <p style={{ fontWeight: 700, color: "#2A3887", fontSize: 13, marginBottom: 10 }}>Payment Details</p>
+                      <div style={{ background: "#F0F4FF", border: "1px solid #E2F1FC", borderRadius: 10, padding: 16, marginBottom: 16 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                          <tbody>
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Total Price</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 700 }}>{(() => { const n = parseFloat(receiptData.total_amount); return n >= 10000000 ? `₹${(n/10000000).toFixed(2)} Cr` : n >= 100000 ? `₹${(n/100000).toFixed(1)} L` : `₹${n.toLocaleString('en-IN')}`; })()}</td></tr>
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Token Amount Paid</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 700, color: "#16A34A" }}>{(() => { const n = parseFloat(receiptData.booking_amount); return n >= 100000 ? `₹${(n/100000).toFixed(1)} L` : `₹${n.toLocaleString('en-IN')}`; })()}</td></tr>
+                            {parseFloat(receiptData.discount_amount) > 0 && <tr><td style={{ padding: "6px 0", color: "#666" }}>Discount</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 700, color: "#16A34A" }}>- ₹{parseFloat(receiptData.discount_amount).toLocaleString('en-IN')}</td></tr>}
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Payment ID</td><td style={{ padding: "6px 0", textAlign: "right", fontFamily: "monospace", fontSize: 12 }}>{receiptData.razorpay_payment_id}</td></tr>
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Order ID</td><td style={{ padding: "6px 0", textAlign: "right", fontFamily: "monospace", fontSize: 12 }}>{receiptData.razorpay_order_id}</td></tr>
+                            {receiptData.payment_method && <tr><td style={{ padding: "6px 0", color: "#666" }}>Method</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 600, textTransform: "capitalize" }}>{receiptData.payment_method}{receiptData.card_last4 ? ` •••• ${receiptData.card_last4}` : ''}{receiptData.vpa ? ` (${receiptData.vpa})` : ''}{receiptData.bank ? ` — ${receiptData.bank}` : ''}</td></tr>}
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Status</td><td style={{ padding: "6px 0", textAlign: "right", fontWeight: 700, color: "#16A34A" }}>✓ Paid</td></tr>
+                            <tr><td style={{ padding: "6px 0", color: "#666" }}>Date</td><td style={{ padding: "6px 0", textAlign: "right" }}>{receiptData.confirmed_at ? new Date(receiptData.confirmed_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Customer Details */}
+                      <p style={{ fontWeight: 700, color: "#2A3887", fontSize: 13, marginBottom: 10 }}>Customer</p>
+                      <div style={{ background: "#F8F9FB", borderRadius: 10, padding: 16, marginBottom: 8 }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                          <tbody>
+                            <tr><td style={{ padding: "4px 0", color: "#666" }}>Name</td><td style={{ padding: "4px 0", textAlign: "right", fontWeight: 600 }}>{receiptData.customer_name}</td></tr>
+                            {receiptData.customer_phone && <tr><td style={{ padding: "4px 0", color: "#666" }}>Phone</td><td style={{ padding: "4px 0", textAlign: "right" }}>+91 {receiptData.customer_phone}</td></tr>}
+                            {receiptData.customer_email && <tr><td style={{ padding: "4px 0", color: "#666" }}>Email</td><td style={{ padding: "4px 0", textAlign: "right" }}>{receiptData.customer_email}</td></tr>}
+                            <tr><td style={{ padding: "4px 0", color: "#666" }}>Booking ID</td><td style={{ padding: "4px 0", textAlign: "right", fontFamily: "monospace" }}>{receiptData.booking_id?.slice(0,8).toUpperCase()}</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <p style={{ textAlign: "center", color: "#999", fontSize: 11, margin: "16px 0 0" }}>
+                        This is a computer-generated receipt and does not require a signature.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3 p-5 border-t" style={{ borderColor: "#E2F1FC" }}>
+                    <button onClick={printReceipt}
+                      className="flex-1 py-3 text-sm font-bold rounded-xl text-white"
+                      style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                      🖨 Print / Download PDF
+                    </button>
+                    <button onClick={() => { setReceiptOpen(null); setReceiptData(null); }}
+                      className="px-6 py-3 text-sm font-bold rounded-xl"
+                      style={{ border: "1px solid #E2F1FC", color: "#555" }}>
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -387,46 +532,7 @@ export default function DashboardPage() {
 
         {/* ── Profile ── */}
         {tab === "profile" && (
-          <div className="max-w-lg">
-            <h2 className="text-lg font-black mb-5" style={{ color: "#262262" }}>My Profile</h2>
-            <div className="bg-white rounded-2xl p-6" style={{ border: "1px solid #E2F1FC" }}>
-              <div className="flex items-center gap-4 mb-6 pb-6" style={{ borderBottom: "1px solid #E2F1FC" }}>
-                <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black text-white"
-                  style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-                  {customer.name?.[0]?.toUpperCase()}
-                </div>
-                <div>
-                  <p className="font-black text-lg" style={{ color: "#2A3887" }}>{customer.name}</p>
-                  <p style={{ color: "#555" }} className="text-sm">{customer.email}</p>
-                </div>
-              </div>
-              {[
-                { label: "Full Name", value: customer.name },
-                { label: "Email", value: customer.email },
-                { label: "Phone", value: customer.phone || "Not provided" },
-                { label: "Account Status", value: customer.is_active ? "✅ Active" : "⚠ Inactive" },
-                { label: "Email Verified", value: customer.is_verified ? "✅ Verified" : "⏳ Pending" },
-              ].map(row => (
-                <div key={row.label} className="flex justify-between items-center py-3"
-                  style={{ borderBottom: "1px solid #F0F4FF" }}>
-                  <span className="text-sm font-bold" style={{ color: "#555A5C" }}>{row.label}</span>
-                  <span className="text-sm" style={{ color: "#333" }}>{row.value}</span>
-                </div>
-              ))}
-              <div className="mt-5 flex gap-3">
-                <button onClick={() => setTab("password")}
-                  className="flex-1 py-2.5 text-sm font-bold rounded-xl"
-                  style={{ border: "1.5px solid #2A3887", color: "#2A3887" }}>
-                  🔒 Change Password
-                </button>
-                <button onClick={() => { clearSession(); router.push("/login"); }}
-                  className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl"
-                  style={{ background: "#DC2626" }}>
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          </div>
+          <ProfileTab customer={customer} onUpdate={(c: any) => { setCustomer(c); localStorage.setItem("jp_customer", JSON.stringify(c)); }} onTabChange={setTab} onLogout={() => { clearSession(); router.push("/login"); }} />
         )}
       </div>
       <Footer />
@@ -840,6 +946,348 @@ function KYCTab({ bookings, token }: { bookings: any[]; token: string }) {
               {step < 4 ? <button onClick={goNext} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: 'linear-gradient(135deg,#2A3887,#29A9DF)' }}>Next →</button>
               : <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 rounded-xl text-sm font-black text-white disabled:opacity-50" style={{ background: 'linear-gradient(135deg,#16A34A,#22c55e)' }}>{saving ? 'Saving...' : 'Submit KYC Details'}</button>}
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ── Profile Tab ──────────────────────────────────────────────────────────────
+
+function ProfileTab({ customer, onUpdate, onTabChange, onLogout }: {
+  customer: any; onUpdate: (c: any) => void; onTabChange: (t: string) => void; onLogout: () => void;
+}) {
+  const MEDIA = 'http://173.168.0.81:8000';
+  const [picLoading, setPicLoading] = useState(false);
+
+  // Edit modal state — handles name, phone, email
+  const [editField, setEditField] = useState<'name' | 'phone' | 'email' | null>(null);
+  const [newValue, setNewValue] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
+  const [successMsg, setSuccessMsg] = useState('');
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (countdown > 0) { const t = setTimeout(() => setCountdown(c => c - 1), 1000); return () => clearTimeout(t); }
+  }, [countdown]);
+  useEffect(() => { if (otpSent) otpRefs.current[0]?.focus(); }, [otpSent]);
+
+  const picUrl = customer.profile_pic ? `${MEDIA}${customer.profile_pic}` : null;
+
+  async function handlePicUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Image too large (max 5MB)'); return; }
+    setPicLoading(true);
+    try {
+      const token = localStorage.getItem('jp_token');
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${API}/auth/profile/pic`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onUpdate({ ...customer, profile_pic: data.profile_pic });
+      }
+    } catch {}
+    setPicLoading(false);
+    e.target.value = '';
+  }
+
+  async function handlePicDelete() {
+    setPicLoading(true);
+    try {
+      await customerApi('/auth/profile/pic', { method: 'DELETE' });
+      onUpdate({ ...customer, profile_pic: null });
+    } catch {}
+    setPicLoading(false);
+  }
+
+  function openEdit(field: 'name' | 'phone' | 'email') {
+    setEditField(field);
+    setNewValue(field === 'name' ? (customer.name || '') : '');
+    setOtp(['', '', '', '', '', '']);
+    setOtpSent(false);
+    setOtpError('');
+    setDevOtp(null);
+    setSuccessMsg('');
+  }
+
+  function closeEdit() {
+    setEditField(null);
+    setOtpSent(false);
+    setOtpError('');
+    setDevOtp(null);
+    setSuccessMsg('');
+  }
+
+  // For name: OTP on existing phone, then update
+  async function sendOtp() {
+    setOtpLoading(true); setOtpError(''); setDevOtp(null);
+    try {
+      let type = editField!;
+      let value = newValue.trim();
+      // For name change, send OTP to existing phone for verification
+      if (editField === 'name') {
+        type = 'phone' as any;
+        value = customer.phone;
+      }
+      if (!value) { setOtpError(editField === 'name' ? 'No phone number on file' : `Enter a ${editField}`); setOtpLoading(false); return; }
+      const res = await customerApi('/auth/profile/send-otp', {
+        method: 'POST', body: JSON.stringify({ type, value }),
+      });
+      if (res.dev_otp) setDevOtp(res.dev_otp);
+      setOtpSent(true);
+      setCountdown(30);
+    } catch (e: any) { setOtpError(e.message || 'Failed to send OTP'); }
+    setOtpLoading(false);
+  }
+
+  function handleOtpChange(i: number, v: string) {
+    if (v && !/^\d$/.test(v)) return;
+    const n = [...otp]; n[i] = v; setOtp(n);
+    if (v && i < 5) otpRefs.current[i + 1]?.focus();
+    if (v && i === 5 && n.join('').length === 6) setTimeout(() => verifyAndUpdate(n), 100);
+  }
+  function handleOtpKeyDown(i: number, e: React.KeyboardEvent) {
+    if (e.key === 'Backspace' && !otp[i] && i > 0) otpRefs.current[i - 1]?.focus();
+  }
+  function handleOtpPaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const p = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (p.length === 6) { const d = p.split(''); setOtp(d); otpRefs.current[5]?.focus(); setTimeout(() => verifyAndUpdate(d), 100); }
+  }
+
+  async function verifyAndUpdate(otpDigits?: string[]) {
+    const code = (otpDigits || otp).join('');
+    if (code.length !== 6) { setOtpError('Enter the 6-digit OTP'); return; }
+    setOtpLoading(true); setOtpError('');
+    try {
+      if (editField === 'name') {
+        // Verify OTP on existing phone, then update name
+        await customerApi('/auth/profile/verify-update', {
+          method: 'POST', body: JSON.stringify({ type: 'phone', value: customer.phone, otp: code }),
+        });
+        // OTP verified — now update name
+        const data = await customerApi('/auth/profile', {
+          method: 'PATCH', body: JSON.stringify({ name: newValue.trim() }),
+        });
+        onUpdate({ ...customer, name: data.name });
+        setSuccessMsg('Name updated successfully');
+      } else {
+        const data = await customerApi('/auth/profile/verify-update', {
+          method: 'POST', body: JSON.stringify({ type: editField, value: newValue.trim(), otp: code }),
+        });
+        onUpdate({ ...customer, [editField!]: data[editField!] });
+        setSuccessMsg(`${editField === 'phone' ? 'Phone number' : 'Email'} updated successfully`);
+      }
+      setTimeout(() => closeEdit(), 1500);
+    } catch (e: any) { setOtpError(e.message || 'Verification failed'); }
+    setOtpLoading(false);
+  }
+
+  const inputCls = "w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#29A9DF] bg-white";
+
+  const editLabels: Record<string, { icon: string; title: string; placeholder: string; otpTo: string }> = {
+    name:  { icon: '✏️', title: 'Change Name', placeholder: 'Enter new name', otpTo: `OTP will be sent to +91 ${customer.phone}` },
+    phone: { icon: '📱', title: 'Change Phone Number', placeholder: '9876543210', otpTo: 'OTP will be sent to the new number' },
+    email: { icon: '📧', title: 'Change Email Address', placeholder: 'new@email.com', otpTo: 'OTP will be sent to the new email' },
+  };
+
+  return (
+    <div className="max-w-lg">
+      <h2 className="text-lg font-black mb-5" style={{ color: "#262262" }}>My Profile</h2>
+
+      {/* Profile Picture */}
+      <div className="bg-white rounded-2xl p-6 mb-4" style={{ border: "1px solid #E2F1FC" }}>
+        <div className="flex items-center gap-5">
+          <div className="relative">
+            {picUrl ? (
+              <img src={picUrl} alt="Profile" className="w-20 h-20 rounded-full object-cover border-2" style={{ borderColor: "#29A9DF" }} />
+            ) : (
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white"
+                style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                {customer.name?.[0]?.toUpperCase()}
+              </div>
+            )}
+            {picLoading && (
+              <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                <span className="text-white text-sm animate-spin">⟳</span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1">
+            <p className="font-black text-lg" style={{ color: "#2A3887" }}>{customer.name}</p>
+            <p className="text-sm text-gray-500 mb-3">{customer.email || customer.phone}</p>
+            <div className="flex gap-2">
+              <label className="px-4 py-2 text-xs font-bold rounded-lg cursor-pointer"
+                style={{ background: "#E2F1FC", color: "#2A3887" }}>
+                📷 {picUrl ? 'Change' : 'Upload'} Photo
+                <input type="file" accept="image/*" className="hidden" onChange={handlePicUpload} />
+              </label>
+              {picUrl && (
+                <button onClick={handlePicDelete} className="px-4 py-2 text-xs font-bold rounded-lg"
+                  style={{ background: "#FEE2E2", color: "#DC2626" }}>
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Read-only Fields with Edit buttons */}
+      <div className="bg-white rounded-2xl p-6 mb-4" style={{ border: "1px solid #E2F1FC" }}>
+        {[
+          { key: 'name', label: 'Full Name', value: customer.name, btnLabel: 'Edit' },
+          { key: 'phone', label: 'Phone Number', value: customer.phone ? `+91 ${customer.phone}` : 'Not provided', btnLabel: customer.phone ? 'Change' : 'Add' },
+          { key: 'email', label: 'Email Address', value: customer.email || 'Not provided', btnLabel: customer.email ? 'Change' : 'Add' },
+        ].map((row, i, arr) => (
+          <div key={row.key} className="flex items-center justify-between py-4"
+            style={i < arr.length - 1 ? { borderBottom: "1px solid #F0F4FF" } : {}}>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: "#555A5C" }}>{row.label}</p>
+              <p className="text-sm font-medium" style={{ color: "#333" }}>{row.value}</p>
+            </div>
+            <button onClick={() => openEdit(row.key as any)}
+              className="text-xs font-bold px-4 py-2 rounded-lg transition-all hover:scale-105"
+              style={{ background: "#E2F1FC", color: "#2A3887" }}>
+              {row.btnLabel}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {/* Account Info */}
+      <div className="bg-white rounded-2xl p-6 mb-4" style={{ border: "1px solid #E2F1FC" }}>
+        {[
+          { label: "Account Status", value: customer.is_active ? "✅ Active" : "⚠ Inactive" },
+          { label: "Verified", value: customer.is_verified ? "✅ Verified" : "⏳ Pending" },
+        ].map(row => (
+          <div key={row.label} className="flex justify-between items-center py-2.5"
+            style={{ borderBottom: "1px solid #F0F4FF" }}>
+            <span className="text-sm font-bold" style={{ color: "#555A5C" }}>{row.label}</span>
+            <span className="text-sm">{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-3">
+        <button onClick={() => onTabChange("password")}
+          className="flex-1 py-2.5 text-sm font-bold rounded-xl"
+          style={{ border: "1.5px solid #2A3887", color: "#2A3887" }}>
+          🔒 Change Password
+        </button>
+        <button onClick={onLogout}
+          className="flex-1 py-2.5 text-sm font-bold text-white rounded-xl"
+          style={{ background: "#DC2626" }}>
+          Sign Out
+        </button>
+      </div>
+
+      {/* ── Edit Modal with OTP ── */}
+      {editField && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={closeEdit}>
+          <div className="bg-white rounded-2xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            {successMsg ? (
+              <div className="text-center py-6">
+                <div className="text-5xl mb-4">✅</div>
+                <p className="font-bold text-lg" style={{ color: "#16A34A" }}>{successMsg}</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-lg font-black mb-1" style={{ color: "#2A3887" }}>
+                  {editLabels[editField].icon} {editLabels[editField].title}
+                </h3>
+                <p className="text-gray-500 text-xs mb-5">
+                  {otpSent ? 'Enter the OTP to verify and save changes' : editLabels[editField].otpTo}
+                </p>
+
+                {otpError && (
+                  <div className="px-4 py-3 rounded-xl text-sm mb-4" style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FCA5A5' }}>
+                    {otpError}
+                  </div>
+                )}
+                {devOtp && (
+                  <div className="px-4 py-2 rounded-xl text-xs mb-4" style={{ background: '#FEF9C3', color: '#92400E', border: '1px solid #FDE68A' }}>
+                    Dev OTP: <strong>{devOtp}</strong>
+                  </div>
+                )}
+
+                {!otpSent ? (
+                  <>
+                    {/* New value input */}
+                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                      {editField === 'name' ? 'New Name' : editField === 'phone' ? 'New Phone Number' : 'New Email Address'}
+                    </label>
+                    <input
+                      value={newValue} onChange={e => setNewValue(e.target.value)}
+                      placeholder={editLabels[editField].placeholder}
+                      type={editField === 'email' ? 'email' : editField === 'phone' ? 'tel' : 'text'}
+                      className={inputCls} style={{ borderColor: "#E2F1FC" }}
+                    />
+                    <p className="text-xs text-gray-400 mt-2 mb-4">
+                      {editField === 'name'
+                        ? `An OTP will be sent to your phone (+91 ${customer.phone}) to verify this change.`
+                        : editField === 'phone'
+                        ? 'An OTP will be sent to this new number to verify it.'
+                        : 'An OTP will be sent to this new email to verify it.'}
+                    </p>
+                    <button onClick={sendOtp} disabled={otpLoading || !newValue.trim()}
+                      className="w-full py-3 text-sm font-bold text-white rounded-xl disabled:opacity-50"
+                      style={{ background: "#2A3887" }}>
+                      {otpLoading ? 'Sending OTP...' : 'Send OTP & Verify'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600 mb-1">
+                      {editField === 'name' ? 'New name: ' : editField === 'phone' ? 'New phone: ' : 'New email: '}
+                      <strong style={{ color: "#2A3887" }}>{newValue}</strong>
+                    </p>
+                    <p className="text-sm font-medium text-gray-700 mb-4">
+                      OTP sent to <strong>{editField === 'name' ? `+91 ${customer.phone}` : newValue}</strong>
+                    </p>
+                    <div className="flex gap-2 justify-center mb-4" onPaste={handleOtpPaste}>
+                      {otp.map((digit, i) => (
+                        <input key={i} ref={el => { otpRefs.current[i] = el; }}
+                          type="text" inputMode="numeric" maxLength={1} value={digit}
+                          onChange={e => handleOtpChange(i, e.target.value)}
+                          onKeyDown={e => handleOtpKeyDown(i, e)}
+                          className="w-12 h-14 text-center text-xl font-bold rounded-xl focus:outline-none transition-all"
+                          style={{ background: '#fff', border: `1.5px solid ${digit ? '#2A3887' : '#E2F1FC'}`, color: '#333' }}
+                        />
+                      ))}
+                    </div>
+                    <button onClick={() => verifyAndUpdate()} disabled={otpLoading || otp.join('').length !== 6}
+                      className="w-full py-3 text-sm font-bold text-white rounded-xl disabled:opacity-50"
+                      style={{ background: "#2A3887" }}>
+                      {otpLoading ? 'Verifying...' : 'Verify & Save'}
+                    </button>
+                    <div className="text-center mt-3">
+                      {countdown > 0
+                        ? <p className="text-xs text-gray-400">Resend OTP in {countdown}s</p>
+                        : <button onClick={sendOtp} disabled={otpLoading} className="text-xs font-bold hover:underline" style={{ color: '#29A9DF' }}>Resend OTP</button>}
+                    </div>
+                  </>
+                )}
+
+                <button onClick={closeEdit}
+                  className="w-full mt-3 py-2.5 text-xs font-bold text-gray-500 rounded-xl border border-gray-200">
+                  Cancel
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

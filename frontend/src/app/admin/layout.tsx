@@ -17,6 +17,8 @@ const navItems = [
 { href: '/admin/towers', label: 'Towers', icon: '🏛' },
         { href: '/admin/media',        label: 'Media',         icon: '🖼️' },
 { href: '/admin/sections',        label: 'Sections',         icon: '🧩' },
+  { href: '/admin/notifications', label: 'Notifications', icon: '🔔' },
+  { href: '/admin/assistant',   label: 'AI Assistant', icon: '🤖' },
   { href: '/admin/users',      label: 'Admin Users', icon: '🔐' },
 ];
 

@@ -2,10 +2,10 @@ module.exports = {
   apps: [
     {
       name: 'janapriya-api',
-      cmd: 'uvicorn',
+      script: '/home/jpuser/projects/janapriyaupscale/.venv/bin/uvicorn',
       args: 'backend.app.main:app --host 0.0.0.0 --port 8000',
       cwd: '/home/jpuser/projects/janapriyaupscale',
-      interpreter: '/home/jpuser/projects/janapriyaupscale/.venv/bin/python',
+      interpreter: 'none',
       env: { PYTHONPATH: '/home/jpuser/projects/janapriyaupscale' },
     },
     {

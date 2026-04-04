@@ -20,7 +20,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
       <div className="min-h-screen flex items-center justify-center pt-20 pb-12 px-4"
         style={{ background: "linear-gradient(135deg, #F8F9FB 0%, #E2F1FC 100%)" }}>

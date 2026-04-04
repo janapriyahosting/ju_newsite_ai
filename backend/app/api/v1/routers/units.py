@@ -1,13 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from typing import Optional
 from uuid import UUID
 from decimal import Decimal
+from jose import jwt, JWTError
 from backend.app.core.database import get_db
+from backend.app.core.config import settings
 from backend.app.models.unit import Unit
 from backend.app.models.tower import Tower
 from backend.app.models.project import Project
+from backend.app.models.booking import Booking
 from backend.app.schemas.unit import (
     UnitCreate, UnitUpdate, UnitResponse, UnitListResponse
 )
@@ -109,15 +112,39 @@ async def trending_units(
 
 
 @router.get("/{unit_id}", response_model=UnitResponse)
-async def get_unit(unit_id: UUID, db: AsyncSession = Depends(get_db)):
+async def get_unit(
+    unit_id: UUID,
+    authorization: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(Unit).where(Unit.id == unit_id))
     unit = result.scalar_one_or_none()
     if not unit:
         raise HTTPException(status_code=404, detail="Unit not found")
+    # Block public access to booked/sold units — allow the customer who booked it
+    if unit.status in ("booked", "sold"):
+        allowed = False
+        if authorization and authorization.startswith("Bearer "):
+            try:
+                token = authorization.split(" ", 1)[1]
+                payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+                customer_id = payload.get("sub")
+                if customer_id:
+                    booking = await db.execute(
+                        select(Booking).where(
+                            Booking.unit_id == unit_id,
+                            Booking.customer_id == UUID(customer_id),
+                        )
+                    )
+                    if booking.scalar_one_or_none():
+                        allowed = True
+            except (JWTError, ValueError):
+                pass
+        if not allowed:
+            raise HTTPException(status_code=403, detail="This unit is no longer available")
     # Increment view count
     unit.view_count += 1
     await db.flush()
-    await db.refresh(unit)
     await db.refresh(unit)
     return unit
 

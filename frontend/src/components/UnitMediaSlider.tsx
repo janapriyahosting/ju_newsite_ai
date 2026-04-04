@@ -115,7 +115,7 @@ export default function UnitMediaSlider({ unit }: Props) {
     return (
       <img src={mediaUrl(cur.url)} alt={cur.label}
         className="w-full h-full object-contain"
-        style={{ background: cur.type === 'floorplan' ? '#f8fafc' : '#1a1a2e' }} />
+        style={{ background: '#f8fafc' }} />
     );
   };
 
@@ -129,7 +129,7 @@ export default function UnitMediaSlider({ unit }: Props) {
   return (
     <div className="w-full space-y-3">
       {/* Main viewer */}
-      <div className="relative w-full rounded-2xl overflow-hidden bg-gray-900"
+      <div className="relative w-full rounded-2xl overflow-hidden bg-white"
         style={{ aspectRatio: '16/9', minHeight: '300px' }}>
 
         {renderMain()}
@@ -193,7 +193,7 @@ export default function UnitMediaSlider({ unit }: Props) {
               {(item.type === 'image' || item.type === 'floorplan') ? (
                 <img src={mediaUrl(item.url)} alt={item.label}
                   className="w-full h-full object-cover"
-                  style={{ background: item.type === 'floorplan' ? '#f8fafc' : '#1a1a2e' }} />
+                  style={{ background: '#f8fafc' }} />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-xs font-bold"
                   style={{ background: item.type === 'youtube' || item.type === 'video' ? '#1a1a2e' : '#EFF6FF',

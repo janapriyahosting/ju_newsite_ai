@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/adminAuth';
 
 const STATUS_COLORS: Record<string,string> = {
@@ -73,8 +73,8 @@ export default function LeadsPage() {
             {loading && <tr><td colSpan={8} className="text-center text-gray-500 py-10">Loading...</td></tr>}
             {!loading && leads.length === 0 && <tr><td colSpan={8} className="text-center text-gray-500 py-10">No leads found</td></tr>}
             {leads.map(lead => (
-              <>
-                <tr key={lead.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition cursor-pointer"
+              <React.Fragment key={lead.id}>
+                <tr className="border-b border-gray-800/50 hover:bg-gray-800/30 transition cursor-pointer"
                   onClick={() => setExpandedId(expandedId === lead.id ? null : lead.id)}>
                   <td className="px-4 py-3">
                     <p className="text-white font-medium">{lead.name}</p>
@@ -193,7 +193,7 @@ export default function LeadsPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

@@ -141,10 +141,10 @@ export default function BookingPage() {
     rzp.open();
   }
 
-  const bookingAmt = unit?.base_price ? parseFloat(unit.base_price) * 0.1 : 0;
+  const bookingAmt = unit?.token_amount ? parseFloat(unit.token_amount) : 20000;
 
   if (loading) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
       <div className="min-h-screen flex items-center justify-center pt-16">
         <div className="w-10 h-10 border-4 rounded-full animate-spin"
@@ -154,7 +154,7 @@ export default function BookingPage() {
   );
 
   if (!unit) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
       <div className="min-h-screen flex items-center justify-center pt-16">
         <div className="text-center">
@@ -169,7 +169,7 @@ export default function BookingPage() {
 
   // Payment Success Screen + KYC Form
   if (paymentDone && booking) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Navbar />
       <div className="pt-16 pb-12 px-6" style={{ background: 'linear-gradient(135deg,#F8F9FB,#E2F1FC)', minHeight: '100vh' }}>
@@ -200,7 +200,7 @@ export default function BookingPage() {
 
   // Booking Created but Payment Pending (user dismissed Razorpay)
   if (booking && !paymentDone) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Navbar />
       <div className="min-h-screen flex items-center justify-center pt-16 px-6"
@@ -260,7 +260,7 @@ export default function BookingPage() {
 
   // Main Booking Form
   return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Navbar />
       <div className="pt-16">
@@ -337,7 +337,7 @@ export default function BookingPage() {
                   <span className="text-sm text-gray-600 leading-relaxed">
                     I agree to the <Link href="/terms" className="underline font-bold" style={{ color: '#2A3887' }}>Terms & Conditions</Link> and
                     consent to Janapriya Upscale contacting me via <strong>SMS, WhatsApp, email and calls</strong> regarding this booking.
-                    I understand the booking amount is 10% of the unit price, payable online via Razorpay.
+                    I understand the token amount is payable online via Razorpay. The remaining booking amount (10-20%) is due within 30 days.
                   </span>
                 </label>
               </div>
@@ -352,7 +352,7 @@ export default function BookingPage() {
               <button onClick={handleBook} disabled={submitting}
                 className="w-full py-4 rounded-2xl font-black text-white text-lg transition-all hover:opacity-90 disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#2A3887,#29A9DF)' }}>
-                {submitting ? '⏳ Processing...' : `Pay ${formatPrice(bookingAmt)} & Confirm Booking`}
+                {submitting ? '⏳ Processing...' : `Pay ${formatPrice(bookingAmt)} Token & Confirm Booking`}
               </button>
               <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
                 <span>🔒 Secure Payment</span>
@@ -399,7 +399,7 @@ export default function BookingPage() {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Booking Amount (10%)</span>
+                        <span className="text-gray-500">Token Amount</span>
                         <span className="font-black" style={{ color: '#16A34A' }}>
                           {formatPrice(bookingAmt)}
                         </span>

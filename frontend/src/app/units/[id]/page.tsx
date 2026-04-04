@@ -68,6 +68,7 @@ export default function UnitDetailPage() {
   const [cartLoading, setCartLoading] = useState(false);
   const [unitSections, setUnitSections] = useState<any[]>([]);
   const [customFieldMap, setCustomFieldMap] = useState<Record<string, { value: any; field_type: string; label: string }>>({});
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -85,8 +86,12 @@ export default function UnitDetailPage() {
         setCustomFieldMap(map);
       })
       .catch(() => {});
-    fetch(`${API}/units/${id}`)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('jp_token') || '' : '';
+    fetch(`${API}/units/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(async r => {
+        if (r.status === 403) { setBlocked(true); setLoading(false); return; }
         if (!r.ok) { setLoading(false); return; } // 404 → unit stays null → shows 404 page
         const u = await r.json() as any;
         setUnit(u);
@@ -165,7 +170,7 @@ export default function UnitDetailPage() {
   }
 
   if (loading) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen">
+    <main className="min-h-screen">
       <Navbar />
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#F8F9FB" }}>
         <div className="text-center">
@@ -176,8 +181,43 @@ export default function UnitDetailPage() {
     </main>
   );
 
+  if (blocked) return (
+    <>
+    <meta name="robots" content="noindex, nofollow" />
+    <main className="min-h-screen">
+
+      <Navbar />
+      <div className="min-h-screen flex items-center justify-center pt-16"
+        style={{ background: "linear-gradient(135deg,#F8F9FB 0%,#E2F1FC 100%)" }}>
+        <div className="text-center px-6 max-w-lg">
+          <div className="text-8xl mb-6">🔒</div>
+          <h1 className="text-4xl font-black mb-3" style={{ color: "#2A3887" }}>Unit Booked</h1>
+          <h2 className="text-xl font-bold mb-4" style={{ color: "#262262" }}>
+            This unit has been booked and is no longer available for viewing.
+          </h2>
+          <p className="text-gray-500 mb-8 leading-relaxed">
+            Explore our other available units or contact us for similar options.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/store"
+              className="px-8 py-3.5 rounded-full font-black text-white text-sm"
+              style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+              Browse Available Units
+            </Link>
+            <Link href="/contact"
+              className="px-8 py-3.5 rounded-full font-black text-sm border-2"
+              style={{ borderColor: "#2A3887", color: "#2A3887" }}>
+              Contact Us
+            </Link>
+          </div>
+        </div>
+      </div>
+    </main>
+    </>
+  );
+
   if (!unit) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen">
+    <main className="min-h-screen">
       <Navbar />
       <div className="min-h-screen flex items-center justify-center pt-16"
         style={{ background: "linear-gradient(135deg,#F8F9FB 0%,#E2F1FC 100%)" }}>
@@ -260,7 +300,7 @@ export default function UnitDetailPage() {
   }
 
   return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
 
       {/* Breadcrumb */}
