@@ -16,7 +16,7 @@ from backend.app.schemas.tower import TowerResponse, TowerListResponse
 router = APIRouter(prefix="/projects", tags=["projects"])
 
 
-@router.get("", response_model=ProjectListResponse)
+@router.get("")
 async def list_projects(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -39,13 +39,35 @@ async def list_projects(
     result = await db.execute(query.offset(offset).limit(page_size))
     projects = result.scalars().all()
 
-    return ProjectListResponse(
-        total=total,
-        page=page,
-        page_size=page_size,
-        total_pages=-(-total // page_size),
-        items=projects,
-    )
+    # Compute min/max price per project from available units
+    items = []
+    for p in projects:
+        price_result = await db.execute(
+            select(func.min(Unit.base_price), func.max(Unit.base_price))
+            .join(Tower, Unit.tower_id == Tower.id)
+            .where(Tower.project_id == p.id, Unit.status == "available", Unit.base_price.isnot(None))
+        )
+        min_price, max_price = price_result.one()
+
+        # Serialize project columns
+        d = {col.name: getattr(p, col.name) for col in p.__table__.columns}
+        # Convert UUID/datetime
+        for k, v in d.items():
+            if hasattr(v, 'hex'):
+                d[k] = str(v)
+            elif hasattr(v, 'isoformat'):
+                d[k] = v.isoformat()
+        d["min_price"] = str(min_price) if min_price else None
+        d["max_price"] = str(max_price) if max_price else None
+        items.append(d)
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": -(-total // page_size),
+        "items": items,
+    }
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -57,6 +79,29 @@ async def get_project(project_id: UUID, db: AsyncSession = Depends(get_db)):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return project
+
+
+@router.get("/towers/all")
+async def get_all_towers(db: AsyncSession = Depends(get_db)):
+    """Return all active towers with their project info — used by store page filters."""
+    result = await db.execute(
+        select(Tower, Project.name, Project.location, Project.city)
+        .join(Project, Tower.project_id == Project.id)
+        .where(Tower.is_active == True, Project.is_active == True)
+        .order_by(Project.name, Tower.name)
+    )
+    rows = result.all()
+    return [
+        {
+            "id": str(t.id),
+            "name": t.name,
+            "project_id": str(t.project_id),
+            "project_name": project_name,
+            "location": location or "",
+            "city": city or "",
+        }
+        for t, project_name, location, city in rows
+    ]
 
 
 @router.get("/{project_id}/towers", response_model=TowerListResponse)

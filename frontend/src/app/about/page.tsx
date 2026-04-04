@@ -43,7 +43,7 @@ const STATS = [
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-white" style={{ fontFamily: "'Lato',sans-serif" }}>
+    <main className="min-h-screen bg-white">
       <Navbar />
 
       {/* ── Hero ── */}

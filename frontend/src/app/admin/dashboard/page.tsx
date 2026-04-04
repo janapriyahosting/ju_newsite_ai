@@ -123,7 +123,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div style={{ fontFamily: "'Lato',sans-serif" }}>
+    <div>
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>

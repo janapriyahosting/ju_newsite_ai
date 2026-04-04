@@ -412,7 +412,7 @@ export default function StorePage() {
   const formatPriceShort = (n:number) => n>=10000000?`₹${(n/10000000).toFixed(1)}Cr`:n>=100000?`₹${(n/100000).toFixed(0)}L`:`₹${n.toLocaleString()}`;
 
   return (
-    <main style={{ fontFamily:"'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
 
       {/* ── Header ── */}

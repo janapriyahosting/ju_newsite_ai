@@ -25,9 +25,13 @@ export default function Navbar() {
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
+    const onClickOutside = (e: MouseEvent) => {
+      if (userMenuOpen && !(e.target as HTMLElement).closest('.user-menu-wrapper')) setUserMenuOpen(false);
+    };
     window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => { window.removeEventListener("scroll", onScroll); document.removeEventListener("mousedown", onClickOutside); };
+  }, [userMenuOpen]);
 
   useEffect(() => {
     setLoggedIn(isLoggedIn());
@@ -45,7 +49,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav style={{ fontFamily: "'Lato', sans-serif" }}
+    <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         transparent ? "bg-transparent py-5" : "bg-white py-3 shadow-lg"
       }`}>
@@ -78,29 +82,58 @@ export default function Navbar() {
             🛒
           </Link>
           {loggedIn && customer ? (
-            <div className="relative">
+            <div className="relative user-menu-wrapper">
               <button onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center gap-2 px-4 py-2 rounded-full transition-all"
                 style={{ background: transparent ? "rgba(255,255,255,0.15)" : "#F0F4FF", color: transparent ? "white" : "#2A3887" }}>
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white"
-                  style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-                  {customer.name?.[0]?.toUpperCase()}
-                </div>
+                {customer.profile_pic ? (
+                  <img src={`http://173.168.0.81:8000${customer.profile_pic}`} alt="" className="w-7 h-7 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
+                ) : (
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white"
+                    style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                    {customer.name?.[0]?.toUpperCase()}
+                  </div>
+                )}
                 <span className="text-sm font-bold">{customer.name.split(" ")[0]}</span>
                 <span className="text-xs">▾</span>
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border py-2 z-50"
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border py-2 z-50"
                   style={{ border: "1px solid #E2F1FC" }}>
-                  <Link href="/dashboard" onClick={() => setUserMenuOpen(false)}
+                  {/* Profile header */}
+                  <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: "1px solid #E2F1FC" }}>
+                    {customer.profile_pic ? (
+                      <img src={`http://173.168.0.81:8000${customer.profile_pic}`} alt="" className="w-10 h-10 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white"
+                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                        {customer.name?.[0]?.toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold truncate" style={{ color: "#2A3887" }}>{customer.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{customer.email || customer.phone}</p>
+                    </div>
+                  </div>
+                  <Link href="/dashboard?tab=profile" onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
                     style={{ color: "#2A3887" }}>
-                    🏠 My Dashboard
+                    👤 My Profile
                   </Link>
                   <Link href="/dashboard" onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
                     style={{ color: "#2A3887" }}>
+                    🏠 Dashboard
+                  </Link>
+                  <Link href="/dashboard?tab=bookings" onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
+                    style={{ color: "#2A3887" }}>
                     📋 My Bookings
+                  </Link>
+                  <Link href="/dashboard?tab=saved" onClick={() => setUserMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
+                    style={{ color: "#2A3887" }}>
+                    ❤️ Saved Properties
                   </Link>
                   <div style={{ borderTop: "1px solid #E2F1FC" }} className="my-1" />
                   <button onClick={handleLogout}

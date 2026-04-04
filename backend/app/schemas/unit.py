@@ -19,6 +19,7 @@ class UnitCreate(BaseSchema):
     price_per_sqft: Optional[Decimal] = None
     down_payment: Optional[Decimal] = None
     emi_estimate: Optional[Decimal] = None
+    token_amount: Decimal = Decimal("20000")
     facing: Optional[str] = None
     floor_plan_img: Optional[str] = None
     status: str = "available"
@@ -39,6 +40,7 @@ class UnitUpdate(BaseSchema):
     price_per_sqft: Optional[Decimal] = None
     down_payment: Optional[Decimal] = None
     emi_estimate: Optional[Decimal] = None
+    token_amount: Optional[Decimal] = None
     facing: Optional[str] = None
     floor_plan_img: Optional[str] = None
     status: Optional[str] = None
@@ -63,6 +65,7 @@ class UnitResponse(BaseResponseSchema):
     price_per_sqft: Optional[Decimal] = None
     down_payment: Optional[Decimal] = None
     emi_estimate: Optional[Decimal] = None
+    token_amount: Optional[Decimal] = Decimal("20000")
     facing: Optional[str] = None
     floor_plan_img: Optional[str] = None
     status: str = "available"

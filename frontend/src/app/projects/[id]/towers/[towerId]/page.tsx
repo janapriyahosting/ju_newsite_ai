@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import DynamicFields from '@/components/DynamicFields';
 
 const API = 'http://173.168.0.81:8000/api/v1';
 const MEDIA = 'http://173.168.0.81:8000';
@@ -204,6 +205,12 @@ export default function TowerDetailPage() {
       </div>
 
       {sections.filter((s: any) => s.visible).map(renderSection)}
+
+      {tower?.id && (
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <DynamicFields entity="tower" entityId={tower.id} entityData={tower} />
+        </div>
+      )}
 
       <section className="py-10">
         <div className="max-w-6xl mx-auto px-4">

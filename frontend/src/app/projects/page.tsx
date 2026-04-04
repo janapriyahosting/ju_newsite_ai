@@ -36,7 +36,7 @@ export default function ProjectsPage() {
   );
 
   return (
-    <main style={{ fontFamily:"'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
 
       {/* Header */}

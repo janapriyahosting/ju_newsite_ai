@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 from uuid import UUID
 from decimal import Decimal
+from pydantic import BaseModel
+from typing import Optional
 from backend.app.core.database import get_db
 from backend.app.api.v1.routers.admin_auth import verify_admin_token
 from backend.app.models.unit import Unit
@@ -36,6 +38,7 @@ async def list_units(
                 "floor_number": u.floor_number, "facing": u.facing,
                 "area_sqft": str(u.area_sqft) if u.area_sqft else None,
                 "base_price": str(u.base_price) if u.base_price else None,
+                "token_amount": str(u.token_amount) if u.token_amount else "20000",
                 "emi_estimate": str(u.emi_estimate) if u.emi_estimate else None,
                 "status": u.status,
                 "is_trending": bool(u.is_trending) if u.is_trending is not None else False,
@@ -80,14 +83,14 @@ async def update_unit(
     unit = result.scalar_one_or_none()
     if not unit: raise HTTPException(404, "Unit not found")
 
-    decimal_fields = {"base_price", "emi_estimate", "down_payment", "price_per_sqft", "area_sqft", "carpet_area"}
+    decimal_fields = {"base_price", "emi_estimate", "down_payment", "price_per_sqft", "area_sqft", "carpet_area", "token_amount"}
     json_fields = {"dimensions", "images", "floor_plans", "amenities"}
     allowed = {
         "status", "base_price", "emi_estimate", "down_payment", "price_per_sqft",
         "is_trending", "is_featured", "facing", "floor_number", "unit_type",
         "bedrooms", "bathrooms", "area_sqft", "carpet_area", "description",
         "dimensions", "images", "floor_plan_img", "floor_plans",
-        "video_url", "walkthrough_url", "amenities",
+        "video_url", "walkthrough_url", "amenities", "token_amount",
     }
 
     scalar_sets = {}
@@ -103,15 +106,16 @@ async def update_unit(
         else:
             scalar_sets[k] = v
 
-    # Apply scalar updates via ORM
+    # Apply scalar updates via raw SQL to guarantee persistence
+    all_sql_sets = {}
     for k, v in scalar_sets.items():
-        setattr(unit, k, v)
+        all_sql_sets[k] = v
+    for k, v in json_sets.items():
+        all_sql_sets[k] = json.dumps(v) if isinstance(v, (list, dict)) else v
 
-    # Apply JSON updates via raw SQL to guarantee persistence
-    if json_sets:
-        set_parts = ", ".join(f"{k} = :{k}" for k in json_sets)
-        params = {k: json.dumps(v) for k, v in json_sets.items()}
-        params["unit_id"] = str(unit_id)
+    if all_sql_sets:
+        set_parts = ", ".join(f"{k} = :{k}" for k in all_sql_sets)
+        params = {**all_sql_sets, "unit_id": str(unit_id)}
         await db.execute(
             text(f"UPDATE units SET {set_parts} WHERE id = :unit_id"),
             params
@@ -279,4 +283,75 @@ async def get_project_admin(
     from sqlalchemy import text as _t
     row = (await db.execute(_t("SELECT * FROM projects WHERE id=:id"), {"id": str(project_id)})).mappings().fetchone()
     return dict(row) if row else {}
+
+
+# ── Test Notification Endpoints ──
+
+class TestNotificationRequest(BaseModel):
+    channel: str  # "email", "sms", "whatsapp"
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    name: str = "Test User"
+    unit_number: str = "A2-TEST"
+    booking_id: str = "TEST1234"
+    amount: str = "20000"
+    transaction_id: str = "pay_test_123456"
+
+
+@router.post("/test-notification")
+async def test_notification(
+    data: TestNotificationRequest,
+    admin=Depends(verify_admin_token),
+):
+    """Send a test booking notification via the specified channel."""
+    results = {}
+
+    if data.channel == "email":
+        if not data.email:
+            raise HTTPException(400, "Email address is required")
+        from backend.app.services.email import send_booking_confirmation_email
+        ok = await send_booking_confirmation_email(
+            to_email=data.email,
+            customer_name=data.name,
+            unit_number=data.unit_number,
+            project_name="Janapriya Upscale",
+            booking_amount=f"Rs.{data.amount}",
+            total_amount="Rs.30,00,000",
+            payment_id=data.transaction_id,
+            booking_id=data.booking_id,
+            booked_at="04 Apr 2026",
+        )
+        results["email"] = "sent" if ok else "failed"
+
+    elif data.channel == "sms":
+        if not data.phone:
+            raise HTTPException(400, "Phone number is required")
+        from backend.app.services.sms import send_booking_confirmation_sms, send_payment_confirmation_sms
+        ok1 = await send_booking_confirmation_sms(
+            phone=data.phone, unit_number=data.unit_number, booking_id=data.booking_id,
+        )
+        ok2 = await send_payment_confirmation_sms(
+            phone=data.phone, amount=data.amount, transaction_id=data.transaction_id,
+        )
+        results["sms_booking"] = "sent" if ok1 else "failed"
+        results["sms_payment"] = "sent" if ok2 else "failed"
+
+    elif data.channel == "whatsapp":
+        if not data.phone:
+            raise HTTPException(400, "Phone number is required")
+        from backend.app.services.whatsapp import send_booking_confirmation_whatsapp, send_payment_confirmation_whatsapp
+        ok1 = await send_booking_confirmation_whatsapp(
+            phone=data.phone, customer_name=data.name,
+            unit_number=data.unit_number, booking_id=data.booking_id,
+        )
+        ok2 = await send_payment_confirmation_whatsapp(
+            phone=data.phone, customer_name=data.name,
+            amount=data.amount, transaction_id=data.transaction_id,
+        )
+        results["whatsapp_booking"] = "sent" if ok1 else "failed"
+        results["whatsapp_payment"] = "sent" if ok2 else "failed"
+    else:
+        raise HTTPException(400, "Channel must be 'email', 'sms', or 'whatsapp'")
+
+    return {"channel": data.channel, "results": results}
 

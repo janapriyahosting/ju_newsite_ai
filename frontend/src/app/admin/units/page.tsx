@@ -66,14 +66,14 @@ export default function UnitsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-800">
-              {['Unit','Type','Floor','Facing','Area','Price','EMI','Trending','Status'].map(h => (
+              {['Unit','Type','Floor','Facing','Area','Price','Token','EMI','Trending','Status'].map(h => (
                 <th key={h} className="text-left text-gray-400 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={9} className="text-center text-gray-500 py-10">Loading...</td></tr>}
-            {!loading && units.length === 0 && <tr><td colSpan={9} className="text-center text-gray-500 py-10">No units found</td></tr>}
+            {loading && <tr><td colSpan={10} className="text-center text-gray-500 py-10">Loading...</td></tr>}
+            {!loading && units.length === 0 && <tr><td colSpan={10} className="text-center text-gray-500 py-10">No units found</td></tr>}
             {units.map(u => (
               <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
                 <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{u.unit_number}<Link href={`/admin/units/${u.id}`} className="ml-1 text-xs px-1.5 py-0.5 rounded font-bold" style={{background:"rgba(41,169,223,0.12)",color:"#29A9DF"}}>📐</Link></td>
@@ -82,6 +82,7 @@ export default function UnitsPage() {
                 <td className="px-4 py-3 text-gray-300">{u.facing || '—'}</td>
                 <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{u.area_sqft ? `${u.area_sqft} sqft` : '—'}</td>
                 <td className="px-4 py-3 text-amber-400 font-medium whitespace-nowrap">{fmt(u.base_price)}</td>
+                <td className="px-4 py-3 text-green-400 font-medium whitespace-nowrap">{u.token_amount ? `₹${(+u.token_amount).toLocaleString('en-IN')}` : '₹20,000'}</td>
                 <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{u.emi_estimate ? `₹${(+u.emi_estimate).toLocaleString('en-IN')}/mo` : '—'}</td>
                 <td className="px-4 py-3">
                   <button onClick={() => updateUnit(u.id, 'is_trending', !u.is_trending)}

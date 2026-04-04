@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { adminApi } from "@/lib/adminAuth";
 
-const API = "http://173.168.0.81:8000/api/v1";
 const ENTITIES = ["project", "tower", "unit"];
 
 const ALL_FIELDS: Record<string, { key: string; label: string; type: string }[]> = {
@@ -60,6 +59,7 @@ const ALL_FIELDS: Record<string, { key: string; label: string; type: string }[]>
 export default function SectionsPage() {
   const [entity, setEntity] = useState("project");
   const [sections, setSections] = useState<any[]>([]);
+  const [customFields, setCustomFields] = useState<{ key: string; label: string; type: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [newSectionName, setNewSectionName] = useState("");
@@ -68,21 +68,41 @@ export default function SectionsPage() {
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(""), 3000); };
 
   useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    fetch(`${API}/admin/sections/${entity}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(d => setSections(Array.isArray(d) ? d : []));
+    adminApi(`/admin/sections/${entity}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setSections(Array.isArray(d) ? d : []));
+
+    // Fetch custom fields for this entity
+    adminApi(`/admin/fields/${entity}`)
+      .then(r => r.ok ? r.json() : [])
+      .then((configs: any[]) => {
+        if (!Array.isArray(configs)) return;
+        setCustomFields(
+          configs
+            .filter((c: any) => c.is_custom && c.is_visible)
+            .map((c: any) => ({ key: c.field_key, label: c.label, type: c.field_type }))
+        );
+      })
+      .catch(() => setCustomFields([]));
   }, [entity]);
 
   async function save() {
     setSaving(true);
-    const token = localStorage.getItem("admin_token");
-    await fetch(`${API}/admin/sections/${entity}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify(sections),
-    });
+    try {
+      const r = await adminApi(`/admin/sections/${entity}`, {
+        method: "POST",
+        body: JSON.stringify(sections),
+      });
+      if (r.ok) {
+        showToast("✅ Section config saved");
+      } else {
+        const err = await r.json().catch(() => ({}));
+        showToast(`❌ Save failed: ${err.detail || r.statusText}`);
+      }
+    } catch (e) {
+      showToast("❌ Network error — could not save");
+    }
     setSaving(false);
-    showToast("✅ Section config saved");
   }
 
   function toggleField(sectionKey: string, fieldKey: string) {
@@ -118,7 +138,13 @@ export default function SectionsPage() {
     });
   }
 
-  const allFields = ALL_FIELDS[entity] || [];
+  // Merge hardcoded schema fields with custom fields (avoid duplicates by key)
+  const schemaFields = ALL_FIELDS[entity] || [];
+  const schemaKeys = new Set(schemaFields.map(f => f.key));
+  const allFields = [
+    ...schemaFields,
+    ...customFields.filter(f => !schemaKeys.has(f.key)),
+  ];
   const usedFields = new Set(sections.flatMap(s => s.fields || []));
 
   return (
@@ -137,7 +163,7 @@ export default function SectionsPage() {
 
       {toast && (
         <div className="fixed top-6 right-6 z-50 px-5 py-3 rounded-xl text-sm font-bold shadow-lg"
-          style={{ background: "#16A34A", color: "white" }}>{toast}</div>
+          style={{ background: toast.startsWith("❌") ? "#DC2626" : "#16A34A", color: "white" }}>{toast}</div>
       )}
 
       {/* Entity tabs */}

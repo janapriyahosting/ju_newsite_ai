@@ -51,7 +51,7 @@ export default function CartPage() {
   }
 
   if (!token) return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
       <div className="min-h-screen flex items-center justify-center pt-16"
         style={{ background: 'linear-gradient(135deg,#F8F9FB,#E2F1FC)' }}>
@@ -70,7 +70,7 @@ export default function CartPage() {
   );
 
   return (
-    <main style={{ fontFamily: "'Lato',sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <Navbar />
       <div className="pt-16">
         <div className="max-w-5xl mx-auto px-6 py-10">

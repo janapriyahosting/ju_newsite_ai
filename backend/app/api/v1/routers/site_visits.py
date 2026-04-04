@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -7,6 +8,7 @@ from backend.app.core.database import get_db
 from backend.app.models.site_visit import SiteVisit
 from backend.app.schemas.site_visit import SiteVisitCreate, SiteVisitUpdate, SiteVisitResponse
 from backend.app.api.v1.routers.auth import get_current_customer
+from backend.app.services.notification_engine import fire_notification_background
 
 router = APIRouter(prefix="/site-visits", tags=["site-visits"])
 
@@ -28,6 +30,19 @@ async def request_site_visit(
     db.add(visit)
     await db.flush()
     await db.refresh(visit)
+
+    # Fire site_visit_requested notification
+    asyncio.create_task(fire_notification_background(
+        "site_visit_requested", {
+            "customer_name": visit.name or "",
+            "customer_phone": visit.phone or "",
+            "customer_email": visit.email or "",
+            "visit_date": visit.visit_date.strftime("%d %b %Y") if visit.visit_date else "",
+            "visit_time": visit.visit_time or "",
+            "project_name": "",
+        },
+        recipient_phone=visit.phone, recipient_email=visit.email,
+    ))
     return visit
 
 @router.get("", response_model=list[SiteVisitResponse])

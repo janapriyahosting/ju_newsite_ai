@@ -26,6 +26,7 @@ class Unit(UUIDMixin, TimeStampMixin, Base):
     price_per_sqft: Mapped[float] = mapped_column(Numeric(10, 2), nullable=True)
     down_payment:  Mapped[float] = mapped_column(Numeric(15, 2), nullable=True)
     emi_estimate:  Mapped[float] = mapped_column(Numeric(10, 2), nullable=True)
+    token_amount:  Mapped[float] = mapped_column(Numeric(15, 2), default=20000)  # Booking token amount
     facing:        Mapped[str]   = mapped_column(String(20), nullable=True)   # North, South, East, West
     floor_plan_img: Mapped[str]  = mapped_column(String(500), nullable=True)
     status:        Mapped[str]   = mapped_column(String(20), default="available")  # available, booked, sold, hold

@@ -2,7 +2,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1"
 
 export interface CustomerUser {
   id: string; name: string; email: string; phone?: string;
-  is_verified: boolean; is_active: boolean;
+  profile_pic?: string; is_verified: boolean; is_active: boolean;
 }
 
 export async function customerApi(path: string, options: RequestInit = {}) {

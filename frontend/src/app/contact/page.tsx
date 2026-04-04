@@ -152,18 +152,18 @@ export default function ContactPage() {
     await doVerifyAndSubmit(code);
   }
 
-  const inputCls = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white";
+  const inputCls = "w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#29A9DF] bg-white";
   const labelCls = "block text-xs font-bold text-gray-600 mb-1.5 uppercase tracking-wide";
   const errCls = "text-red-500 text-xs mt-1";
 
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
-      <div className="pt-20 bg-gray-950 text-white py-20">
+      <div className="pt-20 text-white py-20" style={{ background: "linear-gradient(135deg, #262262, #2A3887)" }}>
         <div className="max-w-7xl mx-auto px-6">
-          <p className="text-amber-500 text-xs font-bold tracking-widest uppercase mb-3">Get in Touch</p>
-          <h1 className="text-5xl font-black" style={{ fontFamily: "Georgia,serif" }}>Let's Find Your<br />Dream Home</h1>
-          <p className="text-gray-400 mt-4">Our team is ready to help you — call, email, or fill the form.</p>
+          <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#29A9DF" }}>Get in Touch</p>
+          <h1 className="text-5xl font-black">Let's Find Your<br />Dream Home</h1>
+          <p className="text-gray-300 mt-4">Our team is ready to help you — call, email, or fill the form.</p>
         </div>
       </div>
 
@@ -181,7 +181,7 @@ export default function ContactPage() {
                 { icon: "🕘", label: "Hours", val: "Mon–Sat: 9AM–7PM · Sun: 10AM–5PM" },
               ].map(c => (
                 <div key={c.label} className="flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-xl flex-shrink-0">{c.icon}</div>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0" style={{ background: "#E2F1FC" }}>{c.icon}</div>
                   <div>
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">{c.label}</p>
                     <p className="text-gray-800 font-medium">{c.val}</p>
@@ -205,7 +205,7 @@ export default function ContactPage() {
                 <h3 className="text-2xl font-black text-gray-900 mb-2">Thank You!</h3>
                 <p className="text-gray-600">Our team will contact you within 24 hours.</p>
                 <button onClick={() => { setStatus("idle"); setOtpStep(false); setOtp(["","","","","",""]); setDevOtp(null); setErrors({}); setOtpError(""); setForm({ name: "", email: "", phone: "", project: "", message: "", consent: false }); }}
-                  className="mt-6 px-6 py-2.5 bg-amber-500 text-white font-bold rounded-full text-sm">Submit Another</button>
+                  className="mt-6 px-6 py-2.5 text-white font-bold rounded-full text-sm" style={{ background: "#2A3887" }}>Submit Another</button>
               </div>
             ) : (
               <form onSubmit={handleSendOtp} className="space-y-5">
@@ -262,7 +262,7 @@ export default function ContactPage() {
                     <input type="checkbox" checked={form.consent}
                       onChange={e => { setForm(f => ({ ...f, consent: e.target.checked })); setErrors(er => ({ ...er, consent: "" })); }}
                       disabled={otpStep}
-                      className="mt-0.5 w-4 h-4 accent-amber-500 flex-shrink-0" />
+                      className="mt-0.5 w-4 h-4 accent-[#2A3887] flex-shrink-0" />
                     <span className={`text-xs leading-relaxed ${errors.consent ? "text-red-500" : "text-gray-500"}`}>
                       I consent to Janapriya contacting me via phone calls, SMS, WhatsApp, and email regarding property updates, offers, and enquiry follow-ups. I understand I can opt out at any time.
                     </span>
@@ -289,12 +289,13 @@ export default function ContactPage() {
                           onChange={e => handleOtpChange(i, e.target.value)}
                           onKeyDown={e => handleOtpKeyDown(i, e)}
                           className="w-12 h-14 text-center text-xl font-bold rounded-xl focus:outline-none transition-all"
-                          style={{ background: "#fff", border: `1.5px solid ${digit ? "#F59E0B" : "#E2F1FC"}`, color: "#333" }} />
+                          style={{ background: "#fff", border: `1.5px solid ${digit ? "#2A3887" : "#E2F1FC"}`, color: "#333" }} />
                       ))}
                     </div>
 
                     <button type="button" onClick={handleVerifyAndSubmit} disabled={otpLoading || otp.join("").length !== 6}
-                      className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl transition-colors disabled:opacity-50 text-sm tracking-wide">
+                      className="w-full py-4 text-white font-black rounded-xl transition-colors disabled:opacity-50 text-sm tracking-wide hover:opacity-90"
+                      style={{ background: "#2A3887" }}>
                       {otpLoading ? "Verifying..." : "Verify & Submit Enquiry"}
                     </button>
 
@@ -306,7 +307,8 @@ export default function ContactPage() {
                   </div>
                 ) : (
                   <button type="submit" disabled={otpLoading}
-                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-black rounded-xl transition-colors disabled:opacity-50 text-sm tracking-wide">
+                    className="w-full py-4 text-white font-black rounded-xl transition-colors disabled:opacity-50 text-sm tracking-wide hover:opacity-90"
+                    style={{ background: "#2A3887" }}>
                     {otpLoading ? "Sending OTP..." : "Submit Enquiry"}
                   </button>
                 )}

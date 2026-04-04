@@ -9,7 +9,9 @@
       "bathrooms",
       "area_sqft",
       "base_price",
-      "status"
+      "status",
+      "price_per_sqft",
+      "down_payment"
     ]
   },
   {
@@ -23,7 +25,9 @@
       "price_per_sqft",
       "down_payment",
       "emi_estimate",
-      "balconies"
+      "balconies",
+      "base_price",
+      "area_sqft"
     ]
   },
   {
@@ -57,7 +61,29 @@
     "label": "Amenities",
     "visible": true,
     "fields": [
-      "amenities"
+      "amenities",
+      "loan_amount",
+      "total_amount",
+      "test10",
+      "downpayment",
+      "grand_total_excl_reg_cost",
+      "gst_",
+      "documentation_charges",
+      "gst_amount",
+      "sub_total",
+      "club_house",
+      "utilities",
+      "basic_cost",
+      "scooter_parking",
+      "car_parking",
+      "attachments",
+      "gallery",
+      "rooms_and_sizes",
+      "land_area",
+      "floor_plan_url",
+      "add_on_video",
+      "budget_in_lakhs",
+      "unit_area_in_sqmt"
     ]
   }
 ]

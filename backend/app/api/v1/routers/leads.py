@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -7,6 +8,7 @@ from backend.app.core.database import get_db
 from backend.app.models.lead import Lead
 from backend.app.schemas.lead import LeadCreate, LeadUpdate, LeadResponse
 from backend.app.services.lead_scoring import compute_lead_score
+from backend.app.services.notification_engine import fire_notification_background
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -27,6 +29,18 @@ async def create_lead(
     lead.score_details = details
     await db.flush()
     await db.refresh(lead)
+
+    # Fire lead_created notification
+    asyncio.create_task(fire_notification_background(
+        "lead_created", {
+            "name": lead.name or "",
+            "phone": lead.phone or "",
+            "email": lead.email or "",
+            "source": lead.source or "",
+            "project_interest": lead.project_interest or "",
+        },
+        recipient_phone=lead.phone, recipient_email=lead.email,
+    ))
     return lead
 
 

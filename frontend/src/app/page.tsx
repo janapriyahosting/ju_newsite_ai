@@ -569,9 +569,8 @@ export default function HomePage() {
   ];
 
   return (
-    <main style={{ fontFamily: "'Nunito', 'Segoe UI', sans-serif" }} className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
         .jp-brand { color: #273b84; }
         .jp-brand-bg { background: #273b84; }
         .jp-dark { color: #0D1B2A; }
