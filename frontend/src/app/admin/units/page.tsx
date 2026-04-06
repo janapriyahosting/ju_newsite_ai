@@ -7,7 +7,7 @@ const STATUS_COLORS: Record<string,string> = {
   available: 'bg-green-900/40 text-green-300',
   booked: 'bg-red-900/40 text-red-300',
   hold: 'bg-yellow-900/40 text-yellow-300',
-  blocked: 'bg-gray-800 text-gray-400',
+  blocked: 'bg-gray-100 text-gray-500',
 };
 const UNIT_TYPES = ['1BHK','2BHK','3BHK','4BHK','villa','plot'];
 const STATUSES = ['available','hold','booked','blocked'];
@@ -48,26 +48,26 @@ export default function UnitsPage() {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-white">Units <span className="text-gray-500 text-lg font-normal">({total})</span></h1>
+        <h1 className="text-2xl font-bold text-[#273b84]">Units <span className="text-gray-500 text-lg font-normal">({total})</span></h1>
         <div className="flex gap-2">
           <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1); }}
-            className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+            className="bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
             <option value="">All Types</option>
             {UNIT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
           <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
-            className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+            className="bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
             <option value="">All Status</option>
             {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
           </select>
         </div>
       </div>
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-x-auto">
+      <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-800">
+            <tr className="border-b border-gray-200">
               {['Unit','Type','Floor','Facing','Area','Price','Token','EMI','Trending','Status'].map(h => (
-                <th key={h} className="text-left text-gray-400 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
+                <th key={h} className="text-left text-gray-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -75,26 +75,26 @@ export default function UnitsPage() {
             {loading && <tr><td colSpan={10} className="text-center text-gray-500 py-10">Loading...</td></tr>}
             {!loading && units.length === 0 && <tr><td colSpan={10} className="text-center text-gray-500 py-10">No units found</td></tr>}
             {units.map(u => (
-              <tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30 transition">
-                <td className="px-4 py-3 text-white font-medium whitespace-nowrap">{u.unit_number}<Link href={`/admin/units/${u.id}`} className="ml-1 text-xs px-1.5 py-0.5 rounded font-bold" style={{background:"rgba(41,169,223,0.12)",color:"#29A9DF"}}>📐</Link></td>
-                <td className="px-4 py-3 text-gray-300">{u.unit_type}</td>
-                <td className="px-4 py-3 text-gray-300">{u.floor_number}</td>
-                <td className="px-4 py-3 text-gray-300">{u.facing || '—'}</td>
-                <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{u.area_sqft ? `${u.area_sqft} sqft` : '—'}</td>
-                <td className="px-4 py-3 text-amber-400 font-medium whitespace-nowrap">{fmt(u.base_price)}</td>
+              <tr key={u.id} className="border-b border-gray-200 hover:bg-gray-50/60 transition">
+                <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">{u.unit_number}<Link href={`/admin/units/${u.id}`} className="ml-1 text-xs px-1.5 py-0.5 rounded font-bold" style={{background:"rgba(41,169,223,0.12)",color:"#29A9DF"}}>📐</Link></td>
+                <td className="px-4 py-3 text-gray-700">{u.unit_type}</td>
+                <td className="px-4 py-3 text-gray-700">{u.floor_number}</td>
+                <td className="px-4 py-3 text-gray-700">{u.facing || '—'}</td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{u.area_sqft ? `${u.area_sqft} sqft` : '—'}</td>
+                <td className="px-4 py-3 text-[#273b84] font-medium whitespace-nowrap">{fmt(u.base_price)}</td>
                 <td className="px-4 py-3 text-green-400 font-medium whitespace-nowrap">{u.token_amount ? `₹${(+u.token_amount).toLocaleString('en-IN')}` : '₹20,000'}</td>
-                <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{u.emi_estimate ? `₹${(+u.emi_estimate).toLocaleString('en-IN')}/mo` : '—'}</td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{u.emi_estimate ? `₹${(+u.emi_estimate).toLocaleString('en-IN')}/mo` : '—'}</td>
                 <td className="px-4 py-3">
                   <button onClick={() => updateUnit(u.id, 'is_trending', !u.is_trending)}
                     className={`text-xs px-2 py-1 rounded-full font-medium transition
-                      ${u.is_trending ? 'bg-amber-900/40 text-amber-300' : 'bg-gray-800 text-gray-500 hover:text-gray-300'}`}>
+                      ${u.is_trending ? 'bg-[#eef1fb] text-[#273b84]' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}>
                     {u.is_trending ? '🔥 Yes' : 'No'}
                   </button>
                 </td>
                 <td className="px-4 py-3">
                   <select value={u.status} disabled={updating === u.id}
                     onChange={e => updateUnit(u.id, 'status', e.target.value)}
-                    className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[u.status] || 'bg-gray-800 text-gray-300'}`}>
+                    className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[u.status] || 'bg-gray-100 text-gray-700'}`}>
                     {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </td>
@@ -108,9 +108,9 @@ export default function UnitsPage() {
           <p className="text-gray-500 text-sm">Page {page} of {totalPages}</p>
           <div className="flex gap-2">
             <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1}
-              className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-700">Prev</button>
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-100">Prev</button>
             <button onClick={() => setPage(p => Math.min(totalPages,p+1))} disabled={page===totalPages}
-              className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-700">Next</button>
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-100">Next</button>
           </div>
         </div>
       )}

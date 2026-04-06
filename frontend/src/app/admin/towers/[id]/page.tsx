@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-const API = 'http://173.168.0.81:8000/api/v1';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 function adminFetch(path: string, opts: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : '';
   return fetch(API + path, {
@@ -82,67 +82,66 @@ export default function TowerAmenitiesPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <button onClick={() => router.back()} className="text-xs text-gray-600 hover:text-gray-400 mb-2 flex items-center gap-1">← Back</button>
-          <h1 className="text-2xl font-black text-white">Tower Amenities</h1>
-          <p className="text-sm mt-1" style={{ color: '#29A9DF' }}>
-            {tower?.name}
-            <span className="text-gray-500 ml-2">· {tower?.total_floors} floors · {tower?.total_units} units</span>
+          <button onClick={() => router.back()} className="text-xs text-gray-400 hover:text-[#273b84] mb-2 flex items-center gap-1">← Back</button>
+          <h1 className="text-2xl font-black text-[#273b84]">Tower Amenities</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            <span className="font-semibold text-[#1e293b]">{tower?.name}</span>
+            <span className="ml-2">· {tower?.total_floors} floors · {tower?.total_units} units</span>
           </p>
-          <p className="text-xs text-gray-600 mt-1">These amenities will be shown on all unit pages for this tower</p>
+          <p className="text-xs text-gray-400 mt-1">These amenities will be shown on all unit pages for this tower</p>
         </div>
         <button onClick={save} disabled={saving}
           className="px-6 py-2.5 rounded-xl font-bold text-white text-sm disabled:opacity-40"
-          style={{ background: 'linear-gradient(135deg,#2A3887,#29A9DF)' }}>
+          style={{ background: '#273b84' }}>
           {saving ? 'Saving…' : '💾 Save Amenities'}
         </button>
       </div>
 
       {/* Current amenities */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: '#1a1a2e', border: '1px solid #2a2a4a' }}>
-        <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: '#2a2a4a' }}>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-            Current Amenities
-          </p>
+      <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid #e4e9f2' }}>
+        <div className="px-5 py-3 border-b flex items-center justify-between"
+          style={{ background: '#f4f6fb', borderColor: '#e4e9f2' }}>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Current Amenities</p>
           {amenities.length > 0 && (
-            <span className="text-xs text-gray-600">{amenities.length} amenities</span>
+            <span className="text-xs text-gray-400">{amenities.length} amenities</span>
           )}
         </div>
         <div className="p-4 space-y-2 min-h-[80px]">
           {amenities.length === 0 && (
-            <p className="text-gray-600 text-sm text-center py-6">
+            <p className="text-gray-400 text-sm text-center py-6">
               No amenities yet — add from presets below or type a custom one
             </p>
           )}
           {amenities.map((a, i) => (
-            <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
-              style={{ background: '#0d0d1a', border: '1px solid #1f1f3a' }}>
+            <div key={i} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#f8f9fd]"
+              style={{ border: '1px solid #e4e9f2' }}>
               <div className="flex flex-col mr-1">
-                <button onClick={() => moveUp(i)} className="text-gray-700 hover:text-white text-xs leading-none">▲</button>
-                <button onClick={() => moveDown(i)} className="text-gray-700 hover:text-white text-xs leading-none">▼</button>
+                <button onClick={() => moveUp(i)} className="text-gray-400 hover:text-[#273b84] text-xs leading-none">▲</button>
+                <button onClick={() => moveDown(i)} className="text-gray-400 hover:text-[#273b84] text-xs leading-none">▼</button>
               </div>
-              <span className="text-sm text-white flex-1">✓ {a}</span>
+              <span className="text-sm text-[#1e293b] flex-1">✓ {a}</span>
               <button onClick={() => remove(i)}
                 className="text-xs px-2 py-1 rounded-lg font-bold flex-shrink-0"
-                style={{ background: 'rgba(220,38,38,0.15)', color: '#EF4444' }}>✕</button>
+                style={{ background: '#fee2e2', color: '#EF4444' }}>✕</button>
             </div>
           ))}
         </div>
         {/* Custom input */}
-        <div className="px-4 py-4 border-t flex gap-2" style={{ borderColor: '#2a2a4a' }}>
+        <div className="px-4 py-4 border-t flex gap-2" style={{ borderColor: '#e4e9f2' }}>
           <input type="text" value={newAmenity}
             onChange={e => setNewAmenity(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && newAmenity.trim()) { add(newAmenity); setNewAmenity(''); } }}
             placeholder="Type custom amenity and press Enter..."
-            className="flex-1 px-3 py-2 rounded-xl text-sm text-white focus:outline-none"
-            style={{ background: '#0d0d1a', border: '1px solid #333' }} />
+            className="flex-1 px-3 py-2 rounded-xl text-sm text-[#1e293b] bg-white focus:outline-none"
+            style={{ border: '1px solid #d1d9f0' }} />
           <button onClick={() => { add(newAmenity); setNewAmenity(''); }}
             className="px-4 py-2 text-sm font-bold text-white rounded-xl whitespace-nowrap"
-            style={{ background: 'linear-gradient(135deg,#2A3887,#29A9DF)' }}>+ Add</button>
+            style={{ background: '#273b84' }}>+ Add</button>
         </div>
       </div>
 
       {/* Quick Add Presets */}
-      <div className="rounded-2xl p-5" style={{ background: '#1a1a2e', border: '1px solid #2a2a4a' }}>
+      <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid #e4e9f2' }}>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Quick Add</p>
         <div className="flex flex-wrap gap-2">
           {AMENITY_PRESETS.map(a => {
@@ -151,8 +150,8 @@ export default function TowerAmenitiesPage() {
               <button key={a} onClick={() => add(a)} disabled={added}
                 className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all"
                 style={added
-                  ? { borderColor: '#29A9DF', color: '#29A9DF', background: 'rgba(41,169,223,0.1)' }
-                  : { borderColor: '#2a2a4a', color: '#666' }}>
+                  ? { borderColor: '#273b84', color: '#273b84', background: '#eef1fb' }
+                  : { borderColor: '#e4e9f2', color: '#64748b', background: '#f8f9fd' }}>
                 {added ? '✓ ' : '+ '}{a}
               </button>
             );
@@ -162,12 +161,12 @@ export default function TowerAmenitiesPage() {
 
       {/* Preview */}
       {amenities.length > 0 && (
-        <div className="rounded-2xl p-5" style={{ background: '#1a1a2e', border: '1px solid #2a2a4a' }}>
+        <div className="bg-white rounded-2xl p-5" style={{ border: '1px solid #e4e9f2' }}>
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Preview — as shown on unit pages</p>
           <div className="flex flex-wrap gap-2">
             {amenities.map((a, i) => (
               <span key={i} className="px-3 py-1.5 rounded-full text-xs font-semibold"
-                style={{ background: 'rgba(42,56,135,0.15)', color: '#29A9DF', border: '1px solid rgba(41,169,223,0.2)' }}>
+                style={{ background: '#eef1fb', color: '#273b84', border: '1px solid #d1d9f0' }}>
                 ✓ {a}
               </span>
             ))}

@@ -87,7 +87,7 @@ export default function Navbar() {
                 className="flex items-center gap-2 px-4 py-2 rounded-full transition-all"
                 style={{ background: transparent ? "rgba(255,255,255,0.15)" : "#F0F4FF", color: transparent ? "white" : "#2A3887" }}>
                 {customer.profile_pic ? (
-                  <img src={`http://173.168.0.81:8000${customer.profile_pic}`} alt="" className="w-7 h-7 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
+                  <img src={customer.profile_pic} alt="" className="w-7 h-7 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
                 ) : (
                   <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white"
                     style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
@@ -103,7 +103,7 @@ export default function Navbar() {
                   {/* Profile header */}
                   <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: "1px solid #E2F1FC" }}>
                     {customer.profile_pic ? (
-                      <img src={`http://173.168.0.81:8000${customer.profile_pic}`} alt="" className="w-10 h-10 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
+                      <img src={customer.profile_pic} alt="" className="w-10 h-10 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
                     ) : (
                       <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white"
                         style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>

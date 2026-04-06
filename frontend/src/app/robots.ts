@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/admin/', '/api/'],
       },
     ],
-    sitemap: 'http://173.168.0.81:3000/sitemap.xml',
+    sitemap: (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000') + '/sitemap.xml',
   };
 }

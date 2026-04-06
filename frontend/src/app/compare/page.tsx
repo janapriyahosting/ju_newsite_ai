@@ -6,6 +6,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { clearCompare } from "@/lib/savedProperties";
 
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
 function CompareContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -17,7 +19,7 @@ function CompareContent() {
   useEffect(() => {
     if (ids.length === 0) { setLoading(false); return; }
     Promise.all(
-      ids.map(id => fetch(`http://173.168.0.81:8000/api/v1/units/${id}`).then(r => r.json() as Promise<any>).catch(() => null))
+      ids.map(id => fetch(`${API}/units/${id}`).then(r => r.json() as Promise<any>).catch(() => null))
     ).then(results => { setUnits(results.filter(Boolean)); setLoading(false); });
   }, []);
 

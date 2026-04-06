@@ -213,7 +213,7 @@ export default function FieldsManagerPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition"
+          className="flex items-center gap-2 px-4 py-2 bg-[#273b84] text-white rounded-lg text-sm font-medium hover:bg-[#1e2d6b] transition"
         >
           <span>＋</span> Add Custom Field
         </button>
@@ -235,12 +235,12 @@ export default function FieldsManagerPage() {
             onClick={() => setActiveEntity(e.key)}
             className={`px-4 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition ${
               activeEntity === e.key
-                ? "bg-white border border-b-white border-gray-200 text-amber-600 -mb-px"
+                ? "bg-white border border-b-white border-gray-200 text-[#273b84] -mb-px"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
             {e.icon} {e.label}
-            <span className="ml-1 text-xs text-gray-400">
+            <span className="ml-1 text-xs text-gray-500">
               ({(fieldsByEntity[e.key] || []).length})
             </span>
           </button>
@@ -250,13 +250,13 @@ export default function FieldsManagerPage() {
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mb-4 text-xs text-gray-500">
         <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded-full bg-amber-400 inline-block" /> Custom field
+          <span className="w-3 h-3 rounded-full bg-[#273b84] inline-block" /> Custom field
         </span>
         <span className="flex items-center gap-1">
           <span className="w-3 h-3 rounded-full bg-gray-300 inline-block" /> Schema field (label/visibility only)
         </span>
         <span>⠿ Drag rows to reorder</span>
-        {saving === "reorder" && <span className="text-amber-600 animate-pulse">Saving order…</span>}
+        {saving === "reorder" && <span className="text-[#273b84] animate-pulse">Saving order…</span>}
       </div>
 
       {/* Fields table */}
@@ -279,7 +279,7 @@ export default function FieldsManagerPage() {
           <tbody>
             {currentFields.length === 0 ? (
               <tr>
-                <td colSpan={isSuperadmin ? 10 : 9} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={isSuperadmin ? 10 : 9} className="px-4 py-8 text-center text-gray-500">
                   No fields configured for this entity yet.
                 </td>
               </tr>
@@ -304,7 +304,7 @@ export default function FieldsManagerPage() {
         </table>
       </div>
 
-      <p className="mt-3 text-xs text-gray-400">
+      <p className="mt-3 text-xs text-gray-500">
         {currentFields.length} fields — {currentFields.filter(f => f.is_visible).length} visible, {currentFields.filter(f => f.is_custom).length} custom
       </p>
 
@@ -368,7 +368,7 @@ function FieldRow({
 
   return (
     <tr
-      className={`${rowBg} border-b border-gray-100 hover:bg-amber-50 transition-colors`}
+      className={`${rowBg} border-b border-gray-100 hover:bg-[#273b84] transition-colors`}
       draggable
       onDragStart={onDragStart}
       onDragEnter={onDragEnter}
@@ -376,13 +376,13 @@ function FieldRow({
       onDragOver={(e) => e.preventDefault()}
     >
       {/* Drag handle */}
-      <td className="px-3 py-3 text-gray-300 cursor-grab select-none text-center">⠿</td>
+      <td className="px-3 py-3 text-gray-700 cursor-grab select-none text-center">⠿</td>
 
       {/* Label — inline editable */}
       <td className="px-4 py-3">
         <div className="flex items-center gap-2">
           {field.is_custom && (
-            <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" title="Custom field" />
+            <span className="w-2 h-2 rounded-full bg-[#273b84] flex-shrink-0" title="Custom field" />
           )}
           {editingLabel ? (
             <input
@@ -391,13 +391,13 @@ function FieldRow({
               onChange={e => setLabelVal(e.target.value)}
               onBlur={commitLabel}
               onKeyDown={e => { if (e.key === "Enter") commitLabel(); if (e.key === "Escape") { setEditingLabel(false); setLabelVal(field.label); } }}
-              className="border border-amber-400 rounded px-2 py-0.5 text-sm w-full focus:outline-none focus:ring-1 focus:ring-amber-400"
+              className="border border-[#273b84] rounded px-2 py-0.5 text-sm w-full focus:outline-none focus:ring-1 focus:ring-[#273b84]"
               autoFocus
             />
           ) : (
             <button
               onClick={() => { setEditingLabel(true); setLabelVal(field.label); }}
-              className="text-left font-medium text-gray-800 hover:text-amber-600 hover:underline"
+              className="text-left font-medium text-gray-800 hover:text-[#273b84] hover:underline"
               title="Click to edit label"
             >
               {field.label}
@@ -445,7 +445,7 @@ function FieldRow({
       {/* Save status */}
       <td className="px-4 py-3 text-center">
         {saving ? (
-          <span className="text-xs text-amber-500 animate-pulse">Saving…</span>
+          <span className="text-xs text-[#273b84] animate-pulse">Saving…</span>
         ) : (
           <span className="text-xs text-green-500">✓</span>
         )}
@@ -568,7 +568,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">Add Custom Field</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-600 text-xl">✕</button>
         </div>
 
         <div className="px-6 py-4 space-y-4">
@@ -592,7 +592,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
               value={form.label}
               onChange={e => handleLabelChange(e.target.value)}
               placeholder="e.g. Parking Slots"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]"
             />
           </div>
 
@@ -603,9 +603,9 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
               value={form.field_key}
               onChange={e => setForm(f => ({ ...f, field_key: e.target.value }))}
               placeholder="e.g. parking_slots"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#273b84]"
             />
-            <p className="text-xs text-gray-400 mt-1">Unique identifier — used in API and DB. Cannot be changed after creation.</p>
+            <p className="text-xs text-gray-500 mt-1">Unique identifier — used in API and DB. Cannot be changed after creation.</p>
           </div>
 
           <div>
@@ -613,7 +613,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
             <select
               value={form.field_type}
               onChange={e => setForm(f => ({ ...f, field_type: e.target.value as FieldType }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]"
             >
               {FIELD_TYPES.map(ft => (
                 <option key={ft.value} value={ft.value}>{ft.label}</option>
@@ -629,7 +629,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
                 value={form.field_options}
                 onChange={e => setForm(f => ({ ...f, field_options: e.target.value }))}
                 placeholder="Option 1, Option 2, Option 3"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]"
               />
             </div>
           )}
@@ -641,7 +641,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
               value={form.placeholder}
               onChange={e => setForm(f => ({ ...f, placeholder: e.target.value }))}
               placeholder="Optional hint shown inside the field"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]"
             />
           </div>
 
@@ -652,7 +652,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
               value={form.help_text}
               onChange={e => setForm(f => ({ ...f, help_text: e.target.value }))}
               placeholder="Optional helper shown below the field"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]"
             />
           </div>
 
@@ -668,7 +668,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
                 <div
                   onClick={() => setForm(f => ({ ...f, [item.key]: !(f as any)[item.key] }))}
                   className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                    (form as any)[item.key] ? "bg-amber-500" : "bg-gray-200"
+                    (form as any)[item.key] ? "bg-[#273b84]" : "bg-gray-200"
                   }`}
                 >
                   <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
@@ -690,7 +690,7 @@ function AddFieldModal({ entity, adminApi, onClose, onCreated }: {
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className="px-4 py-2 text-sm bg-[#273b84] text-white rounded-lg hover:bg-[#1e2d6b] disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {saving ? "Creating…" : "Create Custom Field"}
           </button>
@@ -768,13 +768,13 @@ function OptionsModal({ field, onClose, onSaved }: {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <h2 className="text-lg font-bold text-gray-900">Manage Options</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-500 mt-0.5">
               <span className="font-mono bg-gray-100 px-1 rounded">{field.field_key}</span>
               <span className="mx-1">·</span>
               {field.label} · {field.field_type}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-600 text-xl">✕</button>
         </div>
 
         <div className="px-6 py-4 flex-1 overflow-y-auto space-y-3">
@@ -787,30 +787,30 @@ function OptionsModal({ field, onClose, onSaved }: {
               onChange={e => setNewOption(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") addOption(); }}
               placeholder="Type new option and press Enter or +"
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]"
             />
             <button onClick={addOption}
-              className="px-3 py-2 bg-amber-500 text-white rounded-lg text-sm font-bold hover:bg-amber-600">
+              className="px-3 py-2 bg-[#273b84] text-white rounded-lg text-sm font-bold hover:bg-[#1e2d6b]">
               +
             </button>
           </div>
 
           {/* Options list */}
           {options.length === 0 ? (
-            <div className="py-6 text-center text-gray-400 text-sm border-2 border-dashed border-gray-200 rounded-lg">
+            <div className="py-6 text-center text-gray-500 text-sm border-2 border-dashed border-gray-200 rounded-lg">
               No options yet. Add your first option above.
             </div>
           ) : (
             <div className="space-y-1">
               {options.map((opt, idx) => (
-                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg group hover:border-amber-300">
-                  <span className="text-gray-400 text-xs w-5 text-right">{idx + 1}.</span>
+                <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg group hover:border-[#273b84]">
+                  <span className="text-gray-500 text-xs w-5 text-right">{idx + 1}.</span>
                   <span className="flex-1 text-sm text-gray-800">{opt}</span>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => moveUp(idx)} disabled={idx === 0}
-                      className="px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-30">↑</button>
+                      className="px-1.5 py-0.5 text-xs text-gray-500 hover:text-gray-600 disabled:opacity-30">↑</button>
                     <button onClick={() => moveDown(idx)} disabled={idx === options.length - 1}
-                      className="px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-600 disabled:opacity-30">↓</button>
+                      className="px-1.5 py-0.5 text-xs text-gray-500 hover:text-gray-600 disabled:opacity-30">↓</button>
                     <button onClick={() => removeOption(idx)}
                       className="px-1.5 py-0.5 text-xs text-red-400 hover:text-red-600">✕</button>
                   </div>
@@ -819,17 +819,17 @@ function OptionsModal({ field, onClose, onSaved }: {
             </div>
           )}
 
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-500">
             💡 Drag ↑↓ to reorder · Options appear in dropdowns and multi-select lists across all forms
           </p>
         </div>
 
         <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200">
-          <span className="text-xs text-gray-400">{options.length} option{options.length !== 1 ? "s" : ""}</span>
+          <span className="text-xs text-gray-500">{options.length} option{options.length !== 1 ? "s" : ""}</span>
           <div className="flex gap-3">
             <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">Cancel</button>
             <button onClick={handleSave} disabled={saving}
-              className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 font-medium">
+              className="px-4 py-2 text-sm bg-[#273b84] text-white rounded-lg hover:bg-[#1e2d6b] disabled:opacity-50 font-medium">
               {saving ? "Saving…" : "Save Options"}
             </button>
           </div>

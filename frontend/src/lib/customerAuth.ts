@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 export interface CustomerUser {
   id: string; name: string; email: string; phone?: string;

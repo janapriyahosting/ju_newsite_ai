@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 function getOrCreateId(key: string): string {
   let id = localStorage.getItem(key);

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { adminApi } from "@/lib/adminAuth";
 
-const API = "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 const ENTITIES = [
   { key: "project", label: "Projects" },
@@ -154,8 +154,8 @@ export default function MediaManagerPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Media Manager</h1>
-          <p className="text-gray-400 text-sm mt-1">Upload photos, floor plans, videos & walkthroughs</p>
+          <h1 className="text-2xl font-bold text-[#273b84]">Media Manager</h1>
+          <p className="text-gray-500 text-sm mt-1">Upload photos, floor plans, videos & walkthroughs</p>
         </div>
       </div>
 
@@ -171,33 +171,33 @@ export default function MediaManagerPage() {
         {/* Left: Entity + Record selector */}
         <div className="lg:col-span-1 space-y-4">
           {/* Entity type */}
-          <div className="rounded-2xl p-4" style={{ background: "#1a1a2e", border: "1px solid #2a2a4a" }}>
-            <p className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest">Entity Type</p>
+          <div className="bg-white rounded-2xl p-4" style={{ border: "1px solid #e4e9f2" }}>
+            <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-widest">Entity Type</p>
             {ENTITIES.map(e => (
               <button key={e.key} onClick={() => setEntity(e.key)}
                 className="w-full text-left px-3 py-2.5 rounded-xl mb-1 text-sm font-bold transition-all"
                 style={entity === e.key
-                  ? { background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white" }
-                  : { color: "#888", background: "transparent" }}>
+                  ? { background: "#273b84", color: "white" }
+                  : { color: "#64748b", background: "#f4f6fb" }}>
                 {e.label}
               </button>
             ))}
           </div>
 
           {/* Record selector */}
-          <div className="rounded-2xl p-4" style={{ background: "#1a1a2e", border: "1px solid #2a2a4a" }}>
-            <p className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-widest">Select Record</p>
+          <div className="bg-white rounded-2xl p-4" style={{ border: "1px solid #e4e9f2" }}>
+            <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-widest">Select Record</p>
             <div className="space-y-1 max-h-64 overflow-y-auto">
               {records.map(r => (
                 <button key={r.id} onClick={() => setSelectedId(r.id)}
                   className="w-full text-left px-3 py-2 rounded-lg text-xs font-medium truncate transition-all"
                   style={selectedId === r.id
-                    ? { background: "rgba(41,169,223,0.2)", color: "#29A9DF", border: "1px solid rgba(41,169,223,0.3)" }
-                    : { color: "#aaa", border: "1px solid transparent" }}>
+                    ? { background: "#eef1fb", color: "#273b84", border: "1px solid #d1d9f0" }
+                    : { color: "#64748b", border: "1px solid transparent" }}>
                   {r.name || r.unit_number || r.id.slice(0, 8)}
                 </button>
               ))}
-              {records.length === 0 && <p className="text-xs text-gray-600 text-center py-4">No records</p>}
+              {records.length === 0 && <p className="text-xs text-gray-400 text-center py-4">No records</p>}
             </div>
           </div>
         </div>
@@ -205,27 +205,27 @@ export default function MediaManagerPage() {
         {/* Right: Media panels */}
         <div className="lg:col-span-3">
           {!selectedId ? (
-            <div className="rounded-2xl p-12 text-center" style={{ background: "#1a1a2e", border: "1px solid #2a2a4a" }}>
+            <div className="bg-white rounded-2xl p-12 text-center" style={{ border: "1px solid #e4e9f2" }}>
               <p className="text-4xl mb-3">🖼️</p>
-              <p className="text-gray-400 font-bold">Select a record to manage its media</p>
+              <p className="text-gray-500 font-bold">Select a record to manage its media</p>
             </div>
           ) : (
             <div className="space-y-4">
               {mediaTypes.map(mt => {
-                const isUrl = !mt.accept; // URL input only for empty accept (video/walkthrough URLs)
+                const isUrl = !mt.accept;
                 const currentVal = selectedRecord?.[mt.key];
                 const items: string[] = mt.multi
                   ? (Array.isArray(currentVal) ? currentVal : [])
                   : (currentVal ? [currentVal] : []);
 
                 return (
-                  <div key={mt.key} className="rounded-2xl p-5" style={{ background: "#1a1a2e", border: "1px solid #2a2a4a" }}>
+                  <div key={mt.key} className="bg-white rounded-2xl p-5" style={{ border: "1px solid #e4e9f2" }}>
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-bold text-white text-sm">{mt.label}</h3>
-                      <span className="text-xs text-gray-500">{items.length} {mt.multi ? "files" : "set"}</span>
+                      <h3 className="font-bold text-[#273b84] text-sm">{mt.label}</h3>
+                      <span className="text-xs text-gray-400">{items.length} {mt.multi ? "files" : "set"}</span>
                     </div>
 
-                    {/* URL input (for video_url, walkthrough_url) */}
+                    {/* URL input */}
                     {isUrl && (
                       <div className="flex gap-2 mb-4">
                         <input
@@ -233,12 +233,12 @@ export default function MediaManagerPage() {
                           placeholder={`Enter ${mt.label} URL (YouTube, Matterport, etc.)`}
                           value={urlInputs[mt.key] || ""}
                           onChange={e => setUrlInputs(p => ({ ...p, [mt.key]: e.target.value }))}
-                          className="flex-1 px-3 py-2 text-sm rounded-xl text-white"
-                          style={{ background: "#0d0d1a", border: "1px solid #333" }}
+                          className="flex-1 px-3 py-2 text-sm rounded-xl text-gray-900 bg-white"
+                          style={{ border: "1px solid #d1d9f0" }}
                         />
                         <button onClick={() => saveUrl(mt.key)} disabled={uploading === mt.key}
                           className="px-4 py-2 text-xs font-bold text-white rounded-xl disabled:opacity-50"
-                          style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                          style={{ background: "#273b84" }}>
                           {uploading === mt.key ? "Saving…" : "Save"}
                         </button>
                       </div>
@@ -247,8 +247,8 @@ export default function MediaManagerPage() {
                     {/* File upload area */}
                     {!isUrl && (
                       <div
-                        className="border-2 border-dashed rounded-xl p-6 text-center mb-4 cursor-pointer transition-all hover:border-blue-400"
-                        style={{ borderColor: "#333" }}
+                        className="border-2 border-dashed rounded-xl p-6 text-center mb-4 cursor-pointer transition-all hover:border-[#273b84] hover:bg-[#f4f6fb]"
+                        style={{ borderColor: "#d1d9f0" }}
                         onClick={() => fileRefs.current[mt.key]?.click()}
                         onDragOver={e => e.preventDefault()}
                         onDrop={e => {
@@ -268,12 +268,12 @@ export default function MediaManagerPage() {
                           }}
                         />
                         {uploading === mt.key ? (
-                          <p className="text-blue-400 text-sm font-bold">Uploading…</p>
+                          <p className="text-[#273b84] text-sm font-bold">Uploading…</p>
                         ) : (
                           <>
                             <p className="text-2xl mb-2">📁</p>
-                            <p className="text-gray-400 text-sm">Click or drag & drop</p>
-                            <p className="text-gray-600 text-xs mt-1">{mt.accept.replace(/\*/g, "all")}</p>
+                            <p className="text-gray-500 text-sm">Click or drag & drop</p>
+                            <p className="text-gray-400 text-xs mt-1">{mt.accept.replace(/\*/g, "all")}</p>
                           </>
                         )}
                       </div>
@@ -283,11 +283,10 @@ export default function MediaManagerPage() {
                     {items.length > 0 && (
                       <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                         {items.map((url, i) => (
-                          <div key={i} className="relative group rounded-xl overflow-hidden"
-                            style={{ background: "#0d0d1a", border: "1px solid #333" }}>
+                          <div key={i} className="relative group rounded-xl overflow-hidden bg-gray-50"
+                            style={{ border: "1px solid #e4e9f2" }}>
                             {isImageUrl(url) ? (
-                              <img src={url.startsWith("/media") ? `http://173.168.0.81:8000${url}` : url}
-                                alt="" className="w-full h-24 object-cover" />
+                              <img src={url} alt="" className="w-full h-24 object-cover" />
                             ) : isPdfUrl(url) ? (
                               <div className="w-full h-24 flex items-center justify-center">
                                 <span className="text-3xl">📄</span>
@@ -295,21 +294,18 @@ export default function MediaManagerPage() {
                             ) : (
                               <div className="w-full h-24 flex flex-col items-center justify-center gap-1">
                                 <span className="text-2xl">🎥</span>
-                                <p className="text-xs text-gray-500 truncate w-full px-2 text-center">{url.substring(0, 30)}...</p>
+                                <p className="text-xs text-gray-400 truncate w-full px-2 text-center">{url.substring(0, 30)}...</p>
                               </div>
                             )}
-                            {/* Delete button */}
                             <button
                               onClick={() => deleteMedia(mt.key, url)}
                               className="absolute top-1 right-1 w-6 h-6 rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity"
                               style={{ background: "rgba(220,38,38,0.9)", color: "white" }}>
                               ✕
                             </button>
-                            {/* Open link */}
-                            <a href={url.startsWith("/media") ? `http://173.168.0.81:8000${url}` : url}
-                              target="_blank" rel="noopener noreferrer"
+                            <a href={url} target="_blank" rel="noopener noreferrer"
                               className="absolute bottom-1 left-1 px-2 py-0.5 rounded text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity"
-                              style={{ background: "rgba(42,56,135,0.9)", color: "white" }}>
+                              style={{ background: "rgba(39,59,132,0.9)", color: "white" }}>
                               Open
                             </a>
                           </div>
@@ -318,7 +314,7 @@ export default function MediaManagerPage() {
                     )}
 
                     {items.length === 0 && !isUrl && (
-                      <p className="text-center text-gray-600 text-xs py-2">No {mt.label.toLowerCase()} uploaded yet</p>
+                      <p className="text-center text-gray-400 text-xs py-2">No {mt.label.toLowerCase()} uploaded yet</p>
                     )}
                   </div>
                 );

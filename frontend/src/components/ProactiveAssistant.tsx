@@ -2,8 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
-const API = "http://173.168.0.81:8000/api/v1";
-const MEDIA_BASE = "http://173.168.0.81:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const MEDIA_BASE = "";
 
 function fmt(p: number) {
   if (!p) return "Price on request";

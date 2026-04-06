@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '@/lib/adminAuth';
 
-const API_BASE = 'http://173.168.0.81:8000/api/v1';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 const TRIGGERS = [
   { value: 'on_open',      label: 'On widget open',         desc: 'Auto-launches every time someone opens the chat' },
@@ -69,35 +69,35 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
   const allIds = steps.map(s => s.id);
 
   return (
-    <div className="border border-gray-700 rounded-xl overflow-hidden mb-3">
+    <div className="border border-gray-300 rounded-xl overflow-hidden mb-3">
       {/* Step header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-gray-800 cursor-pointer" onClick={() => setExpanded(e => !e)}>
-        <span className="text-gray-400 text-xs font-mono">{step.id}</span>
-        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-300">
+      <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 cursor-pointer" onClick={() => setExpanded(e => !e)}>
+        <span className="text-gray-500 text-xs font-mono">{step.id}</span>
+        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
           {STEP_TYPES.find(t => t.value === step.type)?.label || step.type}
         </span>
-        <span className="flex-1 text-sm text-white truncate">{step.text}</span>
+        <span className="flex-1 text-sm text-gray-900 truncate">{step.text}</span>
         <div className="flex gap-1">
-          {!isFirst && <button onClick={e => { e.stopPropagation(); onMoveUp(); }} className="text-gray-500 hover:text-white text-xs px-1">↑</button>}
-          {!isLast  && <button onClick={e => { e.stopPropagation(); onMoveDown(); }} className="text-gray-500 hover:text-white text-xs px-1">↓</button>}
+          {!isFirst && <button onClick={e => { e.stopPropagation(); onMoveUp(); }} className="text-gray-500 hover:text-[#273b84] text-xs px-1">↑</button>}
+          {!isLast  && <button onClick={e => { e.stopPropagation(); onMoveDown(); }} className="text-gray-500 hover:text-[#273b84] text-xs px-1">↓</button>}
           <button onClick={e => { e.stopPropagation(); onDelete(); }} className="text-red-500 hover:text-red-300 text-xs px-1">✕</button>
           <span className="text-gray-500 text-xs">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
 
       {expanded && (
-        <div className="p-4 bg-gray-900 space-y-3">
+        <div className="p-4 bg-white space-y-3">
           {/* ID */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Step ID (unique)</label>
+              <label className="block text-xs text-gray-500 mb-1">Step ID (unique)</label>
               <input value={step.id} onChange={e => onChange({ ...step, id: e.target.value.replace(/\s/g, '_') })}
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm font-mono" />
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm font-mono" />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Type</label>
+              <label className="block text-xs text-gray-500 mb-1">Type</label>
               <select value={step.type} onChange={e => onChange({ ...step, type: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
                 {STEP_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
@@ -105,25 +105,25 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
 
           {/* Text */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Bot message</label>
+            <label className="block text-xs text-gray-500 mb-1">Bot message</label>
             <textarea value={step.text} onChange={e => onChange({ ...step, text: e.target.value })} rows={2}
-              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm resize-none" />
+              className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm resize-none" />
           </div>
 
           {/* Field (for input / options with data collection) */}
           {['input', 'collect_lead', 'options'].includes(step.type) && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Save answer as field</label>
+                <label className="block text-xs text-gray-500 mb-1">Save answer as field</label>
                 <input value={step.field || ''} onChange={e => onChange({ ...step, field: e.target.value })}
                   placeholder="e.g. budget, bhk, phone"
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm" />
               </div>
               {(step.type === 'input' || step.type === 'collect_lead') && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Placeholder text</label>
+                  <label className="block text-xs text-gray-500 mb-1">Placeholder text</label>
                   <input value={step.placeholder || ''} onChange={e => onChange({ ...step, placeholder: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm" />
                 </div>
               )}
             </div>
@@ -132,9 +132,9 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
           {/* Next step (non-options) */}
           {!['options'].includes(step.type) && step.type !== 'end' && (
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Next step</label>
+              <label className="block text-xs text-gray-500 mb-1">Next step</label>
               <select value={step.next || ''} onChange={e => onChange({ ...step, next: e.target.value })}
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+                className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
                 <option value="">— select —</option>
                 <option value="end">🏁 end</option>
                 {allIds.filter(id => id !== step.id).map(id => <option key={id} value={id}>{id}</option>)}
@@ -146,7 +146,7 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
           {step.type === 'options' && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs text-gray-400">Options</label>
+                <label className="text-xs text-gray-500">Options</label>
                 <button onClick={() => onChange({ ...step, options: [...(step.options || []), { label: 'New option', value: uid(), next: 'end' }] })}
                   className="text-xs text-blue-400 hover:text-blue-300">+ Add option</button>
               </div>
@@ -155,15 +155,15 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
                   <input value={opt.label} onChange={e => {
                     const opts = [...step.options]; opts[i] = { ...opts[i], label: e.target.value };
                     onChange({ ...step, options: opts });
-                  }} placeholder="Label" className="col-span-4 bg-gray-800 border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs" />
+                  }} placeholder="Label" className="col-span-4 bg-white border border-gray-300 text-gray-900 rounded-lg px-2 py-1.5 text-xs" />
                   <input value={opt.value} onChange={e => {
                     const opts = [...step.options]; opts[i] = { ...opts[i], value: e.target.value };
                     onChange({ ...step, options: opts });
-                  }} placeholder="Value" className="col-span-3 bg-gray-800 border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs font-mono" />
+                  }} placeholder="Value" className="col-span-3 bg-white border border-gray-300 text-gray-900 rounded-lg px-2 py-1.5 text-xs font-mono" />
                   <select value={opt.next || ''} onChange={e => {
                     const opts = [...step.options]; opts[i] = { ...opts[i], next: e.target.value };
                     onChange({ ...step, options: opts });
-                  }} className="col-span-4 bg-gray-800 border border-gray-700 text-white rounded-lg px-2 py-1.5 text-xs">
+                  }} className="col-span-4 bg-white border border-gray-300 text-gray-900 rounded-lg px-2 py-1.5 text-xs">
                     <option value="">next →</option>
                     <option value="end">🏁 end</option>
                     {allIds.filter(id => id !== step.id).map(id => <option key={id} value={id}>{id}</option>)}
@@ -269,10 +269,10 @@ export default function AssistantAdminPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">AI Assistant Flows</h1>
-          <p className="text-gray-400 text-sm mt-1">Build guided conversation flows for the chatbot widget</p>
+          <h1 className="text-2xl font-bold text-[#273b84]">AI Assistant Flows</h1>
+          <p className="text-gray-500 text-sm mt-1">Build guided conversation flows for the chatbot widget</p>
         </div>
-        <button onClick={newFlow} className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-sm">
+        <button onClick={newFlow} className="px-4 py-2 bg-[#273b84] hover:bg-[#273b84] text-black font-bold rounded-lg text-sm">
           + New Flow
         </button>
       </div>
@@ -280,44 +280,44 @@ export default function AssistantAdminPage() {
       {/* ── Flow list ── */}
       {!editing && (
         loading ? (
-          <div className="text-gray-400 text-sm">Loading…</div>
+          <div className="text-gray-500 text-sm">Loading…</div>
         ) : flows.length === 0 ? (
-          <div className="text-center py-20 bg-gray-900 border border-gray-800 rounded-xl">
+          <div className="text-center py-20 bg-white border border-gray-200 rounded-xl">
             <div className="text-4xl mb-4">🤖</div>
-            <p className="text-white font-bold text-lg mb-2">No flows yet</p>
-            <p className="text-gray-400 text-sm mb-6">Create your first guided conversation flow for the AI assistant widget.</p>
-            <button onClick={newFlow} className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-sm">
+            <p className="text-gray-900 font-bold text-lg mb-2">No flows yet</p>
+            <p className="text-gray-500 text-sm mb-6">Create your first guided conversation flow for the AI assistant widget.</p>
+            <button onClick={newFlow} className="px-5 py-2.5 bg-[#273b84] hover:bg-[#273b84] text-black font-bold rounded-lg text-sm">
               Create Default Flow
             </button>
           </div>
         ) : (
           <div className="space-y-3">
             {flows.map(flow => (
-              <div key={flow.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center gap-4">
+              <div key={flow.id} className="bg-white border border-gray-200 rounded-xl p-5 flex items-center gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
-                    <h3 className="text-white font-bold">{flow.name}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${flow.is_active ? 'bg-green-900/50 text-green-400' : 'bg-gray-800 text-gray-500'}`}>
+                    <h3 className="text-gray-900 font-bold">{flow.name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${flow.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                       {flow.is_active ? '● Active' : '○ Inactive'}
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/40 text-blue-300">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
                       {TRIGGERS.find(t => t.value === flow.trigger)?.label || flow.trigger}
                     </span>
                   </div>
-                  {flow.description && <p className="text-gray-400 text-sm">{flow.description}</p>}
+                  {flow.description && <p className="text-gray-500 text-sm">{flow.description}</p>}
                   <p className="text-gray-600 text-xs mt-1">{flow.steps?.length || 0} steps</p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button onClick={() => toggleActive(flow)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${flow.is_active ? 'border-gray-600 text-gray-400 hover:text-white' : 'border-green-700 text-green-400 hover:bg-green-900/30'}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${flow.is_active ? 'border-gray-300 text-gray-600 hover:text-gray-800' : 'border-green-500 text-green-700 hover:bg-green-50'}`}>
                     {flow.is_active ? 'Deactivate' : 'Activate'}
                   </button>
                   <button onClick={() => setEditing({ ...flow, steps: JSON.parse(JSON.stringify(flow.steps)) })}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-800 text-white hover:bg-gray-700">
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#273b84] text-white hover:bg-[#1e2d6b]">
                     Edit
                   </button>
                   <button onClick={() => deleteFlow(flow.id)}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-400 hover:bg-red-900/20 border border-red-900/50">
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 border border-red-300">
                     Delete
                   </button>
                 </div>
@@ -332,19 +332,19 @@ export default function AssistantAdminPage() {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Left: builder */}
           <div className="xl:col-span-2 space-y-5">
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-              <h2 className="text-white font-bold text-lg mb-4">{editing.id ? 'Edit Flow' : 'New Flow'}</h2>
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
+              <h2 className="text-gray-900 font-bold text-lg mb-4">{editing.id ? 'Edit Flow' : 'New Flow'}</h2>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Flow name</label>
+                  <label className="block text-xs text-gray-500 mb-1">Flow name</label>
                   <input value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm" />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Trigger</label>
+                  <label className="block text-xs text-gray-500 mb-1">Trigger</label>
                   <select value={editing.trigger} onChange={e => setEditing({ ...editing, trigger: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+                    className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
                     {TRIGGERS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                   <p className="text-gray-600 text-xs mt-1">{TRIGGERS.find(t => t.value === editing.trigger)?.desc}</p>
@@ -352,10 +352,10 @@ export default function AssistantAdminPage() {
               </div>
 
               <div className="mb-4">
-                <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+                <label className="block text-xs text-gray-500 mb-1">Description (optional)</label>
                 <input value={editing.description || ''} onChange={e => setEditing({ ...editing, description: e.target.value })}
                   placeholder="e.g. Home buyer qualification flow"
-                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                  className="w-full bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm" />
               </div>
 
               <div className="flex items-center gap-2 mb-4">
@@ -363,21 +363,21 @@ export default function AssistantAdminPage() {
                   className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${editing.is_active ? 'bg-green-500' : 'bg-gray-600'}`}>
                   <span className={`inline-block h-4 w-4 rounded-full bg-white shadow mt-0.5 transition-transform ${editing.is_active ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
-                <span className="text-sm text-gray-300">{editing.is_active ? 'Active' : 'Inactive'}</span>
+                <span className="text-sm text-gray-700">{editing.is_active ? 'Active' : 'Inactive'}</span>
               </div>
             </div>
 
             {/* Steps */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-bold">Steps ({editing.steps.length})</h3>
+                <h3 className="text-gray-900 font-bold">Steps ({editing.steps.length})</h3>
                 <div className="flex gap-2">
                   <button onClick={() => setPreview(!preview)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${preview ? 'bg-amber-500/20 border-amber-500 text-amber-400' : 'border-gray-700 text-gray-400'}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${preview ? 'bg-[#273b84]/20 border-[#273b84] text-[#273b84]' : 'border-gray-300 text-gray-600'}`}>
                     {preview ? '✓ Preview on' : '👁 Preview'}
                   </button>
                   <button onClick={addStep}
-                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-xs font-bold border border-gray-700">
+                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold border border-gray-300">
                     + Add Step
                   </button>
                 </div>
@@ -402,10 +402,10 @@ export default function AssistantAdminPage() {
             {/* Save / Cancel */}
             <div className="flex gap-3">
               <button onClick={saveFlow} disabled={saving}
-                className="px-6 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black font-bold rounded-lg text-sm">
+                className="px-6 py-2.5 bg-[#273b84] hover:bg-[#273b84] disabled:opacity-50 text-black font-bold rounded-lg text-sm">
                 {saving ? 'Saving…' : editing.id ? '💾 Save Changes' : '✓ Create Flow'}
               </button>
-              <button onClick={() => setEditing(null)} className="px-6 py-2.5 bg-gray-800 text-gray-300 hover:text-white rounded-lg text-sm">
+              <button onClick={() => setEditing(null)} className="px-6 py-2.5 bg-gray-100 text-gray-700 hover:text-gray-900 rounded-lg text-sm">
                 Cancel
               </button>
             </div>
@@ -414,7 +414,7 @@ export default function AssistantAdminPage() {
           {/* Right: preview */}
           <div>
             <div className="sticky top-6">
-              <h3 className="text-white font-bold mb-3 text-sm">Live Preview</h3>
+              <h3 className="text-gray-900 font-bold mb-3 text-sm">Live Preview</h3>
               <div style={{ background: "linear-gradient(135deg,#0f0f1a,#1a1a2e)", borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", maxWidth: 320 }}>
                 {/* Fake header */}
                 <div style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)", padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -466,12 +466,12 @@ export default function AssistantAdminPage() {
               </div>
 
               {/* Step map */}
-              <div className="mt-4 bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <h4 className="text-gray-400 text-xs font-bold mb-3 uppercase tracking-wide">Step Map</h4>
+              <div className="mt-4 bg-white border border-gray-200 rounded-xl p-4">
+                <h4 className="text-gray-500 text-xs font-bold mb-3 uppercase tracking-wide">Step Map</h4>
                 <div className="space-y-1.5">
                   {editing.steps.map((s: any, i: number) => (
                     <button key={s.id} onClick={() => setPreviewStepId(s.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${previewStepId === s.id || (!previewStepId && i === 0) ? 'bg-amber-500/20 text-amber-400' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}>
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors ${previewStepId === s.id || (!previewStepId && i === 0) ? 'bg-[#273b84]/20 text-[#273b84]' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}>
                       <span className="text-xs font-mono">{i + 1}.</span>
                       <span className="text-xs truncate flex-1">{s.id}</span>
                       <span className="text-xs text-gray-600">{STEP_TYPES.find(t => t.value === s.type)?.label?.split(' ')[0]}</span>

@@ -32,30 +32,30 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-amber-400">Janapriya Upscale</h1>
-          <p className="text-gray-400 mt-1">Admin Panel</p>
+          <h1 className="text-3xl font-bold text-[#273b84]">Janapriya Upscale</h1>
+          <p className="text-gray-500 mt-1">Admin Panel</p>
         </div>
-        <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800">
-          <h2 className="text-xl font-semibold text-white mb-6">Sign In</h2>
+        <div className="bg-white rounded-2xl p-8 border border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Sign In</h2>
           {error && <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg mb-4 text-sm">{error}</div>}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Username</label>
+              <label className="block text-sm text-gray-500 mb-1">Username</label>
               <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-400"
+                className="w-full bg-gray-100 border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:border-[#273b84]"
                 placeholder="Enter username" required />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Password</label>
+              <label className="block text-sm text-gray-500 mb-1">Password</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-400"
+                className="w-full bg-gray-100 border border-gray-300 rounded-lg px-4 py-3 text-gray-900 focus:outline-none focus:border-[#273b84]"
                 placeholder="Enter password" required />
             </div>
             <button type="submit" disabled={loading}
-              className="w-full bg-amber-400 hover:bg-amber-500 text-gray-900 font-semibold py-3 rounded-lg transition disabled:opacity-50">
+              className="w-full bg-[#273b84] hover:bg-[#273b84] text-white font-semibold py-3 rounded-lg transition disabled:opacity-50">
               {loading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>

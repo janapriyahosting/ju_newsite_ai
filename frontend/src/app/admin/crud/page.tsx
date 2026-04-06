@@ -114,7 +114,7 @@ export default function CrudManagerPage() {
         <div><h1 className="text-2xl font-bold text-gray-900">Data Manager</h1><p className="text-sm text-gray-500 mt-1">Click any cell to edit inline · ✏️ opens full form with custom fields</p></div>
         <div className="flex gap-2 flex-wrap">
           {activeTab==="units"&&<><button onClick={async()=>{try{const res=await adminApi("/admin/units/csv-template");if(!res.ok){const err=await res.json().catch(()=>({detail:"Download failed"}));throw new Error(err.detail||`HTTP ${res.status}`);}const blob=await res.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="units_import_template.csv";document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}catch(e:any){setError(e.message||"Failed to download template");}}} className="px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">⬇ CSV Template</button><button onClick={()=>setShowImportModal(true)} className="px-3 py-2 text-sm border border-blue-300 text-blue-600 rounded-lg hover:bg-blue-50">📥 Import CSV</button></>}
-          <button onClick={()=>setShowCreateModal(true)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">＋ New {entityLabel}</button>
+          <button onClick={()=>setShowCreateModal(true)} className="px-4 py-2 text-sm bg-[#273b84] text-white rounded-lg font-medium hover:bg-[#1e2d6b]">＋ New {entityLabel}</button>
         </div>
       </div>
       {error&&<div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex justify-between"><span>{error}</span><button onClick={()=>setError(null)}>✕</button></div>}
@@ -122,18 +122,18 @@ export default function CrudManagerPage() {
       <div className="flex gap-1 mb-4 border-b border-gray-200">
         {(["projects","towers","units"] as EntityType[]).map(tab=>(
           <button key={tab} onClick={()=>{setActiveTab(tab);setSearch("");setFilterProjectId("");setFilterTowerId("");setFilterStatus("");}}
-            className={`px-4 py-2 text-sm font-medium rounded-t-lg capitalize transition ${activeTab===tab?"bg-white border border-b-white border-gray-200 text-amber-600 -mb-px":"text-gray-500 hover:text-gray-700"}`}>
+            className={`px-4 py-2 text-sm font-medium rounded-t-lg capitalize transition ${activeTab===tab?"bg-white border border-b-white border-gray-200 text-[#273b84] -mb-px":"text-gray-500 hover:text-gray-700"}`}>
             {tab==="projects"?"🏗️":tab==="towers"?"🗼":"🏠"} {tab.charAt(0).toUpperCase()+tab.slice(1)}
-            {activeTab===tab&&customFields.length>0&&<span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-xs">{customFields.length} custom</span>}
+            {activeTab===tab&&customFields.length>0&&<span className="ml-2 px-1.5 py-0.5 bg-[#eef1fb] text-[#273b84] rounded text-xs">{customFields.length} custom</span>}
           </button>
         ))}
       </div>
       <div className="flex flex-wrap gap-3 mb-4">
-        <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder={`Search ${activeTab}...`} className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 min-w-48 focus:outline-none focus:ring-2 focus:ring-amber-400"/>
+        <input value={search} onChange={e=>handleSearch(e.target.value)} placeholder={`Search ${activeTab}...`} className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 min-w-48 focus:outline-none focus:ring-2 focus:ring-[#273b84]"/>
         {(activeTab==="towers"||activeTab==="units")&&<select value={filterProjectId} onChange={e=>setFilterProjectId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"><option value="">All Projects</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}
         {activeTab==="units"&&<><select value={filterTowerId} onChange={e=>setFilterTowerId(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"><option value="">All Towers</option>{towers.filter(t=>!filterProjectId||t.project_id===filterProjectId).map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select><select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)} className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none"><option value="">All Status</option>{["available","booked","reserved","sold"].map(s=><option key={s} value={s}>{s}</option>)}</select></>}
       </div>
-      {selected.size>0&&<div className="mb-3 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-3 text-sm"><span className="font-medium text-amber-700">{selected.size} selected</span>{isSuperadmin&&<button onClick={bulkDelete} className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">🗑 Delete Selected</button>}<button onClick={()=>setSelected(new Set())} className="px-3 py-1 border border-gray-300 rounded text-xs">Clear</button></div>}
+      {selected.size>0&&<div className="mb-3 px-4 py-2 bg-[#eef1fb] border border-[#d1d9f0] rounded-lg flex items-center gap-3 text-sm"><span className="font-medium text-[#273b84]">{selected.size} selected</span>{isSuperadmin&&<button onClick={bulkDelete} className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">🗑 Delete Selected</button>}<button onClick={()=>setSelected(new Set())} className="px-3 py-1 border border-gray-300 rounded text-xs">Clear</button></div>}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm min-w-max">
           <thead><tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase">
@@ -142,16 +142,16 @@ export default function CrudManagerPage() {
             <th className="px-4 py-3 text-center">Actions</th>
           </tr></thead>
           <tbody>
-            {loading?<tr><td colSpan={cols.length+2} className="px-4 py-8 text-center text-gray-400 animate-pulse">Loading…</td></tr>
-            :data.items.length===0?<tr><td colSpan={cols.length+2} className="px-4 py-8 text-center text-gray-400">No records found</td></tr>
+            {loading?<tr><td colSpan={cols.length+2} className="px-4 py-8 text-center text-gray-500 animate-pulse">Loading…</td></tr>
+            :data.items.length===0?<tr><td colSpan={cols.length+2} className="px-4 py-8 text-center text-gray-500">No records found</td></tr>
             :data.items.map((item,idx)=>(
-              <tr key={item.id} className={`border-b border-gray-100 hover:bg-amber-50 ${selected.has(item.id)?"bg-amber-50":idx%2===0?"bg-white":"bg-gray-50"}`}>
+              <tr key={item.id} className={`border-b border-gray-100 hover:bg-[#273b84] ${selected.has(item.id)?"bg-[#273b84]":idx%2===0?"bg-white":"bg-gray-50"}`}>
                 <td className="px-3 py-3 text-center"><input type="checkbox" checked={selected.has(item.id)} onChange={()=>toggleSelect(item.id)}/></td>
                 {cols.map(col=>(
                   <td key={col.key} className="px-4 py-3 whitespace-nowrap">
                     {editingCell?.id===item.id&&editingCell?.field===col.key
                       ?<InlineEditor value={editingCell.value} type={(col as any).type} options={(col as any).options} onChange={v=>setEditingCell({...editingCell,value:v})} onCommit={commitCellEdit} onCancel={()=>setEditingCell(null)}/>
-                      :<span onClick={()=>col.editable&&setEditingCell({id:item.id,field:col.key,value:item[col.key]})} className={col.editable?"cursor-pointer hover:text-amber-600 hover:underline":""} title={col.editable?"Click to edit":""}>
+                      :<span onClick={()=>col.editable&&setEditingCell({id:item.id,field:col.key,value:item[col.key]})} className={col.editable?"cursor-pointer hover:text-[#273b84] hover:underline":""} title={col.editable?"Click to edit":""}>
                         {col.type==="boolean"?<span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item[col.key]?"bg-green-100 text-green-700":"bg-gray-100 text-gray-500"}`}>{item[col.key]?"Yes":"No"}</span>
                         :col.key==="status"?<span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item[col.key]==="available"?"bg-green-100 text-green-700":item[col.key]==="booked"?"bg-blue-100 text-blue-700":item[col.key]==="sold"?"bg-red-100 text-red-700":"bg-yellow-100 text-yellow-700"}`}>{item[col.key]}</span>
                         :col.key==="base_price"?`₹${Number(item[col.key]||0).toLocaleString("en-IN")}`
@@ -161,7 +161,7 @@ export default function CrudManagerPage() {
                 ))}
                 <td className="px-4 py-3 text-center">
                   <div className="flex items-center justify-center gap-2">
-                    <button onClick={()=>setEditRecord(item)} className="text-gray-400 hover:text-amber-600" title="Edit all fields incl. custom">✏️</button>
+                    <button onClick={()=>setEditRecord(item)} className="text-gray-500 hover:text-[#273b84]" title="Edit all fields incl. custom">✏️</button>
                     <button onClick={()=>duplicate(item.id)} className="text-blue-400 hover:text-blue-600" title="Duplicate">📋</button>
                     {isSuperadmin&&<button onClick={()=>deleteOne(item.id)} className="text-red-400 hover:text-red-600" title="Delete">🗑</button>}
                   </div>
@@ -187,23 +187,23 @@ export default function CrudManagerPage() {
 }
 
 function InlineEditor({value,type,options,onChange,onCommit,onCancel}:{value:any;type?:string;options?:string[];onChange:(v:any)=>void;onCommit:()=>void;onCancel:()=>void;}) {
-  if (type==="boolean") return <div className="flex gap-1"><button onClick={()=>{onChange(true);setTimeout(onCommit,0);}} className={`px-2 py-0.5 text-xs rounded ${value?"bg-green-500 text-white":"bg-gray-200"}`}>Yes</button><button onClick={()=>{onChange(false);setTimeout(onCommit,0);}} className={`px-2 py-0.5 text-xs rounded ${!value?"bg-red-500 text-white":"bg-gray-200"}`}>No</button><button onClick={onCancel} className="text-xs text-gray-400 ml-1">✕</button></div>;
-  if (type==="select"&&options) return <select autoFocus value={value||""} onChange={e=>onChange(e.target.value)} onBlur={onCommit} className="border border-amber-400 rounded px-1 py-0.5 text-xs">{options.map(o=><option key={o} value={o}>{o}</option>)}</select>;
-  return <input autoFocus type="text" value={value??""} onChange={e=>onChange(e.target.value)} onBlur={onCommit} onKeyDown={e=>{if(e.key==="Enter")onCommit();if(e.key==="Escape")onCancel();}} className="border border-amber-400 rounded px-2 py-0.5 text-sm w-32 focus:outline-none"/>;
+  if (type==="boolean") return <div className="flex gap-1"><button onClick={()=>{onChange(true);setTimeout(onCommit,0);}} className={`px-2 py-0.5 text-xs rounded ${value?"bg-green-500 text-white":"bg-gray-200"}`}>Yes</button><button onClick={()=>{onChange(false);setTimeout(onCommit,0);}} className={`px-2 py-0.5 text-xs rounded ${!value?"bg-red-500 text-white":"bg-gray-200"}`}>No</button><button onClick={onCancel} className="text-xs text-gray-500 ml-1">✕</button></div>;
+  if (type==="select"&&options) return <select autoFocus value={value||""} onChange={e=>onChange(e.target.value)} onBlur={onCommit} className="border border-[#273b84] rounded px-1 py-0.5 text-xs">{options.map(o=><option key={o} value={o}>{o}</option>)}</select>;
+  return <input autoFocus type="text" value={value??""} onChange={e=>onChange(e.target.value)} onBlur={onCommit} onKeyDown={e=>{if(e.key==="Enter")onCommit();if(e.key==="Escape")onCancel();}} className="border border-[#273b84] rounded px-2 py-0.5 text-sm w-32 focus:outline-none"/>;
 }
 
 function FieldInput({fieldDef,value,onChange}:{fieldDef:any;value:any;onChange:(v:any)=>void}) {
-  const base="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400";
+  const base="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]";
   const {type,placeholder,options}=fieldDef;
   if (type==="project_select") return <select value={value||""} onChange={e=>onChange(e.target.value)} className={base}><option value="">Select project…</option>{(options||[]).map((p:any)=><option key={p.id} value={p.id}>{p.name}</option>)}</select>;
   if (type==="tower_select") return <select value={value||""} onChange={e=>onChange(e.target.value)} className={base}><option value="">Select tower…</option>{(options||[]).map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}</select>;
-  if (type==="boolean") return <div className="flex gap-3 mt-1">{[{v:true,l:"Yes"},{v:false,l:"No"}].map(o=><label key={String(o.v)} className="flex items-center gap-2 cursor-pointer"><input type="radio" checked={value===o.v} onChange={()=>onChange(o.v)} className="accent-amber-500"/><span className="text-sm">{o.l}</span></label>)}</div>;
+  if (type==="boolean") return <div className="flex gap-3 mt-1">{[{v:true,l:"Yes"},{v:false,l:"No"}].map(o=><label key={String(o.v)} className="flex items-center gap-2 cursor-pointer"><input type="radio" checked={value===o.v} onChange={()=>onChange(o.v)} className="accent-[#273b84]"/><span className="text-sm">{o.l}</span></label>)}</div>;
   if (type==="select") { const opts=Array.isArray(options)?options:typeof options==="string"?options.split(",").map((s:string)=>s.trim()):[]; return <select value={value||""} onChange={e=>onChange(e.target.value)} className={base}><option value="">Select…</option>{opts.map((o:string)=><option key={o} value={o}>{o}</option>)}</select>; }
   if (type==="textarea") return <textarea rows={3} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder||""} className={base}/>;
-  if (type==="currency") return <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span><input type="number" value={value||""} onChange={e=>onChange(e.target.value===""?"":Number(e.target.value))} placeholder={placeholder||""} className={`${base} pl-7`}/></div>;
+  if (type==="currency") return <div className="relative"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span><input type="number" value={value||""} onChange={e=>onChange(e.target.value===""?"":Number(e.target.value))} placeholder={placeholder||""} className={`${base} pl-7`}/></div>;
   if (type==="number") return <input type="number" value={value||""} onChange={e=>onChange(e.target.value===""?"":Number(e.target.value))} placeholder={placeholder||""} className={base}/>;
   if (type==="date") return <input type="date" value={value?String(value).split("T")[0]:""} onChange={e=>onChange(e.target.value)} className={base}/>;
-  if (type==="checkbox") return <div className="flex items-center gap-2 mt-1"><input type="checkbox" checked={!!value} onChange={e=>onChange(e.target.checked)} className="accent-amber-500 w-4 h-4"/><span className="text-sm text-gray-600">{placeholder||"Enable"}</span></div>;
+  if (type==="checkbox") return <div className="flex items-center gap-2 mt-1"><input type="checkbox" checked={!!value} onChange={e=>onChange(e.target.checked)} className="accent-[#273b84] w-4 h-4"/><span className="text-sm text-gray-600">{placeholder||"Enable"}</span></div>;
   return <input type={type==="email"?"email":type==="phone"?"tel":"text"} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder||""} className={base}/>;
 }
 
@@ -265,13 +265,13 @@ function DynamicFormModal({mode,entity,entityKey,record,projects,towers,fieldCon
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <div><h2 className="text-lg font-bold">{mode==="create"?`New ${entityLabel}`:`Edit ${entityLabel}`}</h2>{customFieldDefs.length>0&&<p className="text-xs text-amber-600 mt-0.5">Includes {customFieldDefs.length} custom field{customFieldDefs.length>1?"s":""} from Fields Manager</p>}</div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+          <div><h2 className="text-lg font-bold">{mode==="create"?`New ${entityLabel}`:`Edit ${entityLabel}`}</h2>{customFieldDefs.length>0&&<p className="text-xs text-[#273b84] mt-0.5">Includes {customFieldDefs.length} custom field{customFieldDefs.length>1?"s":""} from Fields Manager</p>}</div>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-600 text-xl">✕</button>
         </div>
         <div className="px-6 py-5 space-y-5">
           {err&&<div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{err}</div>}
           <div>
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Core Fields</h3>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Core Fields</h3>
             <div className="grid grid-cols-2 gap-4">
               {schemaFieldDefs.map((f:any)=>(
                 <div key={f.key} className={f.fullWidth?"col-span-2":""}>
@@ -282,15 +282,15 @@ function DynamicFormModal({mode,entity,entityKey,record,projects,towers,fieldCon
             </div>
           </div>
           {customFieldDefs.length>0&&(
-            <div className="border-t border-dashed border-amber-200 pt-5">
-              <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-3">✦ Custom Fields <span className="text-gray-400 font-normal normal-case">(from Fields Manager — auto-updated)</span></h3>
-              {loadingCustom?<div className="text-sm text-gray-400 animate-pulse">Loading…</div>
+            <div className="border-t border-dashed border-[#273b84] pt-5">
+              <h3 className="text-xs font-semibold text-[#273b84] uppercase tracking-wider mb-3">✦ Custom Fields <span className="text-gray-500 font-normal normal-case">(from Fields Manager — auto-updated)</span></h3>
+              {loadingCustom?<div className="text-sm text-gray-500 animate-pulse">Loading…</div>
               :<div className="grid grid-cols-2 gap-4">
                 {customFieldDefs.map(f=>(
                   <div key={f.field_key} className={f.field_type==="textarea"?"col-span-2":""}>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}{f.is_required&&<span className="text-red-500 ml-1">*</span>}<span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded text-xs">custom</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{f.label}{f.is_required&&<span className="text-red-500 ml-1">*</span>}<span className="ml-2 px-1.5 py-0.5 bg-[#eef1fb] text-[#273b84] rounded text-xs">custom</span></label>
                     <FieldInput fieldDef={{key:f.field_key,type:f.field_type,placeholder:f.placeholder,options:f.field_options}} value={customValues[f.field_key]} onChange={v=>setCustomValues(cv=>({...cv,[f.field_key]:v}))}/>
-                    {f.help_text&&<p className="text-xs text-gray-400 mt-1">{f.help_text}</p>}
+                    {f.help_text&&<p className="text-xs text-gray-500 mt-1">{f.help_text}</p>}
                   </div>
                 ))}
               </div>}
@@ -299,7 +299,7 @@ function DynamicFormModal({mode,entity,entityKey,record,projects,towers,fieldCon
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">Cancel</button>
-          <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 font-medium">{saving?(mode==="create"?"Creating…":"Saving…"):(mode==="create"?`Create ${entityLabel}`:"Save Changes")}</button>
+          <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 text-sm bg-[#273b84] text-white rounded-lg hover:bg-[#1e2d6b] disabled:opacity-50 font-medium">{saving?(mode==="create"?"Creating…":"Saving…"):(mode==="create"?`Create ${entityLabel}`:"Save Changes")}</button>
         </div>
       </div>
     </div>
@@ -356,11 +356,11 @@ function CsvImportModal({towers,onClose,onImported,fieldConfigs}:{towers:any[];o
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="text-lg font-bold">Import Units from CSV</h2><button onClick={onClose} className="text-gray-400 text-xl">✕</button></div>
+        <div className="flex items-center justify-between px-6 py-4 border-b"><h2 className="text-lg font-bold">Import Units from CSV</h2><button onClick={onClose} className="text-gray-500 text-xl">✕</button></div>
         <div className="px-6 py-4 space-y-4">
           {err&&<div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{err}</div>}
-          {result?<div><div className="p-4 bg-green-50 border border-green-200 rounded-lg"><p className="text-green-700 font-medium">✓ Import Complete</p><p className="text-sm text-green-600">Created: {result.created} units</p>{result.errors?.length>0&&<p className="text-sm text-red-600 mt-1">Errors: {result.errors.length} rows</p>}{result.custom_fields_detected?.length>0&&<p className="text-sm text-amber-600 mt-1">Custom fields imported: {result.custom_fields_detected.join(", ")}</p>}</div>{result.errors?.length>0&&<div className="mt-2 max-h-32 overflow-y-auto text-xs text-red-600 space-y-1">{result.errors.map((e:any,i:number)=><p key={i}>Row {e.row}: {e.error}</p>)}</div>}<button onClick={()=>onImported(result)} className="mt-3 w-full py-2 bg-amber-500 text-white rounded-lg text-sm font-medium">Done</button></div>
-          :<><div><label className="block text-sm font-medium text-gray-700 mb-1">Tower *</label><select value={towerId} onChange={e=>setTowerId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Select tower…</option>{towers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 mb-1">CSV File *</label><input type="file" accept=".csv" onChange={e=>setFile(e.target.files?.[0]||null)} className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-amber-50 file:text-amber-600"/><p className="text-xs text-gray-400 mt-1">Download the CSV Template first — it includes all custom fields automatically.</p></div>{customFields.length>0&&<div className="p-3 bg-amber-50 border border-amber-200 rounded-lg"><p className="text-xs font-semibold text-amber-700 mb-1">Custom fields included in template:</p><div className="flex flex-wrap gap-1">{customFields.map((f:any)=><span key={f.field_key} className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">{f.label} ({f.field_type})</span>)}</div></div>}<div className="flex justify-end gap-3"><button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">Cancel</button><button onClick={doImport} disabled={loading} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg disabled:opacity-50">{loading?"Importing…":"Import"}</button></div></>}
+          {result?<div><div className="p-4 bg-green-50 border border-green-200 rounded-lg"><p className="text-green-700 font-medium">✓ Import Complete</p><p className="text-sm text-green-600">Created: {result.created} units</p>{result.errors?.length>0&&<p className="text-sm text-red-600 mt-1">Errors: {result.errors.length} rows</p>}{result.custom_fields_detected?.length>0&&<p className="text-sm text-[#273b84] mt-1">Custom fields imported: {result.custom_fields_detected.join(", ")}</p>}</div>{result.errors?.length>0&&<div className="mt-2 max-h-32 overflow-y-auto text-xs text-red-600 space-y-1">{result.errors.map((e:any,i:number)=><p key={i}>Row {e.row}: {e.error}</p>)}</div>}<button onClick={()=>onImported(result)} className="mt-3 w-full py-2 bg-[#273b84] text-white rounded-lg text-sm font-medium">Done</button></div>
+          :<><div><label className="block text-sm font-medium text-gray-700 mb-1">Tower *</label><select value={towerId} onChange={e=>setTowerId(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"><option value="">Select tower…</option>{towers.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></div><div><label className="block text-sm font-medium text-gray-700 mb-1">CSV File *</label><input type="file" accept=".csv" onChange={e=>setFile(e.target.files?.[0]||null)} className="w-full text-sm file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-[#eef1fb] file:text-[#273b84]"/><p className="text-xs text-gray-500 mt-1">Download the CSV Template first — it includes all custom fields automatically.</p></div>{customFields.length>0&&<div className="p-3 bg-[#eef1fb] border border-[#d1d9f0] rounded-lg"><p className="text-xs font-semibold text-[#273b84] mb-1">Custom fields included in template:</p><div className="flex flex-wrap gap-1">{customFields.map((f:any)=><span key={f.field_key} className="px-2 py-0.5 bg-[#eef1fb] text-[#273b84] rounded text-xs">{f.label} ({f.field_type})</span>)}</div></div>}<div className="flex justify-end gap-3"><button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">Cancel</button><button onClick={doImport} disabled={loading} className="px-4 py-2 text-sm bg-[#273b84] text-white rounded-lg disabled:opacity-50">{loading?"Importing…":"Import"}</button></div></>}
         </div>
       </div>
     </div>

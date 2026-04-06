@@ -18,7 +18,7 @@ const TABS = [
   {id:"profile", label:"Profile", icon:"👤"},
 ];
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://173.168.0.81:8000/api/v1';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const STATES = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal'];
 const RELATIONS = ['Father','Spouse','Mother','Guardian','Brother','Sister','Other'];
 const EMP_TYPES = ['Salaried','Self-Employed','Business Owner','Professional','Retired','Homemaker','Other'];
@@ -545,7 +545,7 @@ function SavedUnitCard({ unitId, onRemove }: { unitId: string; onRemove: () => v
   const [unit, setUnit] = useState<any>(null);
   
   useEffect(() => {
-    fetch(`http://173.168.0.81:8000/api/v1/units/${unitId}`).then(r => r.json() as Promise<any>).then(setUnit).catch(() => {});
+    fetch(`${API}/units/${unitId}`).then(r => r.json() as Promise<any>).then(setUnit).catch(() => {});
   }, [unitId]);
   if (!unit) return <div className="bg-white rounded-xl p-4 animate-pulse h-32" style={{ border: "1px solid #E2F1FC" }} />;
   return (
@@ -582,7 +582,7 @@ function SiteVisitsTab({ visits, loading, onRefresh }: { visits: any[]; loading:
     e.preventDefault();
     setSaving(true); setMsg("");
     try {
-      const res = await fetch(`http://173.168.0.81:8000/api/v1/site-visits/${rescheduleModal.id}`, {
+      const res = await fetch(`${API}/site-visits/${rescheduleModal.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ visit_date: newDate, visit_time: newTime }),
@@ -959,7 +959,7 @@ function KYCTab({ bookings, token }: { bookings: any[]; token: string }) {
 function ProfileTab({ customer, onUpdate, onTabChange, onLogout }: {
   customer: any; onUpdate: (c: any) => void; onTabChange: (t: string) => void; onLogout: () => void;
 }) {
-  const MEDIA = 'http://173.168.0.81:8000';
+  const MEDIA = "";
   const [picLoading, setPicLoading] = useState(false);
 
   // Edit modal state — handles name, phone, email

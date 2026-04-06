@@ -31,6 +31,68 @@
   .badge-trending   { @apply bg-amber-100 text-amber-700 text-xs px-2 py-1 rounded-full font-medium; }
 }
 
+/* ── Admin Panel Theme ── */
+.admin-page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #273b84;
+  font-family: 'Lato', sans-serif;
+}
+.admin-card {
+  background: #ffffff;
+  border: 1px solid #e4e9f2;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 4px rgba(39,59,132,0.06);
+}
+.admin-table-header {
+  background: #f4f6fb;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.admin-table-row {
+  border-bottom: 1px solid #e4e9f2;
+  color: #1e293b;
+}
+.admin-table-row:hover {
+  background: #f8f9fd;
+}
+.admin-input {
+  background: #fff;
+  border: 1px solid #d1d9f0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #1e293b;
+  outline: none;
+}
+.admin-input:focus {
+  border-color: #273b84;
+  box-shadow: 0 0 0 2px rgba(39,59,132,0.12);
+}
+.admin-btn-primary {
+  background: #273b84;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  transition: background 0.15s;
+}
+.admin-btn-primary:hover { background: #1e2d6b; }
+.admin-btn-secondary {
+  background: #f4f6fb;
+  color: #273b84;
+  font-weight: 600;
+  border: 1px solid #d1d9f0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+.admin-btn-secondary:hover { background: #e4e9f2; }
+
 /* ── Janapriya Upscale Brand Theme ── */
 :root {
   --jp-navy: #2A3887;
@@ -59,4 +121,20 @@ input[type=range]::-moz-range-thumb {
   background: #2A3887;
   border: 2px solid white;
   cursor: pointer;
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f4f6fb;
+}
+::-webkit-scrollbar-thumb {
+  background: #e53e3e;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c53030;
 }

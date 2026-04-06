@@ -4,8 +4,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import DynamicFields from '@/components/DynamicFields';
 
-const API = 'http://173.168.0.81:8000/api/v1';
-const MEDIA = 'http://173.168.0.81:8000';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const MEDIA = "";
 const fmt = (p: any) => p && +p >= 100000 ? `₹${(+p/100000).toFixed(1)}L` : null;
 const mUrl = (u: string) => u?.startsWith('/media') ? `${MEDIA}${u}` : u;
 
@@ -247,7 +247,7 @@ export default function TowerDetailPage() {
             <button onClick={() => {
               const user = typeof window !== 'undefined' ? localStorage.getItem('jp_token') : null;
               if (!user) window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname) + '&reason=brochure';
-              else window.open('http://173.168.0.81:8000' + tower.brochure_url, '_blank');
+              else window.open(tower.brochure_url, '_blank');
             }} className="w-full py-3 font-black rounded-xl text-sm flex items-center justify-center gap-2"
             style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)", color:"white"}}>
               ⬇️ Download Brochure
