@@ -14,8 +14,46 @@ from backend.app.models.booking import Booking
 from backend.app.schemas.unit import (
     UnitCreate, UnitUpdate, UnitResponse, UnitListResponse
 )
+from sqlalchemy import text as sa_text
 
 router = APIRouter(prefix="/units", tags=["units"])
+
+
+async def _attach_thumbnails(units: list, db: AsyncSession) -> list:
+    """Attach series thumbnail (3D preferred, 2D fallback) to each unit."""
+    if not units:
+        return units
+    try:
+        unit_ids = [str(u.id) for u in units]
+        # Fetch series_floor_plan_3d and series_floor_plan_2d values for all units
+        placeholders = ", ".join(f"'{uid}'" for uid in unit_ids)
+        rows = await db.execute(sa_text(f"""
+            SELECT cfv.entity_id::text AS uid, fc.field_key, cfv.value
+            FROM custom_field_values cfv
+            JOIN field_configs fc ON fc.id = cfv.field_config_id
+            WHERE cfv.entity_id::text IN ({placeholders})
+              AND fc.field_key IN ('series_floor_plan_3d', 'series_floor_plan_2d')
+              AND cfv.value IS NOT NULL
+        """))
+        # Build lookup: unit_id -> {field_key: value}
+        lookup: dict = {}
+        for r in rows.mappings():
+            uid = str(r["uid"])
+            val = r["value"]
+            if isinstance(val, str) and val:
+                lookup.setdefault(uid, {})[r["field_key"]] = val
+        # Attach thumbnail: prefer 3D, fallback 2D
+        results = []
+        for u in units:
+            resp = UnitResponse.model_validate(u)
+            fields = lookup.get(str(u.id), {})
+            resp.thumbnail = fields.get("series_floor_plan_3d") or fields.get("series_floor_plan_2d") or None
+            results.append(resp)
+        return results
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        # Fallback: return without thumbnails if query fails
+        return [UnitResponse.model_validate(u) for u in units]
 
 
 @router.get("", response_model=UnitListResponse)
@@ -85,13 +123,14 @@ async def list_units(
         .offset(offset).limit(page_size)
     )
     units = result.scalars().all()
+    items = await _attach_thumbnails(units, db)
 
     return UnitListResponse(
         total=total,
         page=page,
         page_size=page_size,
         total_pages=-(-total // page_size),
-        items=units,
+        items=items,
     )
 
 
@@ -107,8 +146,9 @@ async def trending_units(
         .limit(limit)
     )
     units = result.scalars().all()
+    items = await _attach_thumbnails(units, db)
     return UnitListResponse(total=len(units), page=1, page_size=limit,
-                            total_pages=1, items=units)
+                            total_pages=1, items=items)
 
 
 @router.get("/{unit_id}", response_model=UnitResponse)
@@ -158,6 +198,13 @@ async def create_unit(data: UnitCreate, db: AsyncSession = Depends(get_db)):
     await db.flush()
     await db.refresh(unit)
     return unit
+
+
+@router.get("/{unit_id}/series-media")
+async def get_unit_series_media(unit_id: UUID, db: AsyncSession = Depends(get_db)):
+    """Public: resolve inherited series media for a unit."""
+    from backend.app.api.v1.routers.admin_media import _resolve_series_media
+    return await _resolve_series_media(str(unit_id), db)
 
 
 @router.patch("/{unit_id}", response_model=UnitResponse)

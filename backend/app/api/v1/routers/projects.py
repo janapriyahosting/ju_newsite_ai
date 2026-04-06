@@ -61,6 +61,10 @@ async def list_projects(
         d["max_price"] = str(max_price) if max_price else None
         items.append(d)
 
+    # Thumbnail = first image from media uploads
+    for item in items:
+        item["thumbnail"] = (item.get("images") or [None])[0] or None
+
     return {
         "total": total,
         "page": page,
@@ -110,7 +114,12 @@ async def get_project_towers(project_id: UUID, db: AsyncSession = Depends(get_db
         select(Tower).where(Tower.project_id == project_id, Tower.is_active == True)
     )
     towers = result.scalars().all()
-    return TowerListResponse(total=len(towers), items=towers)
+    items = []
+    for t in towers:
+        resp = TowerResponse.model_validate(t)
+        resp.thumbnail = t.images[0] if t.images else None
+        items.append(resp)
+    return TowerListResponse(total=len(towers), items=items)
 
 
 @router.post("", response_model=ProjectResponse, status_code=201)

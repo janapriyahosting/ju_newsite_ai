@@ -21,10 +21,8 @@
   {
     "key": "floor_plans",
     "label": "Floor Plans",
-    "visible": true,
-    "fields": [
-      "floor_plans"
-    ]
+    "visible": false,
+    "fields": []
   },
   {
     "key": "media",

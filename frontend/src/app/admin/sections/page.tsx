@@ -51,8 +51,18 @@ const ALL_FIELDS: Record<string, { key: string; label: string; type: string }[]>
     { key: "images",          label: "Photo Gallery",    type: "images"  },
     { key: "floor_plan_img",  label: "Floor Plan Image", type: "image"   },
     { key: "floor_plans",     label: "Floor Plans",      type: "images"  },
-    { key: "video_url",       label: "Video",            type: "video"   },
-    { key: "walkthrough_url", label: "Walkthrough",      type: "video"   },
+    { key: "video_url",              label: "Video",              type: "video"   },
+    { key: "walkthrough_url",        label: "Walkthrough",        type: "video"   },
+    // Series media fields (resolved from series media uploads)
+    { key: "series_floor_plan_2d",   label: "Series 2D Plan",     type: "image"   },
+    { key: "series_floor_plan_3d",   label: "Series 3D Plan",     type: "image"   },
+    { key: "series_model_flat_video",label: "Model Flat Video",   type: "video"   },
+    { key: "series_tower_elevation", label: "Tower Elevation",    type: "image"   },
+    { key: "series_project_video",   label: "Project Video",      type: "video"   },
+    { key: "series_project_image",   label: "Project Image",      type: "image"   },
+    { key: "series_walkthrough_video",label: "Walk Through Video", type: "video"  },
+    { key: "series_brochure",        label: "Series Brochure",    type: "pdf"     },
+    { key: "series_unit_image",      label: "Series Unit Photo",  type: "image"   },
   ],
 };
 

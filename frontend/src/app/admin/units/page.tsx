@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/adminAuth';
 
 const STATUS_COLORS: Record<string,string> = {
-  available: 'bg-green-900/40 text-green-300',
-  booked: 'bg-red-900/40 text-red-300',
-  hold: 'bg-yellow-900/40 text-yellow-300',
+  available: 'bg-green-100 text-green-700',
+  booked: 'bg-red-100 text-red-700',
+  hold: 'bg-amber-100 text-amber-700',
   blocked: 'bg-gray-100 text-gray-500',
 };
 const UNIT_TYPES = ['1BHK','2BHK','3BHK','4BHK','villa','plot'];
@@ -49,7 +49,12 @@ export default function UnitsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-[#273b84]">Units <span className="text-gray-500 text-lg font-normal">({total})</span></h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Link href="/admin/units/bulk-dimensions"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white"
+            style={{ background: '#273b84' }}>
+            📐 Bulk Dimensions
+          </Link>
           <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1); }}
             className="bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
             <option value="">All Types</option>
@@ -82,7 +87,7 @@ export default function UnitsPage() {
                 <td className="px-4 py-3 text-gray-700">{u.facing || '—'}</td>
                 <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{u.area_sqft ? `${u.area_sqft} sqft` : '—'}</td>
                 <td className="px-4 py-3 text-[#273b84] font-medium whitespace-nowrap">{fmt(u.base_price)}</td>
-                <td className="px-4 py-3 text-green-400 font-medium whitespace-nowrap">{u.token_amount ? `₹${(+u.token_amount).toLocaleString('en-IN')}` : '₹20,000'}</td>
+                <td className="px-4 py-3 text-green-700 font-medium whitespace-nowrap">{u.token_amount ? `₹${(+u.token_amount).toLocaleString('en-IN')}` : '₹20,000'}</td>
                 <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{u.emi_estimate ? `₹${(+u.emi_estimate).toLocaleString('en-IN')}/mo` : '—'}</td>
                 <td className="px-4 py-3">
                   <button onClick={() => updateUnit(u.id, 'is_trending', !u.is_trending)}

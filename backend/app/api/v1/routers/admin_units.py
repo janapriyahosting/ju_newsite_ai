@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 from uuid import UUID
@@ -11,6 +11,8 @@ from backend.app.models.unit import Unit
 from backend.app.models.project import Project
 from backend.app.models.tower import Tower
 import json
+import csv
+import io
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -131,6 +133,196 @@ async def update_unit(
         return v
     cols = [col.name for col in unit.__table__.columns if col.name != 'embedding']
     return {col: _sv(getattr(unit, col)) for col in cols}
+
+
+@router.post("/units/bulk-dimensions", status_code=200)
+async def bulk_upload_dimensions(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    admin=Depends(verify_admin_token),
+):
+    """
+    Bulk upload room dimensions for multiple units via CSV or XLSX.
+    Required columns: project_name, tower_name, unit_number, room, width, length
+    Optional column:  unit (ft/m/in — defaults to ft)
+    The combination of project_name + tower_name + unit_number is the unique key.
+    """
+    filename = (file.filename or "").lower()
+    if not (filename.endswith(".csv") or filename.endswith(".xlsx")):
+        raise HTTPException(400, "Only .csv or .xlsx files are accepted")
+
+    content = await file.read()
+    rows: list[dict] = []
+
+    if filename.endswith(".xlsx"):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+            ws = wb.active
+            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows(min_row=1, max_row=1))]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                rows.append({headers[i]: (str(v).strip() if v is not None else "") for i, v in enumerate(row)})
+        except Exception as e:
+            raise HTTPException(400, f"Failed to parse Excel file: {e}")
+    else:
+        text_content = content.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(text_content))
+        rows = [{k: (v.strip() if v else "") for k, v in row.items()} for row in reader]
+
+    if not rows:
+        raise HTTPException(400, "File is empty")
+
+    # Validate required columns
+    required = {"project_name", "tower_name", "unit_number", "room", "width", "length"}
+    missing = required - set(rows[0].keys())
+    if missing:
+        raise HTTPException(400, f"Missing columns: {', '.join(sorted(missing))}")
+
+    # Group dimension rows by (project_name, tower_name, unit_number)
+    # Key: (project_name_lower, tower_name_lower, unit_number) → list of dim dicts
+    grouped: dict[tuple, dict] = {}
+    row_errors: list[str] = []
+
+    for i, row in enumerate(rows, start=2):
+        project_name = row.get("project_name", "").strip()
+        tower_name   = row.get("tower_name", "").strip()
+        unit_num     = row.get("unit_number", "").strip()
+        room         = row.get("room", "").strip()
+
+        if not project_name or not tower_name or not unit_num:
+            row_errors.append(f"Row {i}: project_name, tower_name and unit_number are all required")
+            continue
+        if not room:
+            row_errors.append(f"Row {i}: room is required")
+            continue
+
+        try:
+            width  = float(row.get("width") or 0)
+            length = float(row.get("length") or 0)
+        except ValueError:
+            row_errors.append(f"Row {i}: width and length must be numbers")
+            continue
+
+        dim_unit = row.get("unit", "ft").strip() or "ft"
+        key = (project_name.lower(), tower_name.lower(), unit_num)
+        if key not in grouped:
+            grouped[key] = {
+                "project_name": project_name,
+                "tower_name":   tower_name,
+                "unit_number":  unit_num,
+                "dims": [],
+            }
+        grouped[key]["dims"].append({
+            "room": room, "width": width, "length": length, "unit": dim_unit,
+        })
+
+    if not grouped:
+        raise HTTPException(400, f"No valid rows found. Errors: {'; '.join(row_errors[:5])}")
+
+    # Resolve projects (cache by name)
+    project_cache: dict[str, any] = {}
+    for key, entry in grouped.items():
+        pname = key[0]
+        if pname not in project_cache:
+            r = await db.execute(
+                select(Project).where(func.lower(Project.name) == pname)
+            )
+            project_cache[pname] = r.scalar_one_or_none()
+
+    # Resolve towers scoped to their project (cache by project_id + tower_name)
+    tower_cache: dict[tuple, any] = {}
+    for key, entry in grouped.items():
+        pname, tname, _ = key
+        project = project_cache.get(pname)
+        if not project:
+            continue
+        tcache_key = (str(project.id), tname)
+        if tcache_key not in tower_cache:
+            r = await db.execute(
+                select(Tower).where(
+                    Tower.project_id == project.id,
+                    func.lower(Tower.name) == tname,
+                )
+            )
+            tower_cache[tcache_key] = r.scalar_one_or_none()
+
+    # Resolve units scoped to their tower
+    unit_cache: dict[tuple, any] = {}
+    for key, entry in grouped.items():
+        pname, tname, unit_num = key
+        project = project_cache.get(pname)
+        if not project:
+            continue
+        tower = tower_cache.get((str(project.id), tname))
+        if not tower:
+            continue
+        r = await db.execute(
+            select(Unit).where(
+                Unit.tower_id == tower.id,
+                Unit.unit_number == unit_num,
+            )
+        )
+        unit_cache[key] = r.scalar_one_or_none()
+
+    # Apply updates
+    updated = 0
+    not_found: list[str] = []
+
+    for key, entry in grouped.items():
+        pname, tname, unit_num = key
+        label = f"{entry['project_name']} / {entry['tower_name']} / {unit_num}"
+
+        project = project_cache.get(pname)
+        if not project:
+            not_found.append(f"{label} (project not found)")
+            continue
+
+        tower = tower_cache.get((str(project.id), tname))
+        if not tower:
+            not_found.append(f"{label} (tower not found)")
+            continue
+
+        unit_obj = unit_cache.get(key)
+        if not unit_obj:
+            not_found.append(f"{label} (unit not found)")
+            continue
+
+        await db.execute(
+            text("UPDATE units SET dimensions = :dims WHERE id = :uid"),
+            {"dims": json.dumps(entry["dims"]), "uid": str(unit_obj.id)},
+        )
+        updated += 1
+
+    await db.commit()
+    return {
+        "updated": updated,
+        "not_found": not_found,
+        "row_errors": row_errors,
+        "total_rows": sum(len(e["dims"]) for e in grouped.values()),
+    }
+
+
+@router.get("/units/bulk-dimensions/template")
+async def download_dimensions_template(admin=Depends(verify_admin_token)):
+    """Return a sample CSV template for bulk dimension upload."""
+    lines = [
+        "project_name,tower_name,unit_number,room,width,length,unit",
+        "Janapriya Heights,Tower A,A101,Master Bedroom,12.6,14.0,ft",
+        "Janapriya Heights,Tower A,A101,Living Room,16.0,20.3,ft",
+        "Janapriya Heights,Tower A,A101,Kitchen,10.0,12.0,ft",
+        "Janapriya Heights,Tower A,A101,Balcony,6.0,10.0,ft",
+        "Janapriya Heights,Tower A,A102,Master Bedroom,12.6,14.0,ft",
+        "Janapriya Heights,Tower A,A102,Living Room,16.0,20.3,ft",
+        "Janapriya Heights,Tower B,A101,Master Bedroom,11.6,13.0,ft",
+    ]
+    from fastapi.responses import Response
+    return Response(
+        content="\n".join(lines),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=dimensions_template.csv"},
+    )
+
+
 @router.get("/projects")
 async def list_projects(
     db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)

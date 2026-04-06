@@ -287,12 +287,17 @@ async def get_public_custom_field_values(
 ):
     """Public endpoint — no auth. Returns custom field values for customer-facing pages.
     Only returns values for fields where show_on_customer=True."""
+    from sqlalchemy import or_
     configs_result = await db.execute(
         select(FieldConfig).where(
             FieldConfig.entity == entity,
             FieldConfig.is_custom == True,
-            FieldConfig.is_visible == True,
-            FieldConfig.show_on_customer == True,
+            or_(
+                # Normal visible customer fields
+                (FieldConfig.is_visible == True) & (FieldConfig.show_on_customer == True),
+                # Series media fields always included (paths needed for rendering)
+                FieldConfig.field_key.like("series_%"),
+            ),
         )
     )
     configs = {c.id: c for c in configs_result.scalars().all()}

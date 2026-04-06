@@ -6,7 +6,8 @@ const API_BASE = '';
 function mediaUrl(url: string) {
   if (!url) return '';
   if (url.startsWith('http')) return url;
-  return API_BASE + url;
+  // Encode spaces in paths (e.g. "Model Flat Video/file name.mp4")
+  return API_BASE + url.split('/').map(s => encodeURIComponent(s)).join('/');
 }
 
 function isVideo(url: string) {
@@ -34,9 +35,22 @@ interface MediaItem {
 
 interface Props {
   unit: any;
+  seriesFields?: Record<string, { value: any; field_type: string; label: string }>;
 }
 
-export default function UnitMediaSlider({ unit }: Props) {
+const SERIES_MEDIA_MAP: Record<string, { type: MediaItem['type']; label: string }> = {
+  series_floor_plan_2d:       { type: 'floorplan', label: '2D Plan' },
+  series_floor_plan_3d:       { type: 'floorplan', label: '3D Plan' },
+  series_model_flat_video:    { type: 'video',     label: 'Model Flat Video' },
+  series_tower_elevation:     { type: 'image',     label: 'Tower Elevation' },
+  series_project_video:       { type: 'video',     label: 'Project Video' },
+  series_project_image:       { type: 'image',     label: 'Project Image' },
+  series_walkthrough_video:   { type: 'video',     label: 'Walk Through Video' },
+  series_brochure:            { type: 'image',     label: 'Brochure' },
+  series_unit_image:          { type: 'image',     label: 'Unit Photo' },
+};
+
+export default function UnitMediaSlider({ unit, seriesFields }: Props) {
   const [active, setActive] = useState(0);
   const thumbsRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +82,23 @@ export default function UnitMediaSlider({ unit }: Props) {
       items.push({ type: 'youtube', url: unit.walkthrough_url, label: '3D Tour' });
     } else {
       items.push({ type: 'walkthrough', url: unit.walkthrough_url, label: '3D Tour' });
+    }
+  }
+
+  // Series media from custom fields
+  if (seriesFields) {
+    for (const [key, meta] of Object.entries(SERIES_MEDIA_MAP)) {
+      const cf = seriesFields[key];
+      if (cf && cf.value && String(cf.value).trim()) {
+        const url = String(cf.value).trim();
+        if (isYouTube(url)) {
+          items.push({ type: 'youtube', url, label: meta.label });
+        } else if (isVideo(url)) {
+          items.push({ type: 'video', url, label: meta.label });
+        } else {
+          items.push({ type: meta.type, url, label: meta.label });
+        }
+      }
     }
   }
 

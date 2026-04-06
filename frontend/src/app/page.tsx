@@ -470,11 +470,12 @@ export default function HomePage() {
 
   useEffect(() => {
     setMounted(true);
-    fetch("http://173.168.0.81:8000/api/v1/units/trending?limit=6")
+    const API = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+    fetch(`${API}/units/trending?limit=6`)
       .then(r => r.json() as Promise<any>)
       .then(d => setTrending(Array.isArray(d) ? d : (d.items || [])))
       .catch(() => {});
-    fetch("http://173.168.0.81:8000/api/v1/projects")
+    fetch(`${API}/projects?is_featured=true`)
       .then(r => r.json())
       .then(d => setProjects(Array.isArray(d) ? d.slice(0, 4) : (d.items || []).slice(0, 4)))
       .catch(() => {});
@@ -485,7 +486,7 @@ export default function HomePage() {
     if (!query.trim()) return;
     setSearching(true); setSearched(false);
     try {
-      const res = await fetch(`http://173.168.0.81:8000/api/v1/search/nlp`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/search/nlp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
@@ -907,11 +908,17 @@ export default function HomePage() {
                 <Link key={u.id} href={`/units/${u.id}`} style={{ textDecoration: "none" }}>
                   <div className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
                     <div style={{ height: 200, background: "linear-gradient(135deg, #0D1B2A 0%, #273b84 100%)", position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 16 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      {(u.thumbnail || (u.images && u.images[0])) && (
+                        <img src={(u.thumbnail || u.images[0]).split('/').map((s: string) => encodeURIComponent(s)).join('/')}
+                          alt={u.unit_number} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
+                          onError={(e: any) => { e.target.style.display = 'none'; }} />
+                      )}
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.6) 100%)", zIndex: 1 }} />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", zIndex: 2 }}>
                         <span className="badge badge-brand">● Available</span>
                         <span style={{ background: "rgba(255,255,255,0.15)", color: "white", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>🔥 Trending</span>
                       </div>
-                      <div>
+                      <div style={{ position: "relative", zIndex: 2 }}>
                         <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 2 }}>{u.unit_type}{u.bedrooms ? ` · ${u.bedrooms} BHK` : ""}</p>
                         <p style={{ color: "white", fontWeight: 900, fontSize: 16 }}>{u.unit_number}</p>
                         {u.area_sqft && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>📐 {parseFloat(u.area_sqft).toFixed(0)} sqft · Fl {u.floor_number ?? "–"}</p>}
@@ -939,7 +946,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 </Link>
-              ))}
+              ))} 
             </div>
           </div>
         </section>
@@ -992,15 +999,20 @@ export default function HomePage() {
               <Link key={p.id} href={`/projects/${p.id}`} style={{ textDecoration: "none" }}>
                 <div className="card-hover" style={{ background: "white", borderRadius: 20, overflow: "hidden", border: "1.5px solid #e8ebf8", boxShadow: "0 4px 20px rgba(39,59,132,0.08)" }}>
                   <div style={{ height: 224, background: "linear-gradient(135deg, #273b84 0%, #1a2a6c 100%)", position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 20, overflow: "hidden" }}>
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)" }} />
+                    {(p.thumbnail || (p.images && p.images[0])) && (
+                      <img src={(p.thumbnail || p.images[0]).split('/').map((s: string) => encodeURIComponent(s)).join('/')}
+                        alt={p.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
+                        onError={(e: any) => { e.target.style.display = 'none'; }} />
+                    )}
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.6) 100%)", zIndex: 1 }} />
                     <span style={{
-                      alignSelf: "flex-start", display: "inline-block", padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 800, zIndex: 1,
+                      alignSelf: "flex-start", display: "inline-block", padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 800, zIndex: 2, position: "relative",
                       background: p.status === "ready" ? "#e8ebf8" : p.status === "upcoming" ? "#FEF3C7" : "#DBEAFE",
                       color: p.status === "ready" ? "#273b84" : p.status === "upcoming" ? "#92400E" : "#1E40AF",
                     }}>
                       {p.status === "ready" ? "✓ Ready to Move" : p.status === "upcoming" ? "⏳ Upcoming" : "🏗 Under Construction"}
                     </span>
-                    <div style={{ zIndex: 1 }}>
+                    <div style={{ zIndex: 2, position: "relative" }}>
                       <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 4 }}>{p.project_type || "Residential"}</p>
                       <h3 style={{ color: "white", fontWeight: 900, fontSize: 20, marginBottom: 4 }}>{p.name}</h3>
                       {p.address && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>📍 {p.address}</p>}
