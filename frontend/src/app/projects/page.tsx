@@ -78,7 +78,13 @@ export default function ProjectsPage() {
               style={{ boxShadow:"0 4px 20px rgba(42,56,135,0.1)", border:"1px solid #E2F1FC" }}>
               <Link href={`/projects/${p.slug}`} className="block h-52 relative flex flex-col justify-between p-5 cursor-pointer"
                 style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-                <div className="flex justify-between items-start">
+                {(p.thumbnail || (p.images && p.images[0])) && (
+                  <img src={(p.thumbnail || p.images[0]).split('/').map((s:string) => encodeURIComponent(s)).join('/')}
+                    alt={p.name} className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 0 }}
+                    onError={(e:any) => { e.target.style.display = 'none'; }} />
+                )}
+                <div className="absolute inset-0" style={{ background:"linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.6) 100%)", zIndex: 1 }} />
+                <div className="flex justify-between items-start relative" style={{ zIndex: 2 }}>
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-white"
                     style={{ color: statusColor(p.status) }}>
                     {(p.status||"Active").replace(/_/g," ").replace(/\w/g,(c:string)=>c.toUpperCase())}
@@ -87,7 +93,7 @@ export default function ProjectsPage() {
                     {p.total_units || "—"} units
                   </span>
                 </div>
-                <div>
+                <div className="relative" style={{ zIndex: 2 }}>
                   <p style={{ color:"rgba(255,255,255,0.7)" }} className="text-xs mb-1">{p.property_type || p.unit_types || "Residential"}</p>
                   <h3 className="text-white font-black text-xl">{p.name}</h3>
                   <p className="text-xs mt-1" style={{ color:"rgba(255,255,255,0.5)" }}>View Details →</p>

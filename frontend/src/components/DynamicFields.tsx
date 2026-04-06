@@ -14,6 +14,20 @@ interface CustomValue {
 function isImageUrl(url: string): boolean {
   return /\.(png|jpg|jpeg|webp|gif|svg)(\?.*)?$/i.test(url);
 }
+function isVideoUrl(url: string): boolean {
+  return /\.(mp4|webm|mov)(\?.*)?$/i.test(url);
+}
+function isPdfUrl(url: string): boolean {
+  return /\.pdf(\?.*)?$/i.test(url);
+}
+function isMediaPath(url: string): boolean {
+  return typeof url === "string" && (url.startsWith("/media/") || url.startsWith("http"));
+}
+function encodeMediaUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith("http")) return url;
+  return url.split('/').map(s => encodeURIComponent(s)).join('/');
+}
 
 function formatCurrency(val: any): string {
   const n = parseFloat(val);
@@ -44,20 +58,38 @@ function FieldValue({ row }: { row: CustomValue }) {
     return <span className="font-black" style={{ color: "#2A3887" }}>{formatCurrency(value)}</span>;
   }
 
-  // URL type — image or link
-  if (field_type === "url" || (typeof value === "string" && value.startsWith("http"))) {
+  // URL or media path — image, video, pdf, or link
+  if (field_type === "url" || (typeof value === "string" && isMediaPath(value))) {
     const strVal = String(value);
+    const encoded = encodeMediaUrl(strVal);
     if (isImageUrl(strVal)) {
       return (
-        <a href={strVal} target="_blank" rel="noopener noreferrer">
-          <img src={strVal} alt={row.label}
+        <a href={encoded} target="_blank" rel="noopener noreferrer">
+          <img src={encoded} alt={row.label}
             className="rounded-lg object-contain"
             style={{ maxHeight: "160px", maxWidth: "100%", background: "#f8fafc", border: "1px solid #E2F1FC" }} />
         </a>
       );
     }
+    if (isVideoUrl(strVal)) {
+      return (
+        <div className="rounded-lg overflow-hidden" style={{ aspectRatio: "16/9", background: "#111", maxWidth: "100%" }}>
+          <video src={encoded} controls className="w-full h-full object-contain" />
+        </div>
+      );
+    }
+    if (isPdfUrl(strVal)) {
+      return (
+        <a href={encoded} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg hover:shadow-md transition-shadow"
+          style={{ background: "#fff", border: "1px solid #E2F1FC" }}>
+          <span className="text-2xl">📄</span>
+          <span className="text-sm font-semibold" style={{ color: "#2A3887" }}>View PDF</span>
+        </a>
+      );
+    }
     return (
-      <a href={strVal} target="_blank" rel="noopener noreferrer"
+      <a href={encoded} target="_blank" rel="noopener noreferrer"
         className="text-sm font-semibold underline break-all"
         style={{ color: "#29A9DF" }}>
         {strVal}
@@ -109,12 +141,12 @@ export default function DynamicFields({ entity, entityId, excludeKeys }: { entit
 
   if (loading || visibleRows.length === 0) return null;
 
-  // Separate image/URL rows from scalar rows so images get full width
-  const imageRows = visibleRows.filter(r =>
-    (r.field_type === "url" || (typeof r.value === "string" && r.value.startsWith("http")))
-    && typeof r.value === "string" && isImageUrl(r.value)
+  // Separate media rows (images, videos, pdfs) from scalar rows so they get full width
+  const mediaRows = visibleRows.filter(r =>
+    typeof r.value === "string" && isMediaPath(r.value)
+    && (isImageUrl(r.value) || isVideoUrl(r.value) || isPdfUrl(r.value))
   );
-  const scalarRows = visibleRows.filter(r => !imageRows.includes(r));
+  const scalarRows = visibleRows.filter(r => !mediaRows.includes(r));
 
   return (
     <div className="rounded-2xl p-6" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
@@ -133,10 +165,10 @@ export default function DynamicFields({ entity, entityId, excludeKeys }: { entit
         </div>
       )}
 
-      {/* Image / URL fields — full width cards */}
-      {imageRows.length > 0 && (
+      {/* Media fields — full width cards */}
+      {mediaRows.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          {imageRows.map((row, i) => (
+          {mediaRows.map((row, i) => (
             <div key={i} className="space-y-1">
               <p className="text-xs font-semibold" style={{ color: "#888" }}>{row.label}</p>
               <FieldValue row={row} />

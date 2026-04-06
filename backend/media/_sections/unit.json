@@ -31,32 +31,6 @@
     ]
   },
   {
-    "key": "gallery",
-    "label": "Photos",
-    "visible": true,
-    "fields": [
-      "images"
-    ]
-  },
-  {
-    "key": "floor_plan",
-    "label": "Floor Plan",
-    "visible": true,
-    "fields": [
-      "floor_plan_img",
-      "floor_plans"
-    ]
-  },
-  {
-    "key": "media",
-    "label": "Video & Tour",
-    "visible": true,
-    "fields": [
-      "video_url",
-      "walkthrough_url"
-    ]
-  },
-  {
     "key": "amenities",
     "label": "Amenities",
     "visible": true,
@@ -84,6 +58,22 @@
       "add_on_video",
       "budget_in_lakhs",
       "unit_area_in_sqmt"
+    ]
+  },
+  {
+    "key": "series_media",
+    "label": "Series Media",
+    "visible": true,
+    "fields": [
+      "series_floor_plan_2d",
+      "series_floor_plan_3d",
+      "series_model_flat_video",
+      "series_tower_elevation",
+      "series_project_video",
+      "series_project_image",
+      "series_walkthrough_video",
+      "series_brochure",
+      "series_unit_image"
     ]
   }
 ]

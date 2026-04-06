@@ -80,7 +80,7 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
         <div className="flex gap-1">
           {!isFirst && <button onClick={e => { e.stopPropagation(); onMoveUp(); }} className="text-gray-500 hover:text-[#273b84] text-xs px-1">↑</button>}
           {!isLast  && <button onClick={e => { e.stopPropagation(); onMoveDown(); }} className="text-gray-500 hover:text-[#273b84] text-xs px-1">↓</button>}
-          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="text-red-500 hover:text-red-300 text-xs px-1">✕</button>
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} className="text-red-500 hover:text-red-600 text-xs px-1">✕</button>
           <span className="text-gray-500 text-xs">{expanded ? '▲' : '▼'}</span>
         </div>
       </div>
@@ -148,7 +148,7 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs text-gray-500">Options</label>
                 <button onClick={() => onChange({ ...step, options: [...(step.options || []), { label: 'New option', value: uid(), next: 'end' }] })}
-                  className="text-xs text-blue-400 hover:text-blue-300">+ Add option</button>
+                  className="text-xs text-blue-600 hover:text-blue-700">+ Add option</button>
               </div>
               {(step.options || []).map((opt: any, i: number) => (
                 <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
@@ -169,7 +169,7 @@ function StepEditor({ step, steps, onChange, onDelete, onMoveUp, onMoveDown, isF
                     {allIds.filter(id => id !== step.id).map(id => <option key={id} value={id}>{id}</option>)}
                   </select>
                   <button onClick={() => { const opts = step.options.filter((_: any, j: number) => j !== i); onChange({ ...step, options: opts }); }}
-                    className="col-span-1 text-red-500 hover:text-red-300 text-sm text-center">✕</button>
+                    className="col-span-1 text-red-500 hover:text-red-600 text-sm text-center">✕</button>
                 </div>
               ))}
             </div>
@@ -272,7 +272,7 @@ export default function AssistantAdminPage() {
           <h1 className="text-2xl font-bold text-[#273b84]">AI Assistant Flows</h1>
           <p className="text-gray-500 text-sm mt-1">Build guided conversation flows for the chatbot widget</p>
         </div>
-        <button onClick={newFlow} className="px-4 py-2 bg-[#273b84] hover:bg-[#273b84] text-black font-bold rounded-lg text-sm">
+        <button onClick={newFlow} className="px-4 py-2 bg-[#273b84] hover:bg-[#1e2d6b] text-white font-bold rounded-lg text-sm">
           + New Flow
         </button>
       </div>
@@ -286,7 +286,7 @@ export default function AssistantAdminPage() {
             <div className="text-4xl mb-4">🤖</div>
             <p className="text-gray-900 font-bold text-lg mb-2">No flows yet</p>
             <p className="text-gray-500 text-sm mb-6">Create your first guided conversation flow for the AI assistant widget.</p>
-            <button onClick={newFlow} className="px-5 py-2.5 bg-[#273b84] hover:bg-[#273b84] text-black font-bold rounded-lg text-sm">
+            <button onClick={newFlow} className="px-5 py-2.5 bg-[#273b84] hover:bg-[#1e2d6b] text-white font-bold rounded-lg text-sm">
               Create Default Flow
             </button>
           </div>
@@ -360,7 +360,7 @@ export default function AssistantAdminPage() {
 
               <div className="flex items-center gap-2 mb-4">
                 <button onClick={() => setEditing({ ...editing, is_active: !editing.is_active })}
-                  className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${editing.is_active ? 'bg-green-500' : 'bg-gray-600'}`}>
+                  className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${editing.is_active ? 'bg-green-500' : 'bg-gray-300'}`}>
                   <span className={`inline-block h-4 w-4 rounded-full bg-white shadow mt-0.5 transition-transform ${editing.is_active ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
                 <span className="text-sm text-gray-700">{editing.is_active ? 'Active' : 'Inactive'}</span>
@@ -402,7 +402,7 @@ export default function AssistantAdminPage() {
             {/* Save / Cancel */}
             <div className="flex gap-3">
               <button onClick={saveFlow} disabled={saving}
-                className="px-6 py-2.5 bg-[#273b84] hover:bg-[#273b84] disabled:opacity-50 text-black font-bold rounded-lg text-sm">
+                className="px-6 py-2.5 bg-[#273b84] hover:bg-[#1e2d6b] disabled:opacity-50 text-white font-bold rounded-lg text-sm">
                 {saving ? 'Saving…' : editing.id ? '💾 Save Changes' : '✓ Create Flow'}
               </button>
               <button onClick={() => setEditing(null)} className="px-6 py-2.5 bg-gray-100 text-gray-700 hover:text-gray-900 rounded-lg text-sm">

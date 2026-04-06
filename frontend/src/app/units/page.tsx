@@ -16,11 +16,16 @@ function UnitCard({ unit }: { unit: Unit }) {
   return (
     <Link href={`/units/${unit.id}`}>
       <div className="card p-5 cursor-pointer group h-full">
-        <div className="relative bg-gray-100 rounded-xl h-44 mb-4 flex items-center justify-center text-gray-300">
-          <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-          </svg>
-          <div className="absolute top-3 left-3 flex gap-2 flex-wrap">
+        <div className="relative bg-gray-100 rounded-xl h-44 mb-4 overflow-hidden flex items-center justify-center text-gray-300">
+          {(unit as any).thumbnail || (Array.isArray(unit.images) && unit.images.length > 0) ? (
+            <img src={((unit as any).thumbnail || unit.images[0]).split('/').map((s: string) => encodeURIComponent(s)).join('/')}
+              alt={unit.unit_number} className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            </svg>
+          )}
+          <div className="absolute top-3 left-3 flex gap-2 flex-wrap" style={{ zIndex: 2 }}>
             {unit.is_trending && <span className="badge-trending">🔥 Trending</span>}
             <span className={unit.status === 'available' ? 'badge-available' : 'badge-booked'}>
               {unit.status}

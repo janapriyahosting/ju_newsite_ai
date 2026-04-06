@@ -51,8 +51,10 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
     else { navigator.clipboard.writeText(`${text}\n${url}`); showToast("Link copied! 📋"); }
   }
   const statusColor = unit.status === "available" ? "#22c55e" : unit.status === "booked" ? "#ef4444" : "#f59e0b";
-  const firstImage = Array.isArray(unit.images) && unit.images.length > 0
-    ? `${MEDIA_BASE}${unit.images[0]}`
+  const thumbPath = unit.thumbnail
+    || (Array.isArray(unit.images) && unit.images.length > 0 ? unit.images[0] : null);
+  const firstImage = thumbPath
+    ? `${MEDIA_BASE}${thumbPath.split('/').map((s: string) => encodeURIComponent(s)).join('/')}`
     : null;
   return (
     <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"

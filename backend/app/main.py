@@ -13,6 +13,31 @@ async def lifespan(app: FastAPI):
     print(f"🚀 Starting {settings.PROJECT_NAME} v{settings.VERSION}")
     print(f"📦 Environment: {settings.APP_ENV}")
     print(f"🗄️  Database: {settings.DATABASE_HOST}:{settings.DATABASE_PORT}")
+
+    # Ensure unit_series_media table exists
+    from backend.app.core.database import engine
+    from sqlalchemy import text
+    async with engine.begin() as conn:
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS unit_series_media (
+                id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                project_id  UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                tower_id    UUID NOT NULL REFERENCES towers(id)   ON DELETE CASCADE,
+                series_code VARCHAR(10)  NOT NULL,
+                facing      VARCHAR(20),
+                area_sqft   NUMERIC(10,2),
+                media_type  VARCHAR(30)  NOT NULL,
+                label       VARCHAR(255),
+                file_url    VARCHAR(500) NOT NULL,
+                file_name   VARCHAR(255) NOT NULL,
+                created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+            )
+        """))
+        await conn.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_usm_tower_series
+            ON unit_series_media (tower_id, series_code)
+        """))
+
     yield
     # Shutdown
     print(f"👋 Shutting down {settings.PROJECT_NAME}")

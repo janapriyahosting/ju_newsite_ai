@@ -38,6 +38,7 @@ class TowerResponse(BaseResponseSchema):
     amenities: List = []
     brochure_url: Optional[str] = None
     is_active: bool = True
+    thumbnail: Optional[str] = None
 
 
 class TowerListResponse(BaseSchema):

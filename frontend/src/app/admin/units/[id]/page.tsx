@@ -15,6 +15,16 @@ function adminFetch(path: string, opts: RequestInit = {}) {
   });
 }
 
+function fmtDim(val: string, unit: string): string {
+  const str = String(val ?? '0');
+  if (unit === 'ft') {
+    const [feet, inches = '0'] = str.split('.');
+    return `${feet}'${inches}"`;
+  }
+  if (unit === 'm') return `${parseFloat(str).toFixed(2)}m`;
+  return `${str}"`;
+}
+
 const ROOM_PRESETS = [
   'Master Bedroom','Bedroom 2','Bedroom 3','Kids Bedroom','Guest Bedroom',
   'Living Room','Dining Room','Kitchen','Balcony','Study Room',
@@ -239,7 +249,7 @@ export default function UnitEditorPage() {
                   <div key={i} className="rounded-xl px-4 py-3 bg-[#f4f6fb]" style={{ border: '1px solid #e4e9f2' }}>
                     <p className="text-xs text-gray-400 mb-1">{d.room}</p>
                     <p className="font-black text-[#273b84]">
-                      {d.width} × {d.length} <span className="text-xs font-normal text-gray-400">{d.unit}</span>
+                      {fmtDim(d.width, d.unit)} × {fmtDim(d.length, d.unit)}
                     </p>
                   </div>
                 ))}

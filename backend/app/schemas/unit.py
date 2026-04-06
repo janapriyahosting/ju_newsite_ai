@@ -79,6 +79,7 @@ class UnitResponse(BaseResponseSchema):
     is_trending: bool = False
     is_featured: bool = False
     view_count: int = 0
+    thumbnail: Optional[str] = None
 
 
 class UnitFilterParams(BaseSchema):

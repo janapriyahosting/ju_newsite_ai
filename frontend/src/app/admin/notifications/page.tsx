@@ -155,20 +155,20 @@ export default function NotificationTemplatesPage() {
                 for (const t of active) await sendTest(t);
               }}
               disabled={testLoading !== null || (!testPhone && !testEmail)}
-              className="w-full py-2.5 text-sm font-bold text-black rounded-lg bg-[#273b84] hover:bg-[#273b84] disabled:opacity-30 transition-all">
+              className="w-full py-2.5 text-sm font-bold text-white rounded-lg bg-[#273b84] hover:bg-[#1e2d6b] disabled:opacity-30 transition-all">
               {testLoading ? 'Sending...' : `Test All Active (${eventTemplates.filter(t => t.is_active).length})`}
             </button>
           </div>
         </div>
         {/* Test Results Summary */}
         {testResult && (
-          <div className={`rounded-lg p-3 text-sm ${testResult.ok ? 'bg-green-900/20 border border-green-800' : 'bg-red-900/20 border border-red-800'}`}>
+          <div className={`rounded-lg p-3 text-sm ${testResult.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
             <span className="font-bold text-gray-700">{testResult.template}: </span>
             {testResult.ok
               ? Object.entries(testResult.results || {}).map(([k, v]) => (
-                  <span key={k} className={`mr-3 ${v === 'sent' ? 'text-green-400' : 'text-red-400'}`}>{k}: <strong>{String(v)}</strong></span>
+                  <span key={k} className={`mr-3 ${v === 'sent' ? 'text-green-600' : 'text-red-500'}`}>{k}: <strong>{String(v)}</strong></span>
                 ))
-              : <span className="text-red-400">{testResult.error || 'Failed'}</span>}
+              : <span className="text-red-500">{testResult.error || 'Failed'}</span>}
           </div>
         )}
       </div>
@@ -230,13 +230,13 @@ export default function NotificationTemplatesPage() {
                   )}
                   {ch === 'sms' && (
                     <>
-                      {t.sms_dlt_content_id && <p className="text-green-400 mb-1">DLT: {t.sms_dlt_content_id}</p>}
+                      {t.sms_dlt_content_id && <p className="text-green-600 mb-1">DLT: {t.sms_dlt_content_id}</p>}
                       <p>{t.sms_text || 'No text configured'}</p>
                     </>
                   )}
                   {ch === 'whatsapp' && (
                     <>
-                      <p className="text-green-400 mb-1">Template: {t.wa_template_title || 'Not set'}</p>
+                      <p className="text-green-600 mb-1">Template: {t.wa_template_title || 'Not set'}</p>
                       {t.wa_param_mapping && Object.keys(t.wa_param_mapping).length > 0 && (
                         <p>Params: {Object.entries(t.wa_param_mapping).map(([k, v]) => `${k}=${String(v)}`).join(', ')}</p>
                       )}
@@ -257,7 +257,7 @@ export default function NotificationTemplatesPage() {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <button onClick={() => setEditTemplate({ ...t })}
-                    className="flex-1 py-2.5 text-xs font-bold rounded-xl text-gray-900"
+                    className="flex-1 py-2.5 text-xs font-bold rounded-xl text-white"
                     style={{ background: meta.color }}>
                     Edit Template
                   </button>
@@ -270,10 +270,10 @@ export default function NotificationTemplatesPage() {
 
                 {/* Test Result */}
                 {tr && (
-                  <div className={`mt-3 rounded-lg p-2.5 text-xs ${tr.ok ? 'bg-green-900/30 border border-green-800' : 'bg-red-900/30 border border-red-800'}`}>
+                  <div className={`mt-3 rounded-lg p-2.5 text-xs ${tr.ok ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                     {tr.ok ? Object.entries(tr.results || {}).map(([k, v]) => (
-                      <span key={k} className={`mr-2 ${v === 'sent' ? 'text-green-400' : 'text-red-400'}`}>{k}: <strong>{String(v)}</strong></span>
-                    )) : <span className="text-red-400">{tr.error || 'Failed'}</span>}
+                      <span key={k} className={`mr-2 ${v === 'sent' ? 'text-green-600' : 'text-red-500'}`}>{k}: <strong>{String(v)}</strong></span>
+                    )) : <span className="text-red-500">{tr.error || 'Failed'}</span>}
                   </div>
                 )}
               </div>
@@ -384,7 +384,7 @@ export default function NotificationTemplatesPage() {
                           const mapping = { ...(editTemplate.wa_param_mapping || {}) };
                           delete mapping[key];
                           setEditTemplate((p: any) => ({ ...p, wa_param_mapping: mapping }));
-                        }} className="text-red-400 hover:text-red-300 text-sm px-2">x</button>
+                        }} className="text-red-500 hover:text-red-700 text-sm px-2">x</button>
                       </div>
                     ))}
                     <button onClick={() => {
@@ -399,7 +399,7 @@ export default function NotificationTemplatesPage() {
             {/* Footer */}
             <div className="p-6 border-t border-gray-200 flex gap-3">
               <button onClick={saveTemplate} disabled={saving}
-                className="flex-1 py-3 text-sm font-bold text-[#273b84] rounded-xl disabled:opacity-50"
+                className="flex-1 py-3 text-sm font-bold text-white rounded-xl disabled:opacity-50"
                 style={{ background: 'linear-gradient(135deg,#2A3887,#29A9DF)' }}>
                 {saving ? 'Saving...' : 'Save Template'}
               </button>

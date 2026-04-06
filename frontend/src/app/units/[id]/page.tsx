@@ -23,7 +23,10 @@ function formatPrice(p: any) {
 
 
 const MEDIA_BASE = "";
-function mUrl(u: string) { return u?.startsWith('/media') ? `${MEDIA_BASE}${u}` : u; }
+function mUrl(u: string) {
+  if (!u?.startsWith('/media')) return u;
+  return MEDIA_BASE + u.split('/').map(s => encodeURIComponent(s)).join('/');
+}
 function toEmbed(url: string): string {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
@@ -33,14 +36,13 @@ function toEmbed(url: string): string {
 }
 
 function toFtIn(val: any, unit: string): string {
-  const n = parseFloat(val) || 0;
+  const str = String(val ?? '0');
   if (unit === 'ft') {
-    const feet = Math.floor(n);
-    const inches = Math.round((n - feet) * 12);
-    return `${feet}'${inches.toString().padStart(2,'0')}"`;
+    const [feet, inches = '0'] = str.split('.');
+    return `${feet}'${inches}"`;
   }
-  if (unit === 'm') return `${n.toFixed(2)}m`;
-  return `${n}"`;
+  if (unit === 'm') return `${parseFloat(str).toFixed(2)}m`;
+  return `${str}"`;
 }
 
 export default function UnitDetailPage() {
@@ -270,7 +272,11 @@ export default function UnitDetailPage() {
   };
 
   // Fields that have dedicated renderers — don't treat as generic custom fields
-  const SPECIAL_FIELDS = new Set(['images', 'floor_plan_img', 'floor_plans', 'video_url', 'walkthrough_url', 'amenities', 'description']);
+  const SPECIAL_FIELDS = new Set([
+    'images', 'floor_plan_img', 'floor_plans', 'video_url', 'walkthrough_url', 'amenities', 'description',
+    'series_floor_plan_2d', 'series_floor_plan_3d', 'series_model_flat_video', 'series_tower_elevation',
+    'series_project_video', 'series_project_image', 'series_walkthrough_video', 'series_brochure', 'series_unit_image',
+  ]);
 
   // All field keys assigned to any section — used to hide them from "Additional Details"
   const fieldsInSections = new Set(unitSections.flatMap((s: any) => s.fields || []));
@@ -321,7 +327,7 @@ export default function UnitDetailPage() {
             {/* Hero: Media Slider + Unit Info */}
             <div className="rounded-3xl overflow-hidden" style={{ boxShadow: "0 8px 40px rgba(42,56,135,0.15)" }}>
               {/* Media Slider */}
-              <UnitMediaSlider unit={unit} />
+              <UnitMediaSlider unit={unit} seriesFields={customFieldMap} />
 
               {/* Unit Title Bar */}
               <div className="px-5 py-4 flex items-center justify-between"
@@ -377,6 +383,9 @@ export default function UnitDetailPage() {
                 .filter((f: string) => !SPEC_MAP[f] && !SPECIAL_FIELDS.has(f) && customFieldMap[f] !== undefined
                   && customFieldMap[f].value !== null && customFieldMap[f].value !== undefined && customFieldMap[f].value !== '')
                 .map((f: string) => ({ key: f, ...customFieldMap[f] }));
+
+              // Series media — only shown in the main media slider, not here
+              if (s.key === 'series_media') return null;
 
               const hasFloorPlan   = (fields.includes('floor_plan_img') && unit.floor_plan_img)
                 || (fields.includes('floor_plans') && unit.floor_plans?.length > 0);
