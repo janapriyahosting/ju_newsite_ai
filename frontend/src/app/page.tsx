@@ -5,16 +5,12 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   SEARCH FILTER DATA
-   ✅ Image paths corrected to match actual filenames in /public
-───────────────────────────────────────────────────────────────────────────── */
 const PAYMENTS = [
   {
     id: "easy-budget",
     label: "AN EASY BUDGET",
     headline: "Allows you to buy a home for the loved",
-    image: "/AnEasyBudget.webp",                  // ✅ exists
+    image: "/AnEasyBudget.webp",
     buttons: [
       { text: "₹ 1.3Cr+", sub: "is my budget", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=13000000&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
       { text: "₹ 90L+",   sub: "is my budget", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=9000000&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
@@ -26,7 +22,7 @@ const PAYMENTS = [
     id: "lighter-emi",
     label: "A LIGHTER EMI",
     headline: "Lets your family enjoy a good lifestyle",
-    image: "/ALighterEMI.webp",                   // ✅ exists
+    image: "/ALighterEMI.webp",
     buttons: [
       { text: "₹ 85K+", sub: "EMI", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=85000&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
       { text: "₹ 75K+", sub: "EMI", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=75000&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
@@ -38,7 +34,7 @@ const PAYMENTS = [
     id: "downpayment",
     label: "A SUITABLE DOWNPAYMENT",
     headline: "For your dreamhome to ease stress",
-    image: "/ASuitableDownpayment1.webp",          // ✅ exists
+    image: "/ASuitableDownpayment1.webp",
     buttons: [
       { text: "₹ 18L+", sub: "Downpayment", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=1800000&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
       { text: "₹ 16L+", sub: "Downpayment", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=1600000&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
@@ -53,7 +49,7 @@ const SIZES = [
     id: "cozy",
     label: "ANY SIZE OF A COZY HOME",
     headline: "A Treasure Chest of love & happiness",
-    image: "/any-size-of-a-cozy.webp",             // ✅ exists
+    image: "/any-size-of-a-cozy.webp",
     buttons: [
       { text: "500+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=500&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
     ],
@@ -62,7 +58,7 @@ const SIZES = [
     id: "however-big",
     label: "HOWEVER BIG THE HOME IS",
     headline: "There is no place like home",
-    image: "/full-shot-woman-sitting-floor.webp",   // ✅ exists
+    image: "/full-shot-woman-sitting-floor.webp",
     buttons: [
       { text: "1500+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=1500&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
       { text: "1000+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=1000&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
@@ -72,7 +68,7 @@ const SIZES = [
     id: "lot-starts",
     label: "HOME IS WHERE A LOT STARTS",
     headline: "Work, Passion or just unwind",
-    image: "/home-is-where-a-lot-starts.webp",      // ✅ exists
+    image: "/home-is-where-a-lot-starts.webp",
     buttons: [
       { text: "1500+", sub: "sft", disabled: true, href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=1500&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
       { text: "2000+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=2000&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
@@ -84,21 +80,21 @@ const BEDROOMS = [
   {
     id: "3bhk",
     label: "3 BEDROOMS ARE SUCH BLISS",
-    image: "/3bedroom.webp",                       // ✅ exists
+    image: "/3bedroom.webp",
     cta: "Explore 3BHK Options",
     href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=3&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
   },
   {
     id: "2bhk",
     label: "2 BEDROOM ARE SPECIAL",
-    image: "/2-bedroom-are-special.webp",          // ✅ FIXED: was "/2Bedroom.webp"
+    image: "/2-bedroom-are-special.webp",
     cta: "Explore 2BHK Options",
     href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=2&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
   },
   {
     id: "1bhk",
     label: "INVEST IN A 1 BEDROOM",
-    image: "/invest-in-a-1-Bedroom.webp",          // ✅ exists
+    image: "/invest-in-a-1-Bedroom.webp",
     cta: "Explore 1BHK Options",
     href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
   },
@@ -108,8 +104,6 @@ const LOCATIONS = [
   {
     id: "houston",
     label: "TAKE ME TO HOUSTON",
-    // ⚠️ "take-me-to-houston.webp" was NOT visible in your /public screenshot.
-    // Using cash-in-hand.webp as a fallback — replace with the correct file if you have it.
     image: "/cash-in-hand.webp",
     cta: "Know More",
     href: "https://janapriya.us/#1",
@@ -117,22 +111,19 @@ const LOCATIONS = [
   {
     id: "bengaluru",
     label: "BENGALURU",
-    image: "/bengaluru.webp",                      // ✅ exists
+    image: "/bengaluru.webp",
     cta: "Know More",
     href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_multiple_field_3229=4%2C5&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
   },
   {
     id: "hyderabad",
     label: "HYDERABAD",
-    image: "/hyderabad.webp",                      // ✅ exists
+    image: "/hyderabad.webp",
     cta: "Know More",
     href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_multiple_field_3229=1%2C2%2C4&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
   },
 ];
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   HOOK – fires when element enters viewport
-───────────────────────────────────────────────────────────────────────────── */
 function useInView(ref: React.RefObject<HTMLElement>, threshold = 0.2) {
   const [inView, setInView] = useState(false);
   useEffect(() => {
@@ -147,9 +138,6 @@ function useInView(ref: React.RefObject<HTMLElement>, threshold = 0.2) {
   return inView;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   SECTION HEADER BAR
-───────────────────────────────────────────────────────────────────────────── */
 function SectionHeader({ title }: { title: string }) {
   return (
     <div style={{
@@ -172,10 +160,6 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   ACCORDION PANEL (desktop)
-   dir="right" → tabs on right side | dir="left" → tabs on left side
-───────────────────────────────────────────────────────────────────────────── */
 interface AccordionItem {
   id: string;
   label: string;
@@ -214,7 +198,6 @@ function AccordionPanel({
         overflow: "hidden",
       }}
     >
-      {/* ── CONTENT / IMAGE AREA ── */}
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         {items.map((it, i) => (
           <div
@@ -227,13 +210,11 @@ function AccordionPanel({
               pointerEvents: active === i ? "auto" : "none",
             }}
           >
-            {/* Background image */}
             <img
               src={it.image}
               alt={it.label}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
-            {/* Gradient overlay */}
             <div style={{
               position: "absolute",
               inset: 0,
@@ -242,7 +223,6 @@ function AccordionPanel({
                 : "linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.05) 100%)",
             }} />
 
-            {/* ── Budget / Size buttons ── */}
             {!noButtons && it.buttons && (
               <div style={{
                 position: "absolute",
@@ -318,7 +298,6 @@ function AccordionPanel({
               </div>
             )}
 
-            {/* ── CTA bar for bedroom / location ── */}
             {noButtons && it.cta && it.href && (
               <Link href={it.href} style={{
                 position: "absolute",
@@ -347,7 +326,6 @@ function AccordionPanel({
         ))}
       </div>
 
-      {/* ── VERTICAL TABS ── */}
       <div style={{ display: "flex", flexDirection: "row" }}>
         {items.map((it, i) => {
           const isActive = active === i;
@@ -400,9 +378,6 @@ function AccordionPanel({
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   MOBILE STACKED CARD
-───────────────────────────────────────────────────────────────────────────── */
 function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButtons?: boolean }) {
   return (
     <div style={{
@@ -426,7 +401,6 @@ function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButton
             {item.headline}
           </p>
         )}
-
         {!noButtons && item.buttons && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {item.buttons.map((btn) =>
@@ -453,7 +427,6 @@ function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButton
             )}
           </div>
         )}
-
         {noButtons && item.cta && item.href && (
           <Link href={item.href} style={{
             display: "inline-block",
@@ -474,9 +447,6 @@ function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButton
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────────────────
-   MAIN PAGE
-───────────────────────────────────────────────────────────────────────────── */
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -544,9 +514,38 @@ export default function HomePage() {
   ];
 
   const SERVICES = [
-    { icon: "🔑", title: "Property Management", desc: "End-to-end management of your real estate assets with expert care." },
-    { icon: "💰", title: "Mortgage Service", desc: "Hassle-free home loan guidance and quick approvals from top banks." },
-    { icon: "🏛️", title: "Property Billing", desc: "Transparent billing and documentation for a smooth transaction." },
+    {
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9,22 9,12 15,12 15,22"/>
+        </svg>
+      ),
+      title: "Buy A Property",
+      desc: "Find your dream home from our curated listings across prime locations in Hyderabad.",
+    },
+    {
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+          <path d="M7 8h10M7 12h6"/>
+        </svg>
+      ),
+      title: "Sell A Property",
+      desc: "List your property with us and reach thousands of verified buyers instantly.",
+    },
+    {
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+      ),
+      title: "Rent A Property",
+      desc: "Explore flexible rental options tailored to your lifestyle and budget needs.",
+    },
   ];
 
   const TESTIMONIALS = [
@@ -563,14 +562,73 @@ export default function HomePage() {
   ];
 
   const NEWS = [
-    { tag: "Market", title: "Hyderabad Real Estate Sees Record Growth in 2024", date: "Dec 12, 2024" },
-    { tag: "Tips", title: "Top 5 Localities to Invest in Hyderabad Right Now", date: "Nov 28, 2024" },
-    { tag: "Legal", title: "Understanding RERA: A Complete Guide for Home Buyers", date: "Nov 15, 2024" },
+    { tag: "Market", title: "Podcast With 𝐉𝐀𝐍𝐀𝐏𝐑𝐈𝐘𝐀 𝐔𝐏𝐒𝐂𝐀𝐋𝐄 Managing Director 𝐊𝐫𝐚𝐧𝐭𝐢 𝐊𝐢𝐫𝐚𝐧 𝐑𝐞𝐝𝐝𝐲", date: "Dec 12, 2024" },
+    { tag: "Tips", title: "Sakshi Property Plus: Janapriya Upscale MD – Mr. Kranti Kiran Reddy Exclusive Interview | Real Estate |", date: "Nov 28, 2024" },
+    { tag: "Legal", title: "Janapriya Upscale to invest Rs 1,250 cr in 4 projects", date: "Nov 15, 2024" },
+  ];
+
+  const STATS = [
+    {
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
+          <path d="M12 12l1.5 5-1.5 1-1.5-1z"/>
+        </svg>
+      ),
+      iconBg: "#EBF4FF",
+      value: "40",
+      label: "Years of Experience",
+      valueColor: "#185FA5",
+    },
+    {
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="7" width="20" height="14" rx="2"/>
+          <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+          <line x1="12" y1="12" x2="12" y2="16"/>
+          <line x1="10" y1="14" x2="14" y2="14"/>
+        </svg>
+      ),
+      iconBg: "#E1F5EE",
+      value: "40K+",
+      label: "Dream Homes",
+      valueColor: "#0F6E56",
+    },
+    {
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#854F0B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      ),
+      iconBg: "#FEF3C7",
+      value: "70K+",
+      label: "Happy Families",
+      valueColor: "#854F0B",
+    },
+    {
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#993556" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="3" width="20" height="18" rx="2"/>
+          <line x1="9" y1="3" x2="9" y2="21"/>
+          <line x1="15" y1="3" x2="15" y2="21"/>
+          <line x1="2" y1="9" x2="22" y2="9"/>
+          <line x1="2" y1="15" x2="22" y2="15"/>
+        </svg>
+      ),
+      iconBg: "#FBEAF0",
+      value: "20+",
+      label: "Million Square Feet",
+      valueColor: "#993556",
+    },
   ];
 
   return (
-    <main className="min-h-screen bg-white">
+    <main style={{ fontFamily: "'Nunito', 'Segoe UI', sans-serif" }} className="min-h-screen bg-white">
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
         .jp-brand { color: #273b84; }
         .jp-brand-bg { background: #273b84; }
         .jp-dark { color: #0D1B2A; }
@@ -607,12 +665,24 @@ export default function HomePage() {
         .search-card { transition: all 0.25s cubic-bezier(.4,0,.2,1); }
         .search-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(39,59,132,0.12); }
 
+        /* ── Stats Box hover ── */
+        .stat-box { transition: all 0.28s cubic-bezier(.4,0,.2,1); cursor: default; }
+        .stat-box:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(39,59,132,0.12); }
+
+        /* ── Services Card hover ── */
+        .service-card-filled { transition: all 0.25s ease; }
+        .service-card-filled:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(0,0,0,0.18); }
+        .service-card-outline { transition: all 0.25s ease; }
+        .service-card-outline:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(39,59,132,0.12); border-color: #273b84 !important; }
+
         /* ── Search Filter responsive ── */
         .sf-desktop { display: flex !important; width: 100%; }
         .sf-mobile  { display: none !important; }
         @media (max-width: 767px) {
           .sf-desktop { display: none !important; }
           .sf-mobile  { display: block !important; }
+          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .services-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -630,7 +700,6 @@ export default function HomePage() {
             )}
           </div>
         ))}
-
         <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,27,42,0.25) 0%, rgba(13,27,42,0.1) 50%, rgba(13,27,42,0.45) 100%)", zIndex: 2 }} />
         <div className="absolute top-1/4 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.18), transparent 70%)", zIndex: 2 }} />
         <div className="absolute bottom-1/3 left-0 w-72 h-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.12), transparent 70%)", zIndex: 2 }} />
@@ -639,11 +708,7 @@ export default function HomePage() {
           <div className="fade-in" style={{ maxWidth: 740, margin: "0 auto", animationDelay: "0.12s" }}>
             <form onSubmit={handleSearch}>
               <div style={{
-                borderRadius: 24,
-                padding: "6px 6px 6px 22px",
-                display: "flex",
-                alignItems: "center",
-                gap: 0,
+                borderRadius: 24, padding: "6px 6px 6px 22px", display: "flex", alignItems: "center", gap: 0,
                 boxShadow: "0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
                 background: "white",
               }}>
@@ -699,7 +764,6 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Slider dots + scroll */}
         <div className="absolute" style={{ bottom: 36, left: "50%", transform: "translateX(-50%)", zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <div style={{ display: "flex", gap: 10 }}>
             {HERO_SLIDES.map((_, i) => (
@@ -709,38 +773,63 @@ export default function HomePage() {
           <div className="scroll-indicator"><div className="scroll-dot" /></div>
           <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 2.5 }}>SCROLL</span>
         </div>
-
-        {/* Arrows */}
         <button onClick={() => setActiveSlide(s => (s - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ left: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>‹</button>
         <button onClick={() => setActiveSlide(s => (s + 1) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ right: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>›</button>
-
-        {/* Progress bar */}
         <div className="absolute" style={{ bottom: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,0.1)", zIndex: 5 }}>
           <div key={activeSlide} style={{ height: "100%", background: "#273b84", animation: "heroProgress 7s linear forwards", transformOrigin: "left" }} />
         </div>
       </section>
 
-      {/* ── STATS ROW ─────────────────────────────────────────────────── */}
-      <section style={{ background: "#F8FAFB", padding: "0" }}>
-        <div className="max-w-5xl mx-auto px-6" style={{ paddingBottom: 40 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, textAlign: "center", alignItems: "center" }}>
-            {[
-              { icon: "🏅", value: "40",   label: "Years of Experience" },
-              { icon: "🏢", value: "40K+", label: "Dream Homes" },
-              { icon: "👨‍👩‍👧‍👦", value: "70K+", label: "Happy Families" },
-              { icon: "🏗️", value: "20+",  label: "Million Square Feet" },
-            ].map((item, i) => (
-              <div key={i} style={{ padding: "20px 10px", borderRight: i !== 3 ? "1px solid #E5E7EB" : "none" }}>
-                <div style={{ fontSize: 34, color: "#273b84", marginBottom: 10 }}>{item.icon}</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#273b84", marginBottom: 4 }}>{item.value}</div>
-                <div style={{ fontSize: 13, color: "#6B7280" }}>{item.label}</div>
+      {/* ── STATS ROW — BOX DESIGN ─────────────────────────────────────── */}
+      <section style={{ background: "#F8FAFB", padding: "48px 0" }}>
+        <div className="max-w-5xl mx-auto px-6">
+          <div
+            className="stats-grid"
+            style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}
+          >
+            {STATS.map((stat, i) => (
+              <div
+                key={i}
+                className="stat-box"
+                style={{
+                  background: "white",
+                  border: "1.5px solid #E5E7EB",
+                  borderRadius: 16,
+                  padding: "28px 20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 14,
+                  textAlign: "center",
+                }}
+              >
+                {/* Icon box */}
+                <div style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 14,
+                  background: stat.iconBg,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  {stat.icon}
+                </div>
+                {/* Value */}
+                <div style={{ fontSize: 30, fontWeight: 900, color: stat.valueColor, lineHeight: 1 }}>
+                  {stat.value}
+                </div>
+                {/* Label */}
+                <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 600, lineHeight: 1.4 }}>
+                  {stat.label}
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-     
       {/* ── WHERE A HOUSE FEELS LIKE HOME ─────────────────────────────── */}
       <section style={{ padding: "60px 0", background: "#F8FAFB" }}>
         <div className="max-w-6xl mx-auto px-6">
@@ -799,111 +888,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── APARTMENT TYPES TICKER ─────────────────────────────────────── */}
-      <section style={{ padding: "40px 0", background: "#0D1B2A", overflow: "hidden" }}>
-        <p style={{ textAlign: "center", fontSize: 12, fontWeight: 800, letterSpacing: 3, color: "#7b8fd4", marginBottom: 20, textTransform: "uppercase" }}>Universe Of Property Types</p>
-        <div style={{ display: "flex", overflow: "hidden" }}>
-          <div className="ticker">
-            {[...APARTMENT_TYPES, ...APARTMENT_TYPES, ...APARTMENT_TYPES, ...APARTMENT_TYPES].map((t, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, color: "white", fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
-                <span style={{ fontSize: 20 }}>{t.icon}</span> {t.label}
-                <span style={{ color: "#7b8fd4", margin: "0 8px" }}>●</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "flex", justifyContent: "center", gap: 20, flexWrap: "wrap", marginTop: 24, padding: "0 24px" }}>
-          {APARTMENT_TYPES.map(t => (
-            <div key={t.label} style={{ background: "rgba(39,59,132,0.2)", border: "1px solid rgba(39,59,132,0.35)", borderRadius: 10, padding: "10px 20px", display: "flex", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.8)", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
-              {t.icon} {t.label}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── WHAT WE OFFER ──────────────────────────────────────────────── */}
-      <section style={{ padding: "80px 0", background: "white" }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 48, flexWrap: "wrap", gap: 16 }}>
-            <div>
-              <p className="section-label">Our Services</p>
-              <h2 className="section-title">What We Offer</h2>
-            </div>
-            <Link href="/contact" style={{ background: "#273b84", color: "white", borderRadius: 10, padding: "10px 24px", fontWeight: 800, fontSize: 13, textDecoration: "none" }}>
-              Get Started →
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {SERVICES.map(s => (
-              <div key={s.title} className="card-hover" style={{ background: "#F8FAFB", borderRadius: 18, padding: 28, border: "1px solid #F0F0F0" }}>
-                <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, #e8ebf8, #b8c0e8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, marginBottom: 18 }}>{s.icon}</div>
-                <h3 style={{ fontWeight: 800, fontSize: 16, color: "#0D1B2A", marginBottom: 8 }}>{s.title}</h3>
-                <p style={{ color: "#6B7280", fontSize: 13, lineHeight: 1.7 }}>{s.desc}</p>
-                <div style={{ marginTop: 16, color: "#273b84", fontWeight: 800, fontSize: 13 }}>Learn more →</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
- {/* ── SEARCH FILTER SECTIONS ────────────────────────────────────── */}
-
-      {/* SEARCH BY FLEXIBLE PAYMENTS */}
-      <section style={{ background: "white" }} id="search-by-payment">
-        <SectionHeader title="Search by Flexible Payments" />
-        <div className="sf-desktop">
-          <AccordionPanel items={PAYMENTS} defaultIndex={0} dir="right" />
-        </div>
-        <div className="sf-mobile" style={{ padding: "16px" }}>
-          {PAYMENTS.map(item => <MobileCard key={item.id} item={item} />)}
-        </div>
-      </section>
-
-      {/* SEARCH BY SIZE */}
-      <section style={{ background: "#F8FAFB" }} id="search-by-size">
-        <SectionHeader title="Search by Size" />
-        <div className="sf-desktop">
-          <AccordionPanel items={SIZES} defaultIndex={2} dir="left" />
-        </div>
-        <div className="sf-mobile" style={{ padding: "16px" }}>
-          {SIZES.map(item => <MobileCard key={item.id} item={item} />)}
-        </div>
-      </section>
-
-      {/* SEARCH BY BEDROOM */}
-      <section style={{ background: "white" }} id="search-by-bedroom">
-        <SectionHeader title="Search by Bedroom" />
-        <div className="sf-desktop">
-          <AccordionPanel items={BEDROOMS} defaultIndex={0} dir="right" noButtons />
-        </div>
-        <div className="sf-mobile" style={{ padding: "16px" }}>
-          {BEDROOMS.map(item => <MobileCard key={item.id} item={item} noButtons />)}
-        </div>
-      </section>
-
-      {/* SEARCH BY LOCATION */}
-      <section style={{ background: "#F8FAFB" }} id="search-by-location">
-        <SectionHeader title="Search by Location" />
-        <div className="sf-desktop">
-          <AccordionPanel items={LOCATIONS} defaultIndex={2} dir="left" noButtons />
-        </div>
-        <div className="sf-mobile" style={{ padding: "16px" }}>
-          {LOCATIONS.map(item => <MobileCard key={item.id} item={item} noButtons />)}
-        </div>
-      </section>
-
-      {/* ── NEWSLETTER BANNER ──────────────────────────────────────────── */}
-      <section style={{ background: "linear-gradient(135deg, #0D1B2A, #1a2a6c)", padding: "56px 24px", textAlign: "center" }}>
-        <div className="max-w-xl mx-auto">
-          <p className="section-label" style={{ color: "#7b8fd4" }}>Stay Updated</p>
-          <h2 style={{ color: "white", fontWeight: 900, fontSize: 28, marginBottom: 8 }}>Subscribe To Our Newsletter</h2>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 13, marginBottom: 24 }}>Get new property alerts, market insights, and exclusive offers in your inbox.</p>
-          <div style={{ display: "flex", gap: 8, background: "rgba(255,255,255,0.08)", borderRadius: 12, padding: "6px 8px", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <input placeholder="Enter your email address" style={{ flex: 1, background: "transparent", border: "none", outline: "none", color: "white", fontSize: 14, padding: "8px 12px", fontFamily: "inherit" }} />
-            <button style={{ background: "#273b84", color: "white", border: "none", borderRadius: 8, padding: "10px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>Subscribe</button>
-          </div>
-          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, marginTop: 12 }}>No spam. Unsubscribe anytime.</p>
-        </div>
-      </section>
 
       {/* ── TRENDING PROPERTIES ────────────────────────────────────────── */}
       {trending.length > 0 && (
@@ -911,8 +895,8 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto px-6">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
               <div>
-                <p className="section-label">Hot Properties</p>
-                <h2 className="section-title">Property For Sale &amp; Rent</h2>
+                <p className="section-label">Trending Properties</p>
+                <h2 className="section-title">Property For Sale</h2>
               </div>
               <Link href="/store" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>
                 View All Units →
@@ -995,7 +979,7 @@ export default function HomePage() {
           <div style={{ textAlign: "center", marginBottom: 48 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8 }}>
               <div style={{ width: 32, height: 2, background: "#273b84", borderRadius: 2 }} />
-              <p className="section-label" style={{ marginBottom: 0 }}>Our Portfolio</p>
+              <p className="section-label" style={{ marginBottom: 0 }}>Our Projects</p>
               <div style={{ width: 32, height: 2, background: "#273b84", borderRadius: 2 }} />
             </div>
             <h2 className="section-title">Featured Projects</h2>
@@ -1003,7 +987,6 @@ export default function HomePage() {
               Premium residential communities across Hyderabad — crafted to the highest standards.
             </p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {projects.length > 0 ? projects.slice(0, 3).map((p: any) => (
               <Link key={p.id} href={`/projects/${p.id}`} style={{ textDecoration: "none" }}>
@@ -1026,9 +1009,7 @@ export default function HomePage() {
                   <div style={{ padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
                       <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Starting from</p>
-                      <span style={{ fontWeight: 900, fontSize: 18, color: "#0D1B2A" }}>
-                        {p.min_price ? formatPrice(p.min_price) : "Price on request"}
-                      </span>
+                      <span style={{ fontWeight: 900, fontSize: 18, color: "#0D1B2A" }}>{p.min_price ? formatPrice(p.min_price) : "Price on request"}</span>
                     </div>
                     <span style={{ background: "linear-gradient(135deg,#0D1B2A,#273b84)", color: "white", borderRadius: 10, padding: "9px 18px", fontSize: 13, fontWeight: 800 }}>View →</span>
                   </div>
@@ -1038,7 +1019,6 @@ export default function HomePage() {
               <div key={i} style={{ height: 290, borderRadius: 20, background: "#F3F4F6", animation: "pulse 1.5s ease-in-out infinite" }} />
             ))}
           </div>
-
           <div style={{ textAlign: "center", marginTop: 48 }}>
             <Link href="/projects" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 36px", fontWeight: 800, fontSize: 14, borderRadius: 50, border: "2px solid #273b84", color: "#273b84", textDecoration: "none", transition: "all 0.2s" }}>
               View All Projects →
@@ -1157,7 +1137,7 @@ export default function HomePage() {
           <h2 style={{ color: "white", fontWeight: 900, fontSize: 36, marginBottom: 12, lineHeight: 1.2 }}>Ready to Find Your<br />Dream Home?</h2>
           <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, marginBottom: 32 }}>Talk to our experts today. Site visits available 7 days a week. No spam — ever.</p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/site-visit" style={{ background: "white", color: "#273b84", borderRadius: 12, padding: "14px 32px", fontWeight: 900, fontSize: 14, textDecoration: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
+            <Link href="/contact" style={{ background: "white", color: "#273b84", borderRadius: 12, padding: "14px 32px", fontWeight: 900, fontSize: 14, textDecoration: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
               🗓 Schedule a Visit
             </Link>
             <Link href="/projects" style={{ background: "rgba(255,255,255,0.12)", color: "white", borderRadius: 12, padding: "14px 32px", fontWeight: 800, fontSize: 14, textDecoration: "none", border: "2px solid rgba(255,255,255,0.3)" }}>

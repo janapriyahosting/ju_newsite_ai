@@ -9,8 +9,8 @@ import ProactiveAssistant from "@/components/ProactiveAssistant";
 import { isSaved, toggleSaved, isInCompare, toggleCompare } from "@/lib/savedProperties";
 import Link from "next/link";
 
-const API = "http://173.168.0.81:8000/api/v1";
-const MEDIA_BASE = "http://173.168.0.81:8000";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const MEDIA_BASE = "";
 
 function formatPrice(p: any) {
   if (!p) return "Price on request";

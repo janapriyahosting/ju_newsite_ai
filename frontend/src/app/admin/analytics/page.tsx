@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 function getToken() { return typeof window!=="undefined"?localStorage.getItem("admin_token")||"":""; }
 async function apiFetch(path:string) {
   const r = await fetch(`${API}${path}`,{headers:{"Authorization":`Bearer ${getToken()}`}});
@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
                   return(
                     <div key={i} className="flex-1 flex flex-col items-center group relative">
                       <div className="absolute bottom-full mb-1 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                        <div className="px-2 py-1 rounded text-xs font-bold text-white whitespace-nowrap" style={{background:"#2A3887"}}>{d.count} · {lbl}</div>
+                        <div className="px-2 py-1 rounded text-xs font-bold text-[#273b84] whitespace-nowrap" style={{background:"#2A3887"}}>{d.count} · {lbl}</div>
                         <div className="w-2 h-2 rotate-45 -mt-1" style={{background:"#2A3887"}}/>
                       </div>
                       <div className="w-full rounded-t" style={{height:`${pct}%`,background:"linear-gradient(180deg,#29A9DF,#2A3887)",minHeight:"3px"}}/>

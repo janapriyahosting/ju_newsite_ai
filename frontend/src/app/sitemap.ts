@@ -1,9 +1,9 @@
 import { MetadataRoute } from 'next';
 
-const API = 'http://173.168.0.81:8000/api/v1';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const BASE = 'http://173.168.0.81:3000';
+  const BASE = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },

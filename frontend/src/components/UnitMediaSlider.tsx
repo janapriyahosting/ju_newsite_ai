@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 
-const API_BASE = 'http://173.168.0.81:8000';
+const API_BASE = '';
 
 function mediaUrl(url: string) {
   if (!url) return '';

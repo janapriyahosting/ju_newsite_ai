@@ -127,7 +127,7 @@ export default function ContactPage() {
         body: JSON.stringify({ phone: cleanPhone(form.phone), otp: code }),
       });
       setStatus("loading");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1"}/leads`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

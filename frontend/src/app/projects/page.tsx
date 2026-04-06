@@ -4,7 +4,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-const API = "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const FILTERS = ["All","Ready to Move","Under Construction","New Launch"];
 
 function statusColor(s: string) {

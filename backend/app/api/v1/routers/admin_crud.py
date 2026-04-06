@@ -47,7 +47,7 @@ UNIT_FIELDS = ["tower_id","unit_number","floor_number","unit_type","bedrooms","b
                "down_payment","emi_estimate","token_amount","facing","status","amenities","images",
                "is_trending","is_featured","description","floor_plan_img","floor_plans","video_url","walkthrough_url","dimensions"]
 
-CSV_COLUMNS = ["unit_number","floor_number","unit_type","bedrooms","bathrooms","balconies",
+CSV_COLUMNS = ["project_name","tower_name","unit_number","floor_number","unit_type","bedrooms","bathrooms","balconies",
                "area_sqft","carpet_area","base_price","price_per_sqft","down_payment",
                "emi_estimate","facing","status","is_trending","is_featured","description"]
 
@@ -244,7 +244,7 @@ async def get_csv_template(db:AsyncSession=Depends(get_db), _:dict=Depends(verif
     all_columns = CSV_COLUMNS + custom_keys
 
     # Build sample row
-    base_sample = ["A101","1","1BHK","1","1","1","650","580","4500000","6923","900000","35000","East","available","false","false","Sample unit"]
+    base_sample = ["Janapriya Heights","Tower A","A101","1","1BHK","1","1","1","650","580","4500000","6923","900000","35000","East","available","false","false","Sample unit"]
     # Add empty placeholders for custom fields
     sample_row = base_sample + ["" for _ in custom_keys]
 
@@ -275,13 +275,9 @@ async def bulk_update_units(data:BulkUpdateRequest, db:AsyncSession=Depends(get_
     await db.commit(); return {"updated":updated}
 
 @router.post("/units/csv-import",status_code=200)
-async def csv_import_units(tower_id:str, file:UploadFile=File(...),
+async def csv_import_units(file:UploadFile=File(...),
     db:AsyncSession=Depends(get_db), _:dict=Depends(verify_admin_token)):
     if not file.filename.endswith(".csv"): raise HTTPException(400,"Only .csv files accepted")
-    try: tower_uuid=uuid.UUID(tower_id)
-    except: raise HTTPException(400,"Invalid tower_id")
-    tower=(await db.execute(select(Tower).where(Tower.id==tower_uuid))).scalar_one_or_none()
-    if not tower: raise HTTPException(404,"Tower not found")
 
     # Fetch custom fields for 'unit' entity
     cf_result = await db.execute(
@@ -302,10 +298,38 @@ async def csv_import_units(tower_id:str, file:UploadFile=File(...),
     csv_headers = reader.fieldnames or []
     custom_cols_in_csv = [h for h in csv_headers if h in custom_fields]
 
+    # Cache project/tower lookups to avoid repeated DB queries
+    project_cache: dict = {}
+    tower_cache: dict = {}
+
+    data_columns = [c for c in CSV_COLUMNS if c not in ("project_name","tower_name")]
+
     for i,row in enumerate(reader,start=2):
         try:
-            ud={"tower_id":tower_uuid}
-            for col in CSV_COLUMNS:
+            project_name = row.get("project_name","").strip()
+            tower_name   = row.get("tower_name","").strip()
+            if not project_name: raise ValueError("project_name is required")
+            if not tower_name:   raise ValueError("tower_name is required")
+
+            # Resolve project
+            if project_name not in project_cache:
+                r = await db.execute(select(Project).where(func.lower(Project.name)==project_name.lower()))
+                p = r.scalar_one_or_none()
+                if not p: raise ValueError(f"Project '{project_name}' not found")
+                project_cache[project_name] = p
+            project = project_cache[project_name]
+
+            # Resolve tower (scoped to project)
+            cache_key = f"{project.id}:{tower_name}"
+            if cache_key not in tower_cache:
+                r = await db.execute(select(Tower).where(Tower.project_id==project.id, func.lower(Tower.name)==tower_name.lower()))
+                t = r.scalar_one_or_none()
+                if not t: raise ValueError(f"Tower '{tower_name}' not found in project '{project_name}'")
+                tower_cache[cache_key] = t
+            tower = tower_cache[cache_key]
+
+            ud={"tower_id": tower.id}
+            for col in data_columns:
                 val=row.get(col,"").strip()
                 if col in bool_f: ud[col]=val.lower() in ("true","1","yes")
                 elif col in int_f: ud[col]=int(val) if val else None
@@ -321,7 +345,6 @@ async def csv_import_units(tower_id:str, file:UploadFile=File(...),
                 if not raw_val:
                     continue
                 cf = custom_fields[ckey]
-                # Convert value based on field type
                 if cf.field_type in ("number", "currency", "decimal"):
                     parsed_val = float(raw_val) if "." in raw_val else int(raw_val)
                 elif cf.field_type == "boolean":

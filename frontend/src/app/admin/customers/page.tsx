@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 function getToken(){ return typeof window!=="undefined"?localStorage.getItem("admin_token")||"":""; }
 async function apiFetch(path:string){
   const r=await fetch(`${API}${path}`,{headers:{"Authorization":`Bearer ${getToken()}`}});
@@ -99,7 +99,7 @@ export default function CustomersPage(){
                       style={{borderBottom:"1px solid #F8F9FB", background: selected?.id===c.id?"#EEF2FF":""}}>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-900 text-xs font-black flex-shrink-0"
                             style={{background:"linear-gradient(135deg,#2A3887,#29A9DF)"}}>
                             {c.name?.[0]?.toUpperCase()||"?"}
                           </div>
@@ -172,7 +172,7 @@ function CustomerDetail({customer:c, onClose}:{customer:any; onClose:()=>void}){
     <div>
       <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-black"
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-gray-900 text-2xl font-black"
             style={{background:"linear-gradient(135deg,#262262,#29A9DF)"}}>
             {c.name?.[0]?.toUpperCase()||"?"}
           </div>
@@ -181,7 +181,7 @@ function CustomerDetail({customer:c, onClose}:{customer:any; onClose:()=>void}){
             <p className="text-xs" style={{color:"#999"}}>{c.email}</p>
           </div>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        <button onClick={onClose} className="text-gray-500 hover:text-gray-600 text-lg">✕</button>
       </div>
 
       <span className="inline-block text-xs font-bold px-3 py-1 rounded-full mb-4"

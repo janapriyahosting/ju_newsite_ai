@@ -151,12 +151,12 @@ export default function SectionsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Section Builder</h1>
-          <p className="text-gray-400 text-sm mt-1">Choose which fields appear on each detail page section</p>
+          <h1 className="text-2xl font-bold text-[#273b84]">Section Builder</h1>
+          <p className="text-gray-500 text-sm mt-1">Choose which fields appear on each detail page section</p>
         </div>
         <button onClick={save} disabled={saving}
           className="px-5 py-2.5 text-sm font-bold text-white rounded-xl disabled:opacity-50"
-          style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+          style={{ background: "#273b84" }}>
           {saving ? "Saving…" : "💾 Save Config"}
         </button>
       </div>
@@ -172,8 +172,8 @@ export default function SectionsPage() {
           <button key={e} onClick={() => setEntity(e)}
             className="px-5 py-2 text-sm font-bold rounded-xl capitalize transition-all"
             style={entity === e
-              ? { background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white" }
-              : { background: "#1a1a2e", color: "#888", border: "1px solid #333" }}>
+              ? { background: "#273b84", color: "white" }
+              : { background: "#fff", color: "#64748b", border: "1px solid #e4e9f2" }}>
             {e}
           </button>
         ))}
@@ -181,19 +181,22 @@ export default function SectionsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left: Available fields */}
-        <div className="rounded-2xl p-5" style={{ background: "#1a1a2e", border: "1px solid #2a2a4a" }}>
-          <h3 className="font-bold text-white text-sm mb-4">Available Fields</h3>
+        <div className="bg-white rounded-2xl p-5" style={{ border: "1px solid #e4e9f2" }}>
+          <h3 className="font-bold text-[#273b84] text-sm mb-4">Available Fields</h3>
           <div className="space-y-1.5">
             {allFields.map(f => {
               const used = usedFields.has(f.key);
               return (
                 <div key={f.key} className="flex items-center justify-between px-3 py-2 rounded-lg"
-                  style={{ background: used ? "rgba(41,169,223,0.1)" : "#0d0d1a", border: used ? "1px solid rgba(41,169,223,0.3)" : "1px solid #222" }}>
+                  style={{
+                    background: used ? "#eef1fb" : "#f8f9fd",
+                    border: used ? "1px solid #d1d9f0" : "1px solid #e4e9f2"
+                  }}>
                   <div>
-                    <p className="text-xs font-bold" style={{ color: used ? "#29A9DF" : "#ccc" }}>{f.label}</p>
-                    <p className="text-xs" style={{ color: "#555" }}>{f.key}</p>
+                    <p className="text-xs font-bold" style={{ color: used ? "#273b84" : "#1e293b" }}>{f.label}</p>
+                    <p className="text-xs text-gray-400">{f.key}</p>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded" style={{ background: "#1a1a2e", color: "#666" }}>
+                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-500">
                     {f.type}
                   </span>
                 </div>
@@ -205,31 +208,30 @@ export default function SectionsPage() {
         {/* Right: Sections config */}
         <div className="lg:col-span-2 space-y-4">
           {sections.map((section, idx) => (
-            <div key={section.key} className="rounded-2xl p-5 transition-all"
-              style={{ background: "#1a1a2e", border: section.visible ? "1px solid #2a2a4a" : "1px solid #1a1a1a", opacity: section.visible ? 1 : 0.5 }}>
+            <div key={section.key} className="bg-white rounded-2xl p-5 transition-all"
+              style={{ border: "1px solid #e4e9f2", opacity: section.visible ? 1 : 0.6 }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  {/* Move up/down */}
                   <div className="flex flex-col gap-0.5">
-                    <button onClick={() => moveSection(idx, -1)} className="text-gray-600 hover:text-white text-xs leading-none">▲</button>
-                    <button onClick={() => moveSection(idx, 1)} className="text-gray-600 hover:text-white text-xs leading-none">▼</button>
+                    <button onClick={() => moveSection(idx, -1)} className="text-gray-400 hover:text-[#273b84] text-xs leading-none">▲</button>
+                    <button onClick={() => moveSection(idx, 1)} className="text-gray-400 hover:text-[#273b84] text-xs leading-none">▼</button>
                   </div>
                   <div>
-                    <h4 className="font-black text-white text-sm">{section.label}</h4>
-                    <p className="text-xs text-gray-500">{section.key} · {(section.fields||[]).length} fields</p>
+                    <h4 className="font-black text-[#273b84] text-sm">{section.label}</h4>
+                    <p className="text-xs text-gray-400">{section.key} · {(section.fields||[]).length} fields</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => toggleSection(section.key)}
                     className="px-3 py-1 text-xs font-bold rounded-lg transition-all"
                     style={section.visible
-                      ? { background: "rgba(22,163,74,0.2)", color: "#16A34A" }
-                      : { background: "rgba(107,114,128,0.2)", color: "#666" }}>
+                      ? { background: "#dcfce7", color: "#16A34A" }
+                      : { background: "#f1f5f9", color: "#64748b" }}>
                     {section.visible ? "Visible" : "Hidden"}
                   </button>
                   <button onClick={() => removeSection(section.key)}
                     className="px-2 py-1 text-xs rounded-lg"
-                    style={{ background: "rgba(220,38,38,0.15)", color: "#DC2626" }}>✕</button>
+                    style={{ background: "#fee2e2", color: "#DC2626" }}>✕</button>
                 </div>
               </div>
 
@@ -241,8 +243,8 @@ export default function SectionsPage() {
                     <button key={f.key} onClick={() => toggleField(section.key, f.key)}
                       className="text-left px-3 py-2 rounded-lg text-xs font-medium transition-all"
                       style={active
-                        ? { background: "rgba(41,169,223,0.2)", color: "#29A9DF", border: "1px solid rgba(41,169,223,0.4)" }
-                        : { background: "#0d0d1a", color: "#666", border: "1px solid #222" }}>
+                        ? { background: "#eef1fb", color: "#273b84", border: "1px solid #d1d9f0" }
+                        : { background: "#f8f9fd", color: "#64748b", border: "1px solid #e4e9f2" }}>
                       <span className="mr-1">{active ? "✓" : "+"}</span>{f.label}
                     </button>
                   );
@@ -252,15 +254,15 @@ export default function SectionsPage() {
           ))}
 
           {/* Add new section */}
-          <div className="rounded-2xl p-4 flex gap-3" style={{ background: "#1a1a2e", border: "1px dashed #2a2a4a" }}>
+          <div className="bg-white rounded-2xl p-4 flex gap-3" style={{ border: "1px dashed #d1d9f0" }}>
             <input type="text" placeholder="New section name…"
               value={newSectionName} onChange={e => setNewSectionName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addSection()}
-              className="flex-1 px-3 py-2 text-sm rounded-xl text-white"
-              style={{ background: "#0d0d1a", border: "1px solid #333" }} />
+              className="flex-1 px-3 py-2 text-sm rounded-xl text-gray-900 bg-white"
+              style={{ border: "1px solid #d1d9f0" }} />
             <button onClick={addSection}
               className="px-4 py-2 text-xs font-bold text-white rounded-xl"
-              style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+              style={{ background: "#273b84" }}>
               + Add Section
             </button>
           </div>

@@ -4,8 +4,8 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import DynamicFields from '@/components/DynamicFields';
 import { customerApi } from '@/lib/customerAuth';
-const API=process.env.NEXT_PUBLIC_API_URL||'http://173.168.0.81:8000/api/v1';
-const MEDIA='http://173.168.0.81:8000';
+const API=process.env.NEXT_PUBLIC_API_URL||'';
+const MEDIA='';
 
 function useUtmParams(){
   const sp=typeof window!=='undefined'?new URLSearchParams(window.location.search):new URLSearchParams();

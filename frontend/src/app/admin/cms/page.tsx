@@ -40,7 +40,7 @@ export default function CmsPage() {
       <div className="flex gap-1 mb-6 border-b border-gray-200">
         {(["settings", "seo", "sections"] as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-5 py-2.5 text-sm font-medium rounded-t-lg transition ${tab === t ? "bg-white border border-b-white border-gray-200 text-amber-600 -mb-px" : "text-gray-500 hover:text-gray-700"}`}>
+            className={`px-5 py-2.5 text-sm font-medium rounded-t-lg transition ${tab === t ? "bg-white border border-b-white border-gray-200 text-[#273b84] -mb-px" : "text-gray-500 hover:text-gray-700"}`}>
             {t === "settings" ? "⚙️ Site Settings" : t === "seo" ? "🔍 SEO / Pages" : "📝 Content Sections"}
           </button>
         ))}
@@ -92,7 +92,7 @@ function SettingsPanel({ onSuccess, onError }: { onSuccess: (m: string) => void;
         <div className="space-y-1">
           {groups.map(g => (
             <button key={g} onClick={() => setActiveGroup(g)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${activeGroup === g ? "bg-amber-50 text-amber-700 font-medium border border-amber-200" : "text-gray-600 hover:bg-gray-50"}`}>
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${activeGroup === g ? "bg-[#273b84] text-[#273b84] font-medium border border-[#273b84]" : "text-gray-600 hover:bg-gray-50"}`}>
               {GROUP_ICONS[g]} {GROUP_LABELS[g].split(" ").slice(1).join(" ")}
             </button>
           ))}
@@ -106,25 +106,25 @@ function SettingsPanel({ onSuccess, onError }: { onSuccess: (m: string) => void;
               <label className="block text-sm font-medium text-gray-700 mb-1">{s.setting_label}</label>
               {s.setting_type === "textarea" ? (
                 <textarea rows={3} value={values[s.setting_key] || ""} onChange={e => setValues(v => ({ ...v, [s.setting_key]: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
               ) : s.setting_type === "color" ? (
                 <div className="flex gap-3 items-center">
                   <input type="color" value={values[s.setting_key] || "#000000"} onChange={e => setValues(v => ({ ...v, [s.setting_key]: e.target.value }))}
                     className="w-12 h-10 rounded border border-gray-300 cursor-pointer" />
                   <input type="text" value={values[s.setting_key] || ""} onChange={e => setValues(v => ({ ...v, [s.setting_key]: e.target.value }))}
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
                 </div>
               ) : (
                 <input type={s.setting_type === "email" ? "email" : s.setting_type === "phone" ? "tel" : "text"}
                   value={values[s.setting_key] || ""} onChange={e => setValues(v => ({ ...v, [s.setting_key]: e.target.value }))}
                   placeholder={s.setting_type === "url" ? "https://..." : ""}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
               )}
             </div>
           ))}
           <div className="pt-2 border-t border-gray-100">
             <button onClick={handleSave} disabled={saving}
-              className="px-5 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 disabled:opacity-50">
+              className="px-5 py-2 bg-[#273b84] text-white rounded-lg text-sm font-medium hover:bg-[#1e2d6b] disabled:opacity-50">
               {saving ? "Saving…" : "💾 Save Settings"}
             </button>
           </div>
@@ -173,15 +173,15 @@ function SeoPanel({ onSuccess, onError }: { onSuccess: (m: string) => void; onEr
     return s;
   };
   const score = seoScore();
-  const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-amber-600" : "text-red-500";
-  const scoreBar = score >= 75 ? "bg-green-500" : score >= 50 ? "bg-amber-500" : "bg-red-500";
+  const scoreColor = score >= 75 ? "text-green-600" : score >= 50 ? "text-[#273b84]" : "text-red-500";
+  const scoreBar = score >= 75 ? "bg-green-500" : score >= 50 ? "bg-[#273b84]" : "bg-red-500";
 
   return (
     <div className="flex gap-6">
       <div className="w-44 shrink-0 space-y-1">
         {pages.map(p => (
           <button key={p.page_key} onClick={() => setActivePage(p.page_key)}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${activePage === p.page_key ? "bg-amber-50 text-amber-700 font-medium border border-amber-200" : "text-gray-600 hover:bg-gray-50"}`}>
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${activePage === p.page_key ? "bg-[#273b84] text-[#273b84] font-medium border border-[#273b84]" : "text-gray-600 hover:bg-gray-50"}`}>
             {PAGE_LABELS[p.page_key] || p.page_label}
           </button>
         ))}
@@ -196,53 +196,53 @@ function SeoPanel({ onSuccess, onError }: { onSuccess: (m: string) => void; onEr
           <div className="w-full bg-gray-100 rounded-full h-2">
             <div className={`${scoreBar} h-2 rounded-full transition-all`} style={{ width: `${score}%` }} />
           </div>
-          <p className="text-xs text-gray-400 mt-1">{score >= 75 ? "Great SEO!" : score >= 50 ? "Needs improvement" : "Poor SEO — fill in all fields"}</p>
+          <p className="text-xs text-gray-500 mt-1">{score >= 75 ? "Great SEO!" : score >= 50 ? "Needs improvement" : "Poor SEO — fill in all fields"}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Basic SEO</h3>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">SEO Title <span className="text-gray-400 font-normal">({form.seo_title?.length || 0}/60 chars)</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">SEO Title <span className="text-gray-500 font-normal">({form.seo_title?.length || 0}/60 chars)</span></label>
             <input value={form.seo_title || ""} onChange={e => setForm((f: any) => ({ ...f, seo_title: e.target.value }))}
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 ${form.seo_title?.length > 60 ? "border-red-300" : "border-gray-300"}`} />
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84] ${form.seo_title?.length > 60 ? "border-red-300" : "border-gray-300"}`} />
             {form.seo_title?.length > 60 && <p className="text-xs text-red-500 mt-1">Too long — Google truncates after 60 chars</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description <span className="text-gray-400 font-normal">({form.seo_description?.length || 0}/160 chars)</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Meta Description <span className="text-gray-500 font-normal">({form.seo_description?.length || 0}/160 chars)</span></label>
             <textarea rows={3} value={form.seo_description || ""} onChange={e => setForm((f: any) => ({ ...f, seo_description: e.target.value }))}
-              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 ${form.seo_description?.length > 160 ? "border-red-300" : "border-gray-300"}`} />
+              className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84] ${form.seo_description?.length > 160 ? "border-red-300" : "border-gray-300"}`} />
             {form.seo_description?.length > 160 && <p className="text-xs text-red-500 mt-1">Too long — aim for 120–160 chars</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Keywords <span className="text-gray-400 font-normal">(comma separated)</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Keywords <span className="text-gray-500 font-normal">(comma separated)</span></label>
             <input value={form.seo_keywords || ""} onChange={e => setForm((f: any) => ({ ...f, seo_keywords: e.target.value }))}
-              placeholder="real estate hyderabad, apartments, villas" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              placeholder="real estate hyderabad, apartments, villas" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Canonical URL</label>
             <input value={form.canonical_url || ""} onChange={e => setForm((f: any) => ({ ...f, canonical_url: e.target.value }))}
-              placeholder="https://janapriyaupscale.com/..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              placeholder="https://janapriyaupscale.com/..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
           </div>
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider pt-2 border-t border-gray-100">Open Graph (Social Sharing)</h3>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">OG Title</label>
             <input value={form.og_title || ""} onChange={e => setForm((f: any) => ({ ...f, og_title: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">OG Description</label>
             <textarea rows={2} value={form.og_description || ""} onChange={e => setForm((f: any) => ({ ...f, og_description: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">OG Image URL</label>
             <input value={form.og_image_url || ""} onChange={e => setForm((f: any) => ({ ...f, og_image_url: e.target.value }))}
-              placeholder="https://..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              placeholder="https://..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
             {form.og_image_url && <img src={form.og_image_url} alt="OG preview" className="mt-2 rounded border w-full max-h-32 object-cover" onError={e => (e.currentTarget.style.display = "none")} />}
           </div>
           {/* Preview */}
           {form.seo_title && (
             <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <p className="text-xs text-gray-400 mb-1">Google Preview</p>
+              <p className="text-xs text-gray-500 mb-1">Google Preview</p>
               <p className="text-blue-600 text-sm font-medium truncate">{form.seo_title}</p>
               <p className="text-green-700 text-xs">janapriyaupscale.com › {activePage}</p>
               <p className="text-gray-600 text-xs mt-0.5 line-clamp-2">{form.seo_description}</p>
@@ -250,7 +250,7 @@ function SeoPanel({ onSuccess, onError }: { onSuccess: (m: string) => void; onEr
           )}
           <div className="pt-2 border-t border-gray-100">
             <button onClick={handleSave} disabled={saving}
-              className="px-5 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 disabled:opacity-50">
+              className="px-5 py-2 bg-[#273b84] text-white rounded-lg text-sm font-medium hover:bg-[#1e2d6b] disabled:opacity-50">
               {saving ? "Saving…" : "💾 Save SEO"}
             </button>
           </div>
@@ -308,10 +308,10 @@ function SectionsPanel({ onSuccess, onError }: { onSuccess: (m: string) => void;
                     <span className={`px-1.5 py-0.5 rounded text-xs ${s.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{s.is_active ? "Active" : "Hidden"}</span>
                   </div>
                   {s.title && <p className="text-xs text-gray-500 mt-0.5 truncate">{s.title}</p>}
-                  {s.body && <p className="text-xs text-gray-400 mt-0.5 line-clamp-1" dangerouslySetInnerHTML={{ __html: s.body.replace(/<[^>]+>/g, " ").substring(0, 80) + "…" }} />}
+                  {s.body && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1" dangerouslySetInnerHTML={{ __html: s.body.replace(/<[^>]+>/g, " ").substring(0, 80) + "…" }} />}
                 </div>
                 <button onClick={() => setEditing({ ...s })}
-                  className="px-3 py-1.5 text-xs border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 shrink-0">✏️ Edit</button>
+                  className="px-3 py-1.5 text-xs border border-[#273b84] text-[#273b84] rounded-lg hover:bg-[#273b84] shrink-0">✏️ Edit</button>
               </div>
             ))}
           </div>
@@ -362,14 +362,14 @@ function SectionEditModal({ section, onChange, onSave, onClose, saving }: {
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <div>
             <h2 className="text-lg font-bold">{section.section_label}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">page: {section.page_key} · key: {section.section_key}</p>
+            <p className="text-xs text-gray-500 mt-0.5">page: {section.page_key} · key: {section.section_key}</p>
           </div>
           <div className="flex items-center gap-3">
             <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="checkbox" checked={section.is_active} onChange={e => onChange({ ...section, is_active: e.target.checked })} className="accent-amber-500" />
+              <input type="checkbox" checked={section.is_active} onChange={e => onChange({ ...section, is_active: e.target.checked })} className="accent-[#273b84]" />
               <span>Active</span>
             </label>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-600 text-xl">✕</button>
           </div>
         </div>
         <div className="px-6 py-5 space-y-4">
@@ -377,37 +377,37 @@ function SectionEditModal({ section, onChange, onSave, onClose, saving }: {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input value={section.title || ""} onChange={e => onChange({ ...section, title: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Subtitle</label>
             <input value={section.subtitle || ""} onChange={e => onChange({ ...section, subtitle: e.target.value })}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
           </div>
           {hasRichText && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Body Content (Rich Text)</label>
               <div id="quill-editor" className="border border-gray-300 rounded-lg min-h-32 bg-white" />
-              {!quillReady && <p className="text-xs text-gray-400 mt-1 animate-pulse">Loading editor…</p>}
+              {!quillReady && <p className="text-xs text-gray-500 mt-1 animate-pulse">Loading editor…</p>}
             </div>
           )}
           {!hasRichText && !hasStats && !hasTestimonials && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Body</label>
               <textarea rows={4} value={section.body || ""} onChange={e => onChange({ ...section, body: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
             </div>
           )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">CTA Button Text</label>
               <input value={section.cta_text || ""} onChange={e => onChange({ ...section, cta_text: e.target.value })}
-                placeholder="Explore Projects" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                placeholder="Explore Projects" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">CTA URL</label>
               <input value={section.cta_url || ""} onChange={e => onChange({ ...section, cta_url: e.target.value })}
-                placeholder="/projects" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                placeholder="/projects" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
             </div>
           </div>
 
@@ -419,15 +419,15 @@ function SectionEditModal({ section, onChange, onSave, onClose, saving }: {
                 {(section.extra_data?.stats || []).map((stat: any, i: number) => (
                   <div key={i} className="flex gap-2 items-center">
                     <input value={stat.value} onChange={e => { const s = [...section.extra_data.stats]; s[i] = { ...s[i], value: e.target.value }; onChange({ ...section, extra_data: { ...section.extra_data, stats: s } }); }}
-                      placeholder="50+" className="w-24 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                      placeholder="50+" className="w-24 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
                     <input value={stat.label} onChange={e => { const s = [...section.extra_data.stats]; s[i] = { ...s[i], label: e.target.value }; onChange({ ...section, extra_data: { ...section.extra_data, stats: s } }); }}
-                      placeholder="Projects Delivered" className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                      placeholder="Projects Delivered" className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
                     <button onClick={() => { const s = section.extra_data.stats.filter((_: any, idx: number) => idx !== i); onChange({ ...section, extra_data: { ...section.extra_data, stats: s } }); }}
                       className="text-red-400 hover:text-red-600 text-sm px-2">✕</button>
                   </div>
                 ))}
                 <button onClick={() => { const s = [...(section.extra_data?.stats || []), { label: "", value: "" }]; onChange({ ...section, extra_data: { ...section.extra_data, stats: s } }); }}
-                  className="text-sm text-amber-600 hover:text-amber-700">+ Add Stat</button>
+                  className="text-sm text-[#273b84] hover:text-[#273b84]">+ Add Stat</button>
               </div>
             </div>
           )}
@@ -440,13 +440,13 @@ function SectionEditModal({ section, onChange, onSave, onClose, saving }: {
                 {(section.extra_data?.points || []).map((point: string, i: number) => (
                   <div key={i} className="flex gap-2">
                     <input value={point} onChange={e => { const p = [...section.extra_data.points]; p[i] = e.target.value; onChange({ ...section, extra_data: { ...section.extra_data, points: p } }); }}
-                      className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+                      className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
                     <button onClick={() => { const p = section.extra_data.points.filter((_: any, idx: number) => idx !== i); onChange({ ...section, extra_data: { ...section.extra_data, points: p } }); }}
                       className="text-red-400 hover:text-red-600 px-2">✕</button>
                   </div>
                 ))}
                 <button onClick={() => { const p = [...(section.extra_data?.points || []), ""]; onChange({ ...section, extra_data: { ...section.extra_data, points: p } }); }}
-                  className="text-sm text-amber-600 hover:text-amber-700">+ Add Point</button>
+                  className="text-sm text-[#273b84] hover:text-[#273b84]">+ Add Point</button>
               </div>
             </div>
           )}
@@ -475,14 +475,14 @@ function SectionEditModal({ section, onChange, onSave, onClose, saving }: {
                   </div>
                 ))}
                 <button onClick={() => { const it = [...(section.extra_data?.items || []), { name: "", role: "", text: "", rating: 5 }]; onChange({ ...section, extra_data: { ...section.extra_data, items: it } }); }}
-                  className="text-sm text-amber-600 hover:text-amber-700">+ Add Testimonial</button>
+                  className="text-sm text-[#273b84] hover:text-[#273b84]">+ Add Testimonial</button>
               </div>
             </div>
           )}
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg">Cancel</button>
-          <button onClick={onSave} disabled={saving} className="px-5 py-2 text-sm bg-amber-500 text-white rounded-lg hover:bg-amber-600 disabled:opacity-50 font-medium">
+          <button onClick={onSave} disabled={saving} className="px-5 py-2 text-sm bg-[#273b84] text-white rounded-lg hover:bg-[#1e2d6b] disabled:opacity-50 font-medium">
             {saving ? "Saving…" : "💾 Save Section"}
           </button>
         </div>

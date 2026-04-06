@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 function getToken() {
   if (typeof window === "undefined") return "";
@@ -132,7 +132,7 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button onClick={loadAll} className="px-4 py-2 text-xs font-bold rounded-xl border" style={{ borderColor: "#E2F1FC", color: "#2A3887" }}>↻ Refresh</button>
-          <button onClick={() => { setPwModal(true); setPwMsg(""); }} className="px-4 py-2 text-xs font-bold text-white rounded-xl" style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+          <button onClick={() => { setPwModal(true); setPwMsg(""); }} className="px-4 py-2 text-xs font-bold text-[#273b84] rounded-xl" style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
             🔑 Change Password
           </button>
         </div>
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center group relative">
                     <div className="absolute bottom-full mb-1 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
-                      <div className="px-2 py-1 rounded text-xs font-bold text-white whitespace-nowrap" style={{ background: "#2A3887" }}>{d.count} · {lbl}</div>
+                      <div className="px-2 py-1 rounded text-xs font-bold text-[#273b84] whitespace-nowrap" style={{ background: "#2A3887" }}>{d.count} · {lbl}</div>
                       <div className="w-2 h-2 rotate-45 -mt-1" style={{ background: "#2A3887" }} />
                     </div>
                     <div className="w-full rounded-t" style={{ height: `${pct}%`, background: "linear-gradient(180deg,#29A9DF,#2A3887)", minHeight: "3px" }} />
@@ -300,7 +300,7 @@ export default function AdminDashboard() {
             </div>
           ) : logins.map((u: any, i: number) => (
             <div key={i} className="flex items-center gap-3 py-2" style={{ borderBottom: "1px solid #F0F4FF" }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-900 text-xs font-black flex-shrink-0"
                 style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                 {u.name?.[0]?.toUpperCase()}
               </div>
@@ -334,7 +334,7 @@ export default function AdminDashboard() {
             return (
               <div key={i} className="flex items-center justify-between py-2.5" style={{ borderBottom: "1px solid #F0F4FF" }}>
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black flex-shrink-0"
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-900 text-xs font-black flex-shrink-0"
                     style={{ background: "linear-gradient(135deg,#D97706,#F59E0B)" }}>
                     {l.name?.[0]?.toUpperCase()}
                   </div>
@@ -361,7 +361,7 @@ export default function AdminDashboard() {
                 <h3 className="font-black text-xl" style={{ color: "#262262" }}>Change Admin Password</h3>
                 <p className="text-xs mt-0.5" style={{ color: "#999" }}>Update your admin credentials securely</p>
               </div>
-              <button onClick={() => setPwModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+              <button onClick={() => setPwModal(false)} className="text-gray-500 hover:text-gray-600 text-xl">✕</button>
             </div>
             {pwMsg && (
               <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium"
@@ -388,7 +388,7 @@ export default function AdminDashboard() {
               ))}
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setPwModal(false)} className="flex-1 py-3 text-sm font-bold rounded-xl" style={{ border: "1.5px solid #ddd", color: "#555" }}>Cancel</button>
-                <button type="submit" disabled={pwSaving} className="flex-1 py-3 text-sm font-bold text-white rounded-xl disabled:opacity-60" style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                <button type="submit" disabled={pwSaving} className="flex-1 py-3 text-sm font-bold text-[#273b84] rounded-xl disabled:opacity-60" style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
                   {pwSaving ? "Saving..." : "Update Password"}
                 </button>
               </div>

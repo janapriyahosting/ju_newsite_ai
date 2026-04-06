@@ -11,7 +11,7 @@ import RiseUpCalculator from "@/components/RiseUpCalculator";
 import DynamicFields from "@/components/DynamicFields";
 import { customerApi } from "@/lib/customerAuth";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81:8000/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
 function formatPrice(p: any) {
   if (!p) return "Price on request";
@@ -22,7 +22,7 @@ function formatPrice(p: any) {
 }
 
 
-const MEDIA_BASE = "http://173.168.0.81:8000";
+const MEDIA_BASE = "";
 function mUrl(u: string) { return u?.startsWith('/media') ? `${MEDIA_BASE}${u}` : u; }
 function toEmbed(url: string): string {
   const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);

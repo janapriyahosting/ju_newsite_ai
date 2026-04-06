@@ -6,8 +6,8 @@ import Navbar from '@/components/Navbar';
 import Script from 'next/script';
 import { validateKycStep1, validateKycStep2, validateKycStep3, validateKycStep4 } from '@/lib/validators';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://173.168.0.81:8000/api/v1';
-const MEDIA = 'http://173.168.0.81:8000';
+const API = process.env.NEXT_PUBLIC_API_URL || '';
+const MEDIA = "";
 const RZP_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
 
 function formatPrice(p: any) {
