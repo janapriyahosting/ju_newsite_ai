@@ -643,7 +643,7 @@ export default function HomePage() {
         .pill-tab { border-radius: 8px; padding: 10px 28px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; border: none; }
         .pill-tab.active { background: #273b84; color: white; }
         .pill-tab:not(.active) { background: white; color: #374151; }
-        .input-search { border: none; outline: none; background: transparent; flex: 1; font-size: 14px; color: #374151; font-family: inherit; }
+        .input-search { border: none; outline: none; background: transparent; flex: 1; font-size: 14px; color: #374151; font-family: inherit; min-width: 0; }
         .input-search::placeholder { color: #9CA3AF; }
         .section-label { font-size: 12px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: #273b84; margin-bottom: 8px; }
         .section-title { font-size: clamp(28px, 4vw, 42px); font-weight: 900; color: #0D1B2A; line-height: 1.2; }
@@ -679,18 +679,118 @@ export default function HomePage() {
         /* ── Search Filter responsive ── */
         .sf-desktop { display: flex !important; width: 100%; }
         .sf-mobile  { display: none !important; }
+
+        /* ── Hero headline ── */
+        .hero-headline {
+          text-align: center;
+          margin-bottom: 28px;
+        }
+        .hero-headline-eyebrow {
+          color: rgba(255,255,255,0.7);
+          font-size: clamp(10px, 2.5vw, 13px);
+          font-weight: 800;
+          letter-spacing: 3px;
+          text-transform: uppercase;
+          margin-bottom: 12px;
+          display: block;
+        }
+        .hero-headline-h1 {
+          color: white;
+          font-weight: 900;
+          font-size: clamp(32px, 7vw, 60px);
+          line-height: 1.12;
+          margin: 0 0 14px;
+          text-shadow: 0 4px 24px rgba(0,0,0,0.45);
+        }
+        .hero-headline-sub {
+          color: rgba(255,255,255,0.62);
+          font-size: clamp(13px, 2vw, 16px);
+          font-weight: 500;
+          max-width: 460px;
+          margin: 0 auto;
+          line-height: 1.6;
+        }
+
+        /* ── Search bar ── */
+        .hero-search-bar {
+          border-radius: 24px;
+          padding: 6px 6px 6px 22px;
+          display: flex;
+          align-items: center;
+          gap: 0;
+          box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+          background: white;
+          width: 100%;
+          box-sizing: border-box;
+        }
+
+        /* ── MOBILE FIXES ── */
         @media (max-width: 767px) {
           .sf-desktop { display: none !important; }
           .sf-mobile  { display: block !important; }
           .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .services-grid { grid-template-columns: 1fr !important; }
+
+          /* Hero nav arrows — hide on mobile */
+          .hero-arrow { display: none !important; }
+
+          /* Hero search bar — stack vertically on mobile */
+          .hero-search-bar {
+            flex-wrap: wrap !important;
+            padding: 12px 14px !important;
+            border-radius: 20px !important;
+            gap: 10px !important;
+            align-items: stretch !important;
+          }
+
+          /* Hide non-essential elements inside the search bar on mobile */
+          .hero-location { display: none !important; }
+          .hero-divider  { display: none !important; }
+          .hero-icon-box { display: none !important; }
+
+          /* Input: full width row */
+          .input-search.hero-search-input {
+            font-size: 15px !important;
+            padding: 6px 0 !important;
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 0 !important;
+          }
+
+          /* Button: full width row below input */
+          .hero-search-btn {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            justify-content: center !important;
+            border-radius: 14px !important;
+            padding: 14px 16px !important;
+            box-sizing: border-box !important;
+            font-size: 15px !important;
+          }
+
+          /* Hero headline sizes on mobile */
+          .hero-headline {
+            margin-bottom: 20px;
+          }
+          .hero-headline-h1 {
+            font-size: clamp(30px, 9vw, 44px) !important;
+          }
         }
       `}</style>
 
       <Navbar />
 
       {/* ── HERO VIDEO SLIDER ──────────────────────────────────────────── */}
-      <section className="relative overflow-hidden" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <section
+        className="relative overflow-hidden"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          boxSizing: "border-box",
+        }}
+      >
         {HERO_SLIDES.map((slide, i) => (
           <div key={i} className="absolute inset-0" style={{ zIndex: 1, opacity: activeSlide === i ? 1 : 0, transition: "opacity 1.2s ease-in-out" }}>
             <div className="absolute inset-0" />
@@ -701,40 +801,108 @@ export default function HomePage() {
             )}
           </div>
         ))}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,27,42,0.25) 0%, rgba(13,27,42,0.1) 50%, rgba(13,27,42,0.45) 100%)", zIndex: 2 }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,27,42,0.35) 0%, rgba(13,27,42,0.1) 50%, rgba(13,27,42,0.55) 100%)", zIndex: 2 }} />
         <div className="absolute top-1/4 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.18), transparent 70%)", zIndex: 2 }} />
         <div className="absolute bottom-1/3 left-0 w-72 h-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.12), transparent 70%)", zIndex: 2 }} />
 
-        <div className="relative max-w-4xl mx-auto px-6 text-center" style={{ zIndex: 4, paddingTop: 140, paddingBottom: 120 }}>
-          <div className="fade-in" style={{ maxWidth: 740, margin: "0 auto", animationDelay: "0.12s" }}>
+        {/* ── Hero content ── */}
+        <div
+          className="relative mx-auto"
+          style={{
+            zIndex: 4,
+            paddingTop: "clamp(100px, 20vw, 150px)",
+            paddingBottom: "clamp(90px, 16vw, 130px)",
+            paddingLeft: "clamp(16px, 5vw, 32px)",
+            paddingRight: "clamp(16px, 5vw, 32px)",
+            width: "100%",
+            maxWidth: 800,
+            boxSizing: "border-box",
+          }}
+        >
+          {/* ── Hero Headline ── */}
+          <div className="hero-headline fade-in" style={{ animationDelay: "0.05s" }}>
+            <span className="hero-headline-eyebrow">Hyderabad's Most Trusted Builder · Since 1984</span>
+            <h1 className="hero-headline-h1">
+              Find Your<br />Dream Home
+            </h1>
+            <p className="hero-headline-sub">
+              40 years of trust &nbsp;·&nbsp; 70,000+ happy families &nbsp;·&nbsp; Premium locations
+            </p>
+          </div>
+
+          {/* ── Search Bar ── */}
+          <div
+            className="fade-in"
+            style={{ width: "100%", boxSizing: "border-box", animationDelay: "0.18s" }}
+          >
             <form onSubmit={handleSearch}>
-              <div style={{
-                borderRadius: 24, padding: "6px 6px 6px 22px", display: "flex", alignItems: "center", gap: 0,
-                boxShadow: "0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
-                background: "white",
-              }}>
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #e8ebf8, #b8c0e8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, marginRight: 10 }}>✦</div>
+              <div className="hero-search-bar">
+                {/* Icon */}
+                <div
+                  className="hero-icon-box"
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #e8ebf8, #b8c0e8)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 16,
+                    flexShrink: 0,
+                    marginRight: 10,
+                  }}
+                >
+                  ✦
+                </div>
+
+                {/* Input */}
                 <input
-                  className="input-search"
+                  className="input-search hero-search-input"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   style={{ flex: 1, fontSize: 15, color: "#0D1B2A", padding: "12px 0", fontWeight: 600 }}
                   placeholder={`Search ${activeTab === "Buy" ? "properties to buy" : activeTab === "Rent" ? "rental properties" : "investment opportunities"}…`}
                 />
-                <div style={{ width: 1, height: 28, background: "#E5E7EB", flexShrink: 0, margin: "0 14px" }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#6B7280", fontSize: 13, fontWeight: 700, flexShrink: 0, marginRight: 10, whiteSpace: "nowrap" }}>
+
+                {/* Divider */}
+                <div
+                  className="hero-divider"
+                  style={{ width: 1, height: 28, background: "#E5E7EB", flexShrink: 0, margin: "0 14px" }}
+                />
+
+                {/* Location */}
+                <div
+                  className="hero-location"
+                  style={{ display: "flex", alignItems: "center", gap: 5, color: "#6B7280", fontSize: 13, fontWeight: 700, flexShrink: 0, marginRight: 10, whiteSpace: "nowrap" }}
+                >
                   <span style={{ fontSize: 15 }}>📍</span> Hyderabad
                 </div>
-                <button type="submit" disabled={searching} style={{
-                  background: searching ? "#9CA3AF" : "linear-gradient(135deg, #273b84 0%, #1a2a6c 100%)",
-                  color: "white", border: "none", borderRadius: 18,
-                  padding: "13px 28px", fontWeight: 900, fontSize: 14,
-                  cursor: searching ? "not-allowed" : "pointer",
-                  whiteSpace: "nowrap", fontFamily: "inherit", transition: "all 0.22s",
-                  display: "flex", alignItems: "center", gap: 8,
-                  boxShadow: searching ? "none" : "0 4px 20px rgba(39,59,132,0.5)",
-                  flexShrink: 0,
-                }}>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={searching}
+                  className="hero-search-btn"
+                  style={{
+                    background: searching ? "#9CA3AF" : "linear-gradient(135deg, #273b84 0%, #1a2a6c 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 18,
+                    padding: "13px 28px",
+                    fontWeight: 900,
+                    fontSize: 14,
+                    cursor: searching ? "not-allowed" : "pointer",
+                    whiteSpace: "nowrap",
+                    fontFamily: "inherit",
+                    transition: "all 0.22s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    boxShadow: searching ? "none" : "0 4px 20px rgba(39,59,132,0.5)",
+                    flexShrink: 0,
+                  }}
+                >
                   {searching ? (
                     <><span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> Searching…</>
                   ) : (
@@ -745,8 +913,9 @@ export default function HomePage() {
             </form>
           </div>
 
+          {/* ── Search Results ── */}
           {searched && (
-            <div style={{ maxWidth: 740, margin: "14px auto 0" }}>
+            <div style={{ width: "100%", margin: "14px auto 0", boxSizing: "border-box" }}>
               {(Array.isArray(results) ? results : []).length === 0 ? (
                 <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: 18, color: "rgba(255,255,255,0.65)", fontSize: 14, backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.1)" }}>
                   No results found. <Link href="/store" style={{ color: "#7b8fd4", fontWeight: 800 }}>Browse all listings →</Link>
@@ -765,6 +934,7 @@ export default function HomePage() {
           )}
         </div>
 
+        {/* ── Slide Dots + Scroll indicator ── */}
         <div className="absolute" style={{ bottom: 36, left: "50%", transform: "translateX(-50%)", zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <div style={{ display: "flex", gap: 10 }}>
             {HERO_SLIDES.map((_, i) => (
@@ -774,8 +944,12 @@ export default function HomePage() {
           <div className="scroll-indicator"><div className="scroll-dot" /></div>
           <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 2.5 }}>SCROLL</span>
         </div>
+
+        {/* ── Prev / Next arrows (hidden on mobile via CSS) ── */}
         <button onClick={() => setActiveSlide(s => (s - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ left: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>‹</button>
         <button onClick={() => setActiveSlide(s => (s + 1) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ right: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>›</button>
+
+        {/* ── Progress bar ── */}
         <div className="absolute" style={{ bottom: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,0.1)", zIndex: 5 }}>
           <div key={activeSlide} style={{ height: "100%", background: "#273b84", animation: "heroProgress 7s linear forwards", transformOrigin: "left" }} />
         </div>
@@ -804,7 +978,6 @@ export default function HomePage() {
                   textAlign: "center",
                 }}
               >
-                {/* Icon box */}
                 <div style={{
                   width: 60,
                   height: 60,
@@ -817,11 +990,9 @@ export default function HomePage() {
                 }}>
                   {stat.icon}
                 </div>
-                {/* Value */}
                 <div style={{ fontSize: 30, fontWeight: 900, color: stat.valueColor, lineHeight: 1 }}>
                   {stat.value}
                 </div>
-                {/* Label */}
                 <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 600, lineHeight: 1.4 }}>
                   {stat.label}
                 </div>
@@ -889,7 +1060,6 @@ export default function HomePage() {
         </div>
       </section>
 
-
       {/* ── TRENDING PROPERTIES ────────────────────────────────────────── */}
       {trending.length > 0 && (
         <section style={{ padding: "80px 0", background: "#F8FAFB" }}>
@@ -907,18 +1077,12 @@ export default function HomePage() {
               {trending.map((u: any) => (
                 <Link key={u.id} href={`/units/${u.id}`} style={{ textDecoration: "none" }}>
                   <div className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
-                    <div style={{ height: 200, background: "linear-gradient(135deg, #0D1B2A 0%, #273b84 100%)", position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 16 }}>
-                      {(u.thumbnail || (u.images && u.images[0])) && (
-                        <img src={(u.thumbnail || u.images[0]).split('/').map((s: string) => encodeURIComponent(s)).join('/')}
-                          alt={u.unit_number} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
-                          onError={(e: any) => { e.target.style.display = 'none'; }} />
-                      )}
-                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.6) 100%)", zIndex: 1 }} />
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", position: "relative", zIndex: 2 }}>
+                    <div style={{ height: 200, position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                         <span className="badge badge-brand">● Available</span>
                         <span style={{ background: "rgba(255,255,255,0.15)", color: "white", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>🔥 Trending</span>
                       </div>
-                      <div style={{ position: "relative", zIndex: 2 }}>
+                      <div>
                         <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 2 }}>{u.unit_type}{u.bedrooms ? ` · ${u.bedrooms} BHK` : ""}</p>
                         <p style={{ color: "white", fontWeight: 900, fontSize: 16 }}>{u.unit_number}</p>
                         {u.area_sqft && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>📐 {parseFloat(u.area_sqft).toFixed(0)} sqft · Fl {u.floor_number ?? "–"}</p>}
@@ -946,7 +1110,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 </Link>
-              ))} 
+              ))}
             </div>
           </div>
         </section>
@@ -999,20 +1163,15 @@ export default function HomePage() {
               <Link key={p.id} href={`/projects/${p.id}`} style={{ textDecoration: "none" }}>
                 <div className="card-hover" style={{ background: "white", borderRadius: 20, overflow: "hidden", border: "1.5px solid #e8ebf8", boxShadow: "0 4px 20px rgba(39,59,132,0.08)" }}>
                   <div style={{ height: 224, background: "linear-gradient(135deg, #273b84 0%, #1a2a6c 100%)", position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 20, overflow: "hidden" }}>
-                    {(p.thumbnail || (p.images && p.images[0])) && (
-                      <img src={(p.thumbnail || p.images[0]).split('/').map((s: string) => encodeURIComponent(s)).join('/')}
-                        alt={p.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }}
-                        onError={(e: any) => { e.target.style.display = 'none'; }} />
-                    )}
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.6) 100%)", zIndex: 1 }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)" }} />
                     <span style={{
-                      alignSelf: "flex-start", display: "inline-block", padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 800, zIndex: 2, position: "relative",
+                      alignSelf: "flex-start", display: "inline-block", padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 800, zIndex: 1,
                       background: p.status === "ready" ? "#e8ebf8" : p.status === "upcoming" ? "#FEF3C7" : "#DBEAFE",
                       color: p.status === "ready" ? "#273b84" : p.status === "upcoming" ? "#92400E" : "#1E40AF",
                     }}>
                       {p.status === "ready" ? "✓ Ready to Move" : p.status === "upcoming" ? "⏳ Upcoming" : "🏗 Under Construction"}
                     </span>
-                    <div style={{ zIndex: 2, position: "relative" }}>
+                    <div style={{ zIndex: 1 }}>
                       <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 4 }}>{p.project_type || "Residential"}</p>
                       <h3 style={{ color: "white", fontWeight: 900, fontSize: 20, marginBottom: 4 }}>{p.name}</h3>
                       {p.address && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>📍 {p.address}</p>}

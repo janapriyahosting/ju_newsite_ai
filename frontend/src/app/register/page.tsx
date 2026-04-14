@@ -1,22 +1,25 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PhoneOtpVerify from "@/components/PhoneOtpVerify";
 import { saveSession, isLoggedIn } from "@/lib/customerAuth";
 
-export default function RegisterPage() {
+function RegisterInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const redirect = searchParams.get("redirect") || "/dashboard";
 
   useEffect(() => {
-    if (isLoggedIn()) router.replace("/dashboard");
-  }, [router]);
+    if (isLoggedIn()) router.replace(redirect);
+  }, [router, redirect]);
 
   function handleVerified(result: any) {
     saveSession(result.access_token, result.customer);
-    router.push("/dashboard");
+    router.push(redirect);
   }
 
   return (
@@ -47,7 +50,7 @@ export default function RegisterPage() {
               <div className="mt-6 pt-6 text-center" style={{ borderTop: "1px solid #E2F1FC" }}>
                 <p className="text-sm" style={{ color: "#555A5C" }}>
                   Already have an account?{" "}
-                  <Link href="/login" className="font-bold hover:underline" style={{ color: "#2A3887" }}>Sign In</Link>
+                  <Link href={redirect !== "/dashboard" ? `/login?redirect=${encodeURIComponent(redirect)}` : "/login"} className="font-bold hover:underline" style={{ color: "#2A3887" }}>Sign In</Link>
                 </p>
               </div>
               <p className="mt-4 text-xs text-center" style={{ color: "#aaa" }}>
@@ -60,4 +63,8 @@ export default function RegisterPage() {
       <Footer />
     </main>
   );
+}
+
+export default function RegisterPage() {
+  return <Suspense fallback={null}><RegisterInner /></Suspense>;
 }

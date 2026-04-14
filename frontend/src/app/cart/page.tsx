@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import BackButton from '@/components/BackButton';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const MEDIA = "";
@@ -73,6 +74,7 @@ export default function CartPage() {
     <main className="min-h-screen bg-white">
       <Navbar />
       <div className="pt-16">
+        <BackButton />
         <div className="max-w-5xl mx-auto px-6 py-10">
           {/* Header */}
           <div className="flex items-center justify-between mb-8 flex-wrap gap-4">

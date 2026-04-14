@@ -40,8 +40,13 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
     const text = `Check out this property: ${unit.unit_number || unit.name} - ${formatPrice(unit.base_price)} at Janapriya Upscale`;
     if (navigator.share) {
       navigator.share({ title: "Janapriya Upscale Property", text, url }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(`${text}\n${url}`).then(() => setShareMsg("Link copied!")).catch(() => setShareMsg("Could not copy"));
+      setTimeout(() => setShareMsg(""), 2500);
     } else {
-      navigator.clipboard.writeText(`${text}\n${url}`);
+      const ta = document.createElement('textarea');
+      ta.value = `${text}\n${url}`; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
       setShareMsg("Link copied!");
       setTimeout(() => setShareMsg(""), 2500);
     }

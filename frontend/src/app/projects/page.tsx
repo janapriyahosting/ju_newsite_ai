@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
+import BackButton from "@/components/BackButton";
 import Footer from "@/components/Footer";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -38,6 +39,7 @@ export default function ProjectsPage() {
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
+      <div className="pt-16"><BackButton /></div>
 
       {/* Header */}
       <div className="pt-20 py-16" style={{ background:"linear-gradient(135deg,#262262,#2A3887)" }}>

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Navbar from "@/components/Navbar";
+import BackButton from "@/components/BackButton";
 import Footer from "@/components/Footer";
 import { customerApi } from "@/lib/customerAuth";
 
@@ -159,7 +160,8 @@ export default function ContactPage() {
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
-      <div className="pt-20 text-white py-20" style={{ background: "linear-gradient(135deg, #262262, #2A3887)" }}>
+      <div className="pt-16"><BackButton /></div>
+      <div className="pt-4 text-white py-20" style={{ background: "linear-gradient(135deg, #262262, #2A3887)" }}>
         <div className="max-w-7xl mx-auto px-6">
           <p className="text-xs font-bold tracking-widest uppercase mb-3" style={{ color: "#29A9DF" }}>Get in Touch</p>
           <h1 className="text-5xl font-black">Let's Find Your<br />Dream Home</h1>

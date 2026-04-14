@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import { Unit } from '@/types'
 
@@ -24,6 +25,7 @@ const SUGGESTIONS = [
 ]
 
 export default function SearchPage() {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<Unit[] | null>(null)
@@ -85,6 +87,14 @@ export default function SearchPage() {
           </div>
         </div>
       </header>
+
+      <div className="max-w-7xl mx-auto px-6 pt-3">
+        <button onClick={() => router.back()}
+          className="text-xs font-semibold flex items-center gap-1 transition-colors hover:text-[#2A3887]"
+          style={{ color: '#94a3b8' }}>
+          ← Back
+        </button>
+      </div>
 
       {/* Search Hero */}
       <section className="bg-gradient-to-br from-brand-dark to-gray-900 text-white py-16 px-4">
