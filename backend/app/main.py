@@ -59,6 +59,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://173.168.0.81",
         "http://173.168.0.81:3000",
         "http://173.168.0.81:8000",
         "http://122.169.206.93",
@@ -67,7 +68,9 @@ app.add_middleware(
         "https://janapriyahomes.com",
         "http://www.janapriyahomes.com",
         "https://www.janapriyahomes.com",
+        "http://janapriyaupscale.com",
         "https://janapriyaupscale.com",
+        "http://www.janapriyaupscale.com",
         "https://www.janapriyaupscale.com",
     ],
     allow_credentials=True,

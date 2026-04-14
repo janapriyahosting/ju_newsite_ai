@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import BackButton from "@/components/BackButton";
 import Footer from "@/components/Footer";
 
 export const metadata = { title: "Technology — Janapriya Upscale" };
@@ -7,7 +8,8 @@ export default function TechnologyPage() {
   return (
     <main className="min-h-screen bg-white">
       <Navbar />
-      <div className="pt-20 bg-gray-950 text-white py-20">
+      <div className="pt-16"><BackButton /></div>
+      <div className="pt-4 bg-gray-950 text-white py-20">
         <div className="max-w-7xl mx-auto px-6">
           <p className="text-amber-500 text-xs font-bold tracking-widest uppercase mb-3">Innovation</p>
           <h1 className="text-5xl font-black">Technology at<br />Janapriya Upscale</h1>

@@ -27,7 +27,7 @@ export default function PhoneOtpVerify({
   subtitle,
   buttonLabel,
 }: PhoneOtpVerifyProps) {
-  const [step, setStep] = useState<"phone" | "otp" | "profile">("phone");
+  const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState(defaultPhone);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [name, setName] = useState("");
@@ -59,12 +59,6 @@ export default function PhoneOtpVerify({
     setError(""); setLoading(true);
     try {
       if (purpose === "auth") {
-        if (collectProfile && step === "otp") {
-          setStep("profile");
-          setLoading(false);
-          autoSubmitRef.current = false;
-          return;
-        }
         const res = await customerApi("/auth/verify-otp", {
           method: "POST",
           body: JSON.stringify({ phone, otp: code, mode, name, email, consent }),
@@ -85,7 +79,7 @@ export default function PhoneOtpVerify({
       setError(msg);
       autoSubmitRef.current = false;
     } finally { setLoading(false); }
-  }, [phone, purpose, mode, collectProfile, step, name, email, consent, loading, onVerified, onNotFound]);
+  }, [phone, purpose, mode, name, email, consent, loading, onVerified, onNotFound]);
 
   async function sendOtp() {
     const cleaned = phone.replace(/\D/g, "").replace(/^91/, "");
@@ -138,20 +132,6 @@ export default function PhoneOtpVerify({
     }
   }
 
-  async function submitProfile() {
-    setError(""); setLoading(true);
-    const code = otp.join("");
-    try {
-      const res = await customerApi("/auth/verify-otp", {
-        method: "POST",
-        body: JSON.stringify({ phone, otp: code, mode: "register", name, email, consent }),
-      });
-      onVerified(res);
-    } catch (err: any) {
-      setError(err.message || "Verification failed");
-    } finally { setLoading(false); }
-  }
-
   const inputStyle = { background: "#F8F9FB", border: "1.5px solid #E2F1FC", color: "#333" };
 
   return (
@@ -169,13 +149,22 @@ export default function PhoneOtpVerify({
         </div>
       )}
 
-      {/* Step 1: Phone Input */}
+      {/* Step 1: Phone Input (+ profile fields when collectProfile) */}
       {step === "phone" && (
         <>
           {title && <h2 className="text-lg font-bold" style={{ color: "#2A3887" }}>{title}</h2>}
           {subtitle && <p className="text-sm" style={{ color: "#555A5C" }}>{subtitle}</p>}
+          {collectProfile && (
+            <div>
+              <label className="block text-xs font-bold mb-1.5" style={{ color: "#2A3887" }}>Full Name <span style={{ color: "#DC2626" }}>*</span></label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)}
+                placeholder="Your full name"
+                className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-all" style={inputStyle}
+                onFocus={e => e.target.style.borderColor = "#29A9DF"} onBlur={e => e.target.style.borderColor = "#E2F1FC"} />
+            </div>
+          )}
           <div>
-            <label className="block text-xs font-bold mb-1.5" style={{ color: "#2A3887" }}>Mobile Number</label>
+            <label className="block text-xs font-bold mb-1.5" style={{ color: "#2A3887" }}>Mobile Number <span style={{ color: "#DC2626" }}>*</span></label>
             <div className="flex gap-2">
               <span className="flex items-center px-3 rounded-xl text-sm font-medium"
                 style={{ ...inputStyle, color: "#666" }}>+91</span>
@@ -184,12 +173,30 @@ export default function PhoneOtpVerify({
                 placeholder="98765 43210"
                 className="flex-1 px-4 py-3 rounded-xl text-sm focus:outline-none transition-all"
                 style={inputStyle}
-                onKeyDown={e => { if (e.key === "Enter") sendOtp(); }}
+                onKeyDown={e => { if (e.key === "Enter" && (!collectProfile || name.trim())) sendOtp(); }}
                 onFocus={e => e.target.style.borderColor = "#29A9DF"}
                 onBlur={e => e.target.style.borderColor = "#E2F1FC"} />
             </div>
           </div>
-          <button onClick={sendOtp} disabled={loading}
+          {collectProfile && (
+            <>
+              <div>
+                <label className="block text-xs font-bold mb-1.5" style={{ color: "#2A3887" }}>Email <span className="text-xs font-normal" style={{ color: "#999" }}>(optional)</span></label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-all" style={inputStyle}
+                  onFocus={e => e.target.style.borderColor = "#29A9DF"} onBlur={e => e.target.style.borderColor = "#E2F1FC"} />
+              </div>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-0.5 accent-amber-500" />
+                <span className="text-xs" style={{ color: "#666" }}>I agree to receive updates via SMS, WhatsApp, email, and calls about Janapriya properties.</span>
+              </label>
+            </>
+          )}
+          <button onClick={() => {
+              if (collectProfile && !name.trim()) { setError("Please enter your full name"); return; }
+              sendOtp();
+            }} disabled={loading}
             className="w-full py-3.5 text-white font-bold rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
             style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
             {loading ? <><span className="animate-spin">&#x27F3;</span> Sending OTP...</> : (buttonLabel || "Send OTP")}
@@ -229,35 +236,6 @@ export default function PhoneOtpVerify({
         </>
       )}
 
-      {/* Step 3: Profile (for register flow) */}
-      {step === "profile" && (
-        <>
-          <p className="text-sm font-medium" style={{ color: "#2A3887" }}>Almost there! Tell us about yourself.</p>
-          <div>
-            <label className="block text-xs font-bold mb-1.5" style={{ color: "#2A3887" }}>Full Name</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)}
-              placeholder="Your full name"
-              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-all" style={inputStyle}
-              onFocus={e => e.target.style.borderColor = "#29A9DF"} onBlur={e => e.target.style.borderColor = "#E2F1FC"} />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1.5" style={{ color: "#2A3887" }}>Email (optional)</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none transition-all" style={inputStyle}
-              onFocus={e => e.target.style.borderColor = "#29A9DF"} onBlur={e => e.target.style.borderColor = "#E2F1FC"} />
-          </div>
-          <label className="flex items-start gap-2 cursor-pointer">
-            <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-0.5 accent-amber-500" />
-            <span className="text-xs" style={{ color: "#666" }}>I agree to receive updates via SMS, WhatsApp, email, and calls about Janapriya properties.</span>
-          </label>
-          <button onClick={submitProfile} disabled={loading}
-            className="w-full py-3.5 text-white font-bold rounded-xl text-sm transition-all hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
-            {loading ? <><span className="animate-spin">&#x27F3;</span> Creating account...</> : "Continue"}
-          </button>
-        </>
-      )}
     </div>
   );
 }

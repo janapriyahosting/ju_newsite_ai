@@ -6,8 +6,9 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { isSaved, toggleSaved, toggleCompare, isInCompare } from "@/lib/savedProperties";
-import UnitMediaSlider from "@/components/UnitMediaSlider";
+import { UnitMediaProvider, UnitMediaThumbs, UnitMediaMain } from "@/components/UnitMediaSlider";
 import RiseUpCalculator from "@/components/RiseUpCalculator";
+import HomeLoanEMICalculator from "@/components/HomeLoanEMICalculator";
 import DynamicFields from "@/components/DynamicFields";
 import { customerApi } from "@/lib/customerAuth";
 
@@ -66,11 +67,26 @@ export default function UnitDetailPage() {
       if (sp.get("enquire") === "true") setEnquireOpen(true);
     }
   }, [loading, unit]);
+
   const [cartAdded, setCartAdded] = useState(false);
   const [cartLoading, setCartLoading] = useState(false);
   const [unitSections, setUnitSections] = useState<any[]>([]);
   const [customFieldMap, setCustomFieldMap] = useState<Record<string, { value: any; field_type: string; label: string }>>({});
   const [blocked, setBlocked] = useState(false);
+
+  // Auto-download brochure after login redirect (?download=brochure)
+  useEffect(() => {
+    if (!loading && unit && typeof window !== "undefined") {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("download") === "brochure" && localStorage.getItem("jp_token")) {
+        const brochureUrl = unit.brochure_url || towerData?.brochure_url || customFieldMap['series_brochure']?.value;
+        if (brochureUrl) window.open(MEDIA_BASE + brochureUrl, '_blank');
+        const url = new URL(window.location.href);
+        url.searchParams.delete("download");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, [loading, unit, towerData, customFieldMap]);
 
   useEffect(() => {
     if (!id) return;
@@ -109,12 +125,18 @@ export default function UnitDetailPage() {
             setTowerData(tRes);
           } catch {}
         }
-        // Load project
+        // Load correct project via tower's project_id
         if (u.tower_id) {
           try {
             const projects = await fetch(`${API}/projects`).then(r=>r.json() as Promise<any>);
             const projectList = Array.isArray(projects) ? projects : (projects as any).items || [];
-            setProject(projectList[0] || null);
+            // tRes already fetched above — use its project_id to match
+            const tRes = await fetch(API + '/admin/towers/' + u.tower_id, {
+              headers: { Authorization: 'Bearer ' + (typeof window !== 'undefined' ? localStorage.getItem('admin_token') || '' : '') }
+            }).then(r => r.json()).catch(() => null);
+            const pid = tRes?.project_id;
+            const matched = pid ? projectList.find((p: any) => p.id === pid) : null;
+            setProject(matched || projectList[0] || null);
           } catch {}
         }
         setLoading(false);
@@ -123,6 +145,22 @@ export default function UnitDetailPage() {
   }, [id]);
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(""), 2500); }
+
+  function copyToClipboard(text: string) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => showToast("Link copied! 📋")).catch(() => showToast("Could not copy link"));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast("Link copied! 📋");
+    }
+  }
 
   function handleSave() {
     const added = toggleSaved(id as string);
@@ -142,7 +180,7 @@ export default function UnitDetailPage() {
     const url = window.location.href;
     const text = unit ? `Check out: ${unit.unit_number} — ${unit.unit_type}, ${formatPrice(unit.base_price)} | Janapriya Upscale` : "Janapriya Upscale Property";
     if (navigator.share) { navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {}); }
-    else { navigator.clipboard.writeText(`${text}\n${url}`); showToast("Link copied! 📋"); }
+    else { copyToClipboard(`${text}\n${url}`); }
   }
 
   // handleEnquire is now inside UnitEnquiryModal
@@ -289,7 +327,7 @@ export default function UnitDetailPage() {
       return <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: yes ? '#dcfce7' : '#fee2e2', color: yes ? '#16a34a' : '#dc2626' }}>{yes ? 'Yes' : 'No'}</span>;
     }
     if (field_type === 'currency') {
-      const n = parseFloat(value);
+      const n = parseFloat(String(value).replace(/,/g, ''));
       if (isNaN(n)) return <span>{String(value)}</span>;
       const fmt = n >= 10000000 ? `₹${(n/10000000).toFixed(2)} Cr` : n >= 100000 ? `₹${(n/100000).toFixed(2)} L` : `₹${n.toLocaleString('en-IN')}`;
       return <span className="font-black" style={{ color: '#2A3887' }}>{fmt}</span>;
@@ -300,7 +338,7 @@ export default function UnitDetailPage() {
     if (field_type === 'url' || (typeof value === 'string' && value.startsWith('http'))) {
       return <a href={String(value)} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold underline break-all" style={{ color: '#29A9DF' }}>{String(value)}</a>;
     }
-    if (field_type === 'number' || field_type === 'decimal') return <span className="font-bold">{Number(value).toLocaleString('en-IN')}</span>;
+    if (field_type === 'number' || field_type === 'decimal') { const n = Number(String(value).replace(/,/g, '')); return <span className="font-bold">{isNaN(n) ? String(value) : n.toLocaleString('en-IN')}</span>; }
     if (Array.isArray(value)) return <div className="flex flex-wrap gap-1 justify-end">{value.map((v: string, i: number) => <span key={i} className="px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#E2F1FC', color: '#2A3887' }}>{v}</span>)}</div>;
     return <span className="font-semibold text-right" style={{ color: '#333' }}>{String(value)}</span>;
   }
@@ -311,12 +349,19 @@ export default function UnitDetailPage() {
 
       {/* Breadcrumb */}
       <div className="pt-16 bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-2 text-xs" style={{ color: "#999" }}>
-          <Link href="/" className="hover:text-[#2A3887]">Home</Link>
-          <span>›</span>
-          <Link href="/store" className="hover:text-[#2A3887]">Store</Link>
-          <span>›</span>
-          <span style={{ color: "#2A3887" }} className="font-bold">{unit.unit_number}</span>
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between text-xs" style={{ color: "#999" }}>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="hover:text-[#2A3887]">Home</Link>
+            <span>›</span>
+            <Link href="/store" className="hover:text-[#2A3887]">Store</Link>
+            <span>›</span>
+            <span style={{ color: "#2A3887" }} className="font-bold">{unit.unit_number}</span>
+          </div>
+          <button onClick={() => router.back()}
+            className="font-semibold flex items-center gap-1 transition-colors hover:text-[#2A3887]"
+            style={{ color: '#94a3b8' }}>
+            ← Back
+          </button>
         </div>
       </div>
 
@@ -325,46 +370,56 @@ export default function UnitDetailPage() {
           {/* Left: Main Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Hero: Media Slider + Unit Info */}
-            <div className="rounded-3xl overflow-hidden" style={{ boxShadow: "0 8px 40px rgba(42,56,135,0.15)" }}>
-              {/* Media Slider */}
-              <UnitMediaSlider unit={unit} seriesFields={customFieldMap} />
-
-              {/* Unit Title Bar */}
-              <div className="px-5 py-4 flex items-center justify-between"
-                style={{ background: "linear-gradient(135deg,#262262,#2A3887)" }}>
-                <div>
-                  <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-xs uppercase tracking-wider mb-0.5">
-                    {unit.unit_type && unit.unit_type.includes("BHK") ? unit.unit_type : `${unit.unit_type}${unit.bedrooms ? " · " + unit.bedrooms + " BHK" : ""}`}
-                  </p>
-                  <h1 className="text-2xl font-black text-white">{unit.unit_number}</h1>
-                  {project && <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-xs mt-0.5">📍 {project.name}</p>}
+            <UnitMediaProvider unit={unit} seriesFields={customFieldMap}>
+              <div className="flex items-start" style={{ marginLeft: '-90px' }}>
+                {/* Vertical thumbnails — pulled left outside the box */}
+                <div className="flex-shrink-0 self-start" style={{ width: '80px', marginRight: '10px' }}>
+                  <UnitMediaThumbs />
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1.5 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
-                    ● {(unit.status || "available").charAt(0).toUpperCase() + (unit.status||"").slice(1)}
-                  </span>
-                  <div className="flex gap-1.5">
-                    {[
-                      { fn: handleSave, icon: saved ? "♥" : "♡", bg: saved ? "rgba(239,68,68,0.9)" : "rgba(255,255,255,0.2)", title: "Save" },
-                      { fn: handleCompare, icon: "⇄", bg: inCompare ? "rgba(245,158,11,0.9)" : "rgba(255,255,255,0.2)", title: "Compare" },
-                      { fn: handleShare, icon: "↗", bg: "rgba(255,255,255,0.2)", title: "Share" },
-                    ].map((btn, i) => (
-                      <button key={i} onClick={btn.fn} title={btn.title}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm transition-all hover:scale-110"
-                        style={{ background: btn.bg }}>
-                        {btn.icon}
-                      </button>
-                    ))}
+
+                {/* The box: main viewer + unit info */}
+                <div className="flex-1 min-w-0 rounded-3xl overflow-hidden" style={{ boxShadow: "0 8px 40px rgba(42,56,135,0.15)" }}>
+                  {/* Media Main Viewer */}
+                  <UnitMediaMain />
+
+                  {/* Unit Title Bar */}
+                  <div className="px-5 py-4 flex items-center justify-between"
+                    style={{ background: "linear-gradient(135deg,#262262,#2A3887)" }}>
+                    <div>
+                      <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-xs uppercase tracking-wider mb-0.5">
+                        {unit.unit_type && unit.unit_type.includes("BHK") ? unit.unit_type : `${unit.unit_type}${unit.bedrooms ? " · " + unit.bedrooms + " BHK" : ""}`}
+                      </p>
+                      <h1 className="text-2xl font-black text-white">{unit.unit_number}</h1>
+                      {(project?.location || project?.name) && <p style={{ color: "rgba(255,255,255,0.65)" }} className="text-xs mt-0.5">📍 {project?.location || project?.name}</p>}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="px-3 py-1.5 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
+                        ● {(unit.status || "available").charAt(0).toUpperCase() + (unit.status||"").slice(1)}
+                      </span>
+                      <div className="flex gap-1.5">
+                        {[
+                          { fn: handleSave, icon: saved ? "♥" : "♡", bg: saved ? "rgba(239,68,68,0.9)" : "rgba(255,255,255,0.2)", title: "Save" },
+                          { fn: handleCompare, icon: "⇄", bg: inCompare ? "rgba(245,158,11,0.9)" : "rgba(255,255,255,0.2)", title: "Compare" },
+                          { fn: handleShare, icon: "↗", bg: "rgba(255,255,255,0.2)", title: "Share" },
+                        ].map((btn, i) => (
+                          <button key={i} onClick={btn.fn} title={btn.title}
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm transition-all hover:scale-110"
+                            style={{ background: btn.bg }}>
+                            {btn.icon}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
+                  {toast && (
+                    <div className="fixed top-20 right-6 z-50 px-5 py-3 rounded-2xl text-sm font-bold shadow-2xl flex items-center gap-2 animate-bounce"
+                      style={{ background: toast.includes('✅') ? '#16A34A' : '#2A3887', color: 'white', maxWidth: '280px' }}>
+                      {toast}
+                    </div>
+                  )}
                 </div>
               </div>
-              {toast && (
-                <div className="fixed top-20 right-6 z-50 px-5 py-3 rounded-2xl text-sm font-bold shadow-2xl flex items-center gap-2 animate-bounce"
-                  style={{ background: toast.includes('✅') ? '#16A34A' : '#2A3887', color: 'white', maxWidth: '280px' }}>
-                  {toast}
-                </div>
-              )}
-            </div>
+            </UnitMediaProvider>
 
             {/* Section-driven content — ordered and visibility controlled by admin Sections */}
             {unitSections.filter((s: any) => s.visible).map((s: any) => {
@@ -525,31 +580,9 @@ export default function UnitDetailPage() {
                 </div>
               </div>
 
-              {/* Room Dimensions */}
-              {unit.dimensions && unit.dimensions.length > 0 && (
-                <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
-                  <h3 className="text-sm font-black mb-3 flex items-center gap-2" style={{color:"#262262"}}>
-                    📐 Room Dimensions
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {unit.dimensions.map((d: any, idx: number) => (
-                      <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
-                        <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:"#94a3b8"}}>{d.room}</p>
-                        <p className="text-sm font-black" style={{color:"#2A3887", whiteSpace:"nowrap"}}>{toFtIn(d.width, d.unit)} <span style={{color:"#94a3b8", fontWeight:400}}>×</span> {toFtIn(d.length, d.unit)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* RiseUp Calculator */}
-              {unit.base_price && parseFloat(unit.base_price) > 100_000 && (
-                <RiseUpCalculator unitPrice={parseFloat(unit.base_price)} unitName={unit.unit_number} />
-              )}
-
               {/* Brochure Download */}
-              {(unit.brochure_url || towerData?.brochure_url) && (
-                <BrochureDownload url={unit.brochure_url || towerData?.brochure_url} />
+              {(unit.brochure_url || towerData?.brochure_url || customFieldMap['series_brochure']?.value) && (
+                <BrochureDownload url={unit.brochure_url || towerData?.brochure_url || String(customFieldMap['series_brochure'].value)} unitId={id as string} />
               )}
 
               {/* Share Card */}
@@ -560,7 +593,7 @@ export default function UnitDetailPage() {
                     { label: "WhatsApp", icon: "📱", color: "#25D366",
                       fn: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${unit.unit_number} — ${formatPrice(unit.base_price)}\n${window.location.href}`)}`) },
                     { label: "Copy Link", icon: "🔗", color: "#2A3887",
-                      fn: () => { navigator.clipboard.writeText(window.location.href); showToast("Copied!"); } },
+                      fn: () => { copyToClipboard(window.location.href); } },
                     { label: "Email", icon: "✉️", color: "#29A9DF",
                       fn: () => window.open(`mailto:?subject=Property: ${unit.unit_number}&body=${window.location.href}`) },
                   ].map(btn => (
@@ -587,6 +620,34 @@ export default function UnitDetailPage() {
                   {inCompare ? "⇄ In Compare" : "⇄ Compare"}
                 </button>
               </div>
+
+              {/* Room Dimensions */}
+              {unit.dimensions && unit.dimensions.length > 0 && (
+                <div className="rounded-2xl p-5" style={{background:"#F8F9FB", border:"1px solid #E2F1FC"}}>
+                  <h3 className="text-sm font-black mb-3 flex items-center gap-2" style={{color:"#262262"}}>
+                    📐 Room Dimensions
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {unit.dimensions.map((d: any, idx: number) => (
+                      <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
+                        <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:"#94a3b8"}}>{d.room}</p>
+                        <p className="text-sm font-black" style={{color:"#2A3887", whiteSpace:"nowrap"}}>{toFtIn(d.width, d.unit)} <span style={{color:"#94a3b8", fontWeight:400}}>×</span> {toFtIn(d.length, d.unit)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* RiseUp Calculator */}
+              {unit.base_price && parseFloat(unit.base_price) > 100_000 && (
+                <RiseUpCalculator unitPrice={parseFloat(unit.base_price)} unitName={unit.unit_number} />
+              )}
+
+              {/* Home Loan EMI Calculator */}
+              {unit.base_price && parseFloat(unit.base_price) > 100_000 && (
+                <HomeLoanEMICalculator unitPrice={parseFloat(unit.base_price)} unitName={unit.unit_number} />
+              )}
+
             </div>
           </div>
         </div>
@@ -609,41 +670,27 @@ export default function UnitDetailPage() {
   );
 }
 
-function BrochureDownload({ url }: { url: string }) {
-  const [showOtp, setShowOtp] = useState(false);
-  const isLoggedIn = typeof window !== 'undefined' && !!localStorage.getItem('jp_token');
+function BrochureDownload({ url, unitId }: { url: string; unitId: string }) {
+  const loggedIn = typeof window !== 'undefined' && !!localStorage.getItem('jp_token');
 
-  function handleDownload() {
-    window.open(MEDIA_BASE + url, '_blank');
-  }
-
-  if (showOtp) {
-    return (
-      <div className="rounded-2xl p-5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
-        <p className="text-xs font-black mb-3" style={{ color: "#2A3887" }}>📄 Verify to Download</p>
-        <PhoneOtpVerify
-          purpose="brochure"
-          onVerified={() => { setShowOtp(false); handleDownload(); }}
-          buttonLabel="Verify & Download"
-        />
-        <button onClick={() => setShowOtp(false)} className="mt-3 text-xs text-gray-400 hover:text-gray-600 w-full text-center">Cancel</button>
-      </div>
-    );
+  function handleClick() {
+    if (loggedIn) {
+      window.open(MEDIA_BASE + url, '_blank');
+    } else {
+      window.location.href = '/login?redirect=' + encodeURIComponent('/units/' + unitId + '?download=brochure') + '&reason=brochure';
+    }
   }
 
   return (
     <div className="rounded-2xl p-5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
       <p className="text-xs font-black mb-3" style={{ color: "#2A3887" }}>📄 Project Brochure</p>
       <button
-        onClick={() => {
-          if (isLoggedIn) handleDownload();
-          else setShowOtp(true);
-        }}
+        onClick={handleClick}
         className="w-full py-3 text-white font-black rounded-xl text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
         style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
         ⬇️ Download Brochure
       </button>
-      {!isLoggedIn && <p className="text-xs text-center mt-2" style={{ color: "#94a3b8" }}>Phone verification required</p>}
+      {!loggedIn && <p className="text-xs text-center mt-2" style={{ color: "#94a3b8" }}>Login required to download</p>}
     </div>
   );
 }

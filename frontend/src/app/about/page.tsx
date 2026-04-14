@@ -43,32 +43,19 @@ const STATS = [
 
 export default function AboutPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white" style={{ fontFamily: "'Lato',sans-serif" }}>
       <Navbar />
 
       {/* ── Hero ── */}
-      <div className="pt-16" style={{ background: "linear-gradient(135deg,#262262,#2A3887)" }}>
-        <div className="max-w-7xl mx-auto px-6 py-16">
-          <p style={{ color: "#29A9DF" }} className="text-xs font-bold tracking-widest uppercase mb-3">Our Story</p>
-          <h1 className="text-5xl md:text-6xl font-black text-white mb-4">
-            Building Hyderabad&apos;s<br />
-            <span style={{ color: "#29A9DF" }}>Premium Addresses</span>
-          </h1>
-          <p style={{ color: "rgba(255,255,255,0.65)" }} className="max-w-2xl text-base leading-relaxed">
-            For over 40 years, Janapriya Upscale has been creating homes that inspire, communities that thrive, and a legacy that endures.
-          </p>
-        </div>
-        {/* Stats bar */}
-        <div style={{ background: "rgba(0,0,0,0.2)" }}>
-          <div className="max-w-7xl mx-auto px-6 py-6 grid grid-cols-2 md:grid-cols-4 gap-6">
-            {STATS.map(([v, l]) => (
-              <div key={l} className="text-center">
-                <div className="text-3xl font-black" style={{ color: "#29A9DF" }}>{v}</div>
-                <div className="text-xs mt-1" style={{ color: "rgba(255,255,255,0.55)" }}>{l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+      <div className="pt-16" style={{
+  backgroundImage: "url('/banner.jpg')",
+  backgroundSize: "cover",
+  backgroundPosition: "center",
+  backgroundRepeat: "no-repeat"
+}}>
+        
+        
+       
       </div>
 
       {/* ── Mission ── */}

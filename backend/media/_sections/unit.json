@@ -1,23 +1,8 @@
 [
   {
-    "key": "overview",
-    "label": "Overview",
-    "visible": true,
-    "fields": [
-      "unit_type",
-      "bedrooms",
-      "bathrooms",
-      "area_sqft",
-      "base_price",
-      "status",
-      "price_per_sqft",
-      "down_payment"
-    ]
-  },
-  {
     "key": "details",
     "label": "Details",
-    "visible": true,
+    "visible": false,
     "fields": [
       "floor_number",
       "facing",
@@ -33,7 +18,7 @@
   {
     "key": "amenities",
     "label": "Amenities",
-    "visible": true,
+    "visible": false,
     "fields": [
       "amenities",
       "loan_amount",
@@ -74,6 +59,113 @@
       "series_walkthrough_video",
       "series_brochure",
       "series_unit_image"
+    ]
+  },
+  {
+    "key": "property_snapshot",
+    "label": "Property Snapshot",
+    "visible": true,
+    "fields": [
+      "area_sqft",
+      "listing_id",
+      "budget",
+      "status_description",
+      "bathrooms",
+      "bedrooms",
+      "balconies",
+      "floor_number",
+      "parent",
+      "unit_type",
+      "facing",
+      "position",
+      "parking",
+      "sfdc_unit_id",
+      "alias_permalink",
+      "availability",
+      "emi_estimate",
+      "booking_amount",
+      "plan_series"
+    ]
+  },
+  {
+    "key": "area_details",
+    "label": "Area Details",
+    "visible": true,
+    "fields": [
+      "_salable_area_in_sqft",
+      "salable_area_in_sqmt",
+      "carpet_area_in_sqft",
+      "carpet_area_in_sqmt",
+      "balconyutility_area_in_sqft",
+      "balconyutility_area_in_sqmt"
+    ]
+  },
+  {
+    "key": "tower_snapshot",
+    "label": "Tower Snapshot",
+    "visible": true,
+    "fields": [
+      "tower",
+      "common_area",
+      "lifts",
+      "corridor_width"
+    ]
+  },
+  {
+    "key": "project_snapshot",
+    "label": "Project Snapshot",
+    "visible": true,
+    "fields": [
+      "type_your_search_here",
+      "project",
+      "typology",
+      "location",
+      "unit_range_in_sqft",
+      "budget_range",
+      "open_space",
+      "no_of_towers",
+      "no_of_units",
+      "construction_stage",
+      "sfdc_project_id",
+      "project_name",
+      "floor_plan_url"
+    ]
+  },
+  {
+    "key": "features",
+    "label": "Features",
+    "visible": true,
+    "fields": [
+      "rooms_and_sizes"
+    ]
+  },
+  {
+    "key": "pricing_details",
+    "label": "Pricing Details",
+    "visible": true,
+    "fields": [
+      "basic_cost",
+      "scooter_parking",
+      "car_parking",
+      "utilities",
+      "club_house",
+      "sub_total",
+      "gst_",
+      "gst_amount",
+      "advance_maintenance",
+      "documentation_charges",
+      "grand_total_excl_reg_cost"
+    ]
+  },
+  {
+    "key": "payment_details",
+    "label": "Payment Details",
+    "visible": true,
+    "fields": [
+      "downpayment",
+      "loan_amount",
+      "total_amount",
+      "down_payment"
     ]
   }
 ]

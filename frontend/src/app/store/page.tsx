@@ -1,16 +1,14 @@
 "use client";
 import AddToCartBtn from '@/components/AddToCartBtn';
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import BackButton from "@/components/BackButton";
 import Footer from "@/components/Footer";
 import CompareBar from "@/components/CompareBar";
-import ProactiveAssistant from "@/components/ProactiveAssistant";
 import { isSaved, toggleSaved, isInCompare, toggleCompare } from "@/lib/savedProperties";
 import Link from "next/link";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-const MEDIA_BASE = "";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81/api/v1";
 
 function formatPrice(p: any) {
   if (!p) return "Price on request";
@@ -41,40 +39,29 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
     setInCompare(r.added);
     showToast(r.added ? "Added to compare ⇄" : "Removed");
     window.dispatchEvent(new Event("jp_compare_update"));
-    onCompareChange();
+    onCompareChange(); 
+  }
+  function fallbackCopy(text: string) {
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(() => showToast("Link copied! 📋")).catch(() => showToast("Could not copy")); return; }
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    showToast("Link copied! 📋");
   }
   function handleShare(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
     const url = `${window.location.origin}/units/${unit.id}`;
     const text = `${unit.unit_number} — ${unit.unit_type}, ${formatPrice(unit.base_price)} | Janapriya Upscale`;
     if (navigator.share) navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {});
-    else { navigator.clipboard.writeText(`${text}\n${url}`); showToast("Link copied! 📋"); }
+    else { fallbackCopy(`${text}\n${url}`); }
   }
   const statusColor = unit.status === "available" ? "#22c55e" : unit.status === "booked" ? "#ef4444" : "#f59e0b";
-  const thumbPath = unit.thumbnail
-    || (Array.isArray(unit.images) && unit.images.length > 0 ? unit.images[0] : null);
-  const firstImage = thumbPath
-    ? `${MEDIA_BASE}${thumbPath.split('/').map((s: string) => encodeURIComponent(s)).join('/')}`
-    : null;
   return (
     <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
       style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
-      <div className="h-48 relative flex flex-col justify-between p-4"
+      <div className="h-44 relative flex flex-col justify-between p-4"
         style={{ background: "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
-        {/* Unit image */}
-        {firstImage && (
-          <img
-            src={firstImage}
-            alt={unit.unit_number || "Unit"}
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ zIndex: 0 }}
-            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-        )}
-        {/* Gradient overlay so text stays readable */}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.55) 100%)", zIndex: 1 }} />
-
-        <div className="relative flex justify-between items-center" style={{ zIndex: 2 }}>
+        <div className="flex justify-between items-center">
           <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
             ● {(unit.status||"available").charAt(0).toUpperCase()+(unit.status||"available").slice(1)}
           </span>
@@ -90,9 +77,9 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
             ))}
           </div>
         </div>
-        <div className="relative" style={{ zIndex: 2 }}>
+        <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.85)" }}>
+            <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
               {unit.unit_type}{unit.bedrooms ? ` · ${unit.bedrooms} BHK` : ""}
             </p>
             {isTrending && <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"white" }}>🔥</span>}
@@ -101,7 +88,7 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
         </div>
         {toast && (
           <div className="absolute bottom-3 left-3 right-3 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
-            style={{ color: "#2A3887", zIndex: 3 }}>{toast}</div>
+            style={{ color: "#2A3887" }}>{toast}</div>
         )}
       </div>
       <div className="p-4 flex-1 flex flex-col">
@@ -131,17 +118,12 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
                 ₹{Math.round(parseFloat(unit.base_price)/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
               </div>
             )}
-            {unit.base_price && parseFloat(unit.base_price) > 0 && (
-              <div className="text-xs font-bold mt-0.5" style={{ color: "#29A9DF" }}>
-                🚀 {formatPrice(parseFloat(unit.base_price) * 0.8)} via RiseUp
-              </div>
-            )}
           </div>
           <div className="flex gap-2">
             <div onClick={e=>{e.preventDefault();e.stopPropagation();}}>
               <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
             </div>
-            <Link href={`/units/${unit.id}?enquire=true`}
+            <Link href={`/contact?unit=${unit.id}`}
               className="px-3 py-1.5 text-xs font-bold rounded-xl"
               style={{ border:"1.5px solid #2A3887",color:"#2A3887" }}>Enquire</Link>
             <Link href={`/units/${unit.id}`}
@@ -192,7 +174,7 @@ function RangeSlider({ label, min, max, value, onChange, format }: {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 const UNIT_TYPES = ["All","2BHK","3BHK","4BHK","Villa","Plot","Studio"];
-const FACING_OPTIONS = ["Any","East","West","North","South"];
+const FACING_OPTIONS = ["Any","East","West","North","South","North-East","North-West","South-East","South-West"];
 const FLOOR_OPTIONS = [
   { label:"Any Floor", min:0, max:999 },
   { label:"Ground (0-2)", min:0, max:2 },
@@ -211,7 +193,6 @@ const SORT_OPTIONS = [
 const STATUS_OPTS = ["All Status","available","booked","reserved"];
 
 export default function StorePage() {
-  const searchParams = useSearchParams();
   const [units, setUnits] = useState<any[]>([]);
   const [trendingIds, setTrendingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -226,141 +207,70 @@ export default function StorePage() {
   const [searching, setSearching] = useState(false);
   const [aiActive, setAiActive] = useState(false);
 
-  // Proactive assistant tracking
-  const [searchCount, setSearchCount] = useState(0);
-  const [lastResultsCount, setLastResultsCount] = useState(-1);
-  const [lastBudget, setLastBudget] = useState(0);
-
   // Advanced filters
-  const [priceRange, setPriceRange]   = useState<[number,number]>([0, 20000000]);
-  const [emiRange, setEmiRange]       = useState<[number,number]>([0, 100000]);
-  const [dpRange, setDpRange]         = useState<[number,number]>([0, 2000000]);
-  const [areaRange, setAreaRange]     = useState<[number,number]>([0, 5000]);
-  const [facing, setFacing]           = useState("Any");
-  const [floorIdx, setFloorIdx]       = useState(0);
-  const [minBeds, setMinBeds]         = useState(0);
-  const [selectedProject, setSelectedProject] = useState("");
-  const [selectedTower, setSelectedTower]     = useState("");
-  const [selectedLocation, setSelectedLocation] = useState("");
-
-  // Towers / Projects meta (loaded once)
-  const [allTowers, setAllTowers]     = useState<any[]>([]);
-  const [allProjects, setAllProjects] = useState<any[]>([]);
+  const [priceRange, setPriceRange] = useState<[number,number]>([0, 20000000]);
+  const [areaRange, setAreaRange] = useState<[number,number]>([0, 5000]);
+  const [facing, setFacing] = useState("Any");
+  const [floorIdx, setFloorIdx] = useState(0);
+  const [minBeds, setMinBeds] = useState(0);
 
   // Active filter count
   const activeCount = [
     priceRange[0]>0||priceRange[1]<20000000,
-    emiRange[0]>0||emiRange[1]<100000,
-    dpRange[0]>0||dpRange[1]<2000000,
     areaRange[0]>0||areaRange[1]<5000,
     facing!=="Any",
     floorIdx!==0,
     minBeds>0,
     showTrendingOnly,
-    !!selectedProject,
-    !!selectedTower,
-    !!selectedLocation,
   ].filter(Boolean).length;
 
-  useEffect(() => {
-    const q = searchParams.get("q");
-    if (q) {
-      setAiQuery(q);
-      runAISearch(q);
-    } else {
-      loadAll();
-    }
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
     setLoading(true);
     try {
-      const [allRes, trendRes, towerRes, projRes] = await Promise.all([
+      const [allRes, trendRes] = await Promise.all([
         fetch(`${API}/units?page_size=200`),
         fetch(`${API}/units/trending?limit=50`),
-        fetch(`${API}/projects/towers/all`),
-        fetch(`${API}/projects?page_size=50`),
       ]);
-      const allData   = await allRes.json()   as any;
+      const allData = await allRes.json() as any;
       const trendData = await trendRes.json() as any;
-      const towerData = await towerRes.json() as any;
-      const projData  = await projRes.json()  as any;
       setUnits(Array.isArray(allData) ? allData : (allData.items || []));
       const tItems = Array.isArray(trendData) ? trendData : (trendData.items || []);
       setTrendingIds(new Set(tItems.map((u: any) => u.id)));
-      setAllTowers(Array.isArray(towerData) ? towerData : []);
-      const projects = Array.isArray(projData) ? projData : (projData.items || []);
-      setAllProjects(projects.filter((p: any) => p.is_active !== false));
     } catch {}
-    setLoading(false);
-  }
-
-  async function runAISearch(q: string) {
-    setSearching(true);
-    try {
-      const res = await fetch(`${API}/search/nlp`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ query: q }),
-      });
-      const d = await res.json() as any;
-      const items = d.items || [];
-      setUnits(items);
-      setAiActive(true);
-      // Track for proactive assistant
-      setSearchCount(c => c + 1);
-      setLastResultsCount(items.length);
-      // Extract budget from interpreted filters
-      const budget = d.interpreted_as?.max_price || d.interpreted_as?.min_price || 0;
-      if (budget) setLastBudget(budget);
-    } catch {}
-    setSearching(false);
     setLoading(false);
   }
 
   async function handleAISearch(e: React.FormEvent) {
     e.preventDefault();
     if (!aiQuery.trim()) { setAiActive(false); loadAll(); return; }
-    await runAISearch(aiQuery);
+    setSearching(true);
+    try {
+      const res = await fetch(`${API}/search/nlp`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ query: aiQuery }),
+      });
+      const d = await res.json() as any;
+      setUnits(d.items || []);
+      setAiActive(true);
+    } catch {}
+    setSearching(false);
   }
 
   function clearAI() { setAiQuery(""); setAiActive(false); loadAll(); }
 
   function resetFilters() {
-    setPriceRange([0,20000000]); setEmiRange([0,100000]); setDpRange([0,2000000]);
-    setAreaRange([0,5000]); setFacing("Any"); setFloorIdx(0); setMinBeds(0);
-    setUnitType("All"); setStatus("All Status"); setShowTrendingOnly(false);
-    setSelectedProject(""); setSelectedTower(""); setSelectedLocation("");
+    setPriceRange([0,20000000]); setAreaRange([0,5000]);
+    setFacing("Any"); setFloorIdx(0); setMinBeds(0);
+    setUnitType("All"); setStatus("All Status");
+    setShowTrendingOnly(false);
   }
-
-  // Towers filtered by selected project
-  const towersForProject = selectedProject
-    ? allTowers.filter(t => t.project_id === selectedProject)
-    : allTowers;
-
-  // Unique locations from projects
-  const locations = Array.from(new Set(
-    allProjects.map((p: any) => p.location).filter(Boolean)
-  )).sort() as string[];
-
-  // Build set of tower_ids that match project/location filter
-  const allowedTowerIds: Set<string> | null = (() => {
-    if (!selectedProject && !selectedLocation && !selectedTower) return null;
-    let towers = allTowers;
-    if (selectedLocation) {
-      const projIds = new Set(allProjects.filter((p: any) => p.location === selectedLocation).map((p: any) => p.id));
-      towers = towers.filter(t => projIds.has(t.project_id));
-    }
-    if (selectedProject) towers = towers.filter(t => t.project_id === selectedProject);
-    if (selectedTower)   towers = towers.filter(t => t.id === selectedTower);
-    return new Set(towers.map(t => t.id));
-  })();
 
   // Client-side filtering
   const filtered = units.filter(u => {
     // Trending only
     if (showTrendingOnly && !trendingIds.has(u.id)) return false;
-    // Project / Tower / Location
-    if (allowedTowerIds && !allowedTowerIds.has(u.tower_id)) return false;
     // Unit type
     if (unitType !== "All") {
       const t = unitType.toLowerCase();
@@ -380,14 +290,6 @@ export default function StorePage() {
     // Price
     const price = parseFloat(u.base_price||0);
     if (price > 0 && (price < priceRange[0] || price > priceRange[1])) return false;
-    // EMI
-    const emi = parseFloat(u.emi_estimate||0);
-    if (emi > 0 && emiRange[1] < 100000 && emi > emiRange[1]) return false;
-    if (emi > 0 && emiRange[0] > 0 && emi < emiRange[0]) return false;
-    // Down payment
-    const dp = parseFloat(u.down_payment||0);
-    if (dp > 0 && dpRange[1] < 2000000 && dp > dpRange[1]) return false;
-    if (dp > 0 && dpRange[0] > 0 && dp < dpRange[0]) return false;
     // Area
     const area = parseFloat(u.area_sqft||0);
     if (area > 0 && (area < areaRange[0] || area > areaRange[1])) return false;
@@ -414,8 +316,9 @@ export default function StorePage() {
   const formatPriceShort = (n:number) => n>=10000000?`₹${(n/10000000).toFixed(1)}Cr`:n>=100000?`₹${(n/100000).toFixed(0)}L`:`₹${n.toLocaleString()}`;
 
   return (
-    <main className="min-h-screen bg-white">
+    <main style={{ fontFamily:"'Lato',sans-serif" }} className="min-h-screen bg-white">
       <Navbar />
+      <div className="pt-16"><BackButton /></div>
 
       {/* ── Header ── */}
       <div className="pt-16" style={{ background:"linear-gradient(135deg,#262262,#2A3887)" }}>
@@ -498,62 +401,17 @@ export default function StorePage() {
           {/* ── Advanced Filter Panel ── */}
           {filtersOpen && (
             <div className="mt-3 pt-3 border-t" style={{ borderColor:"#E2F1FC" }}>
-
-              {/* Row 1: Price, EMI, Down Payment, Area */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-2">
+                {/* Price Range */}
                 <RangeSlider label="Price Range" min={0} max={20000000}
-                  value={priceRange} onChange={setPriceRange} format={formatPriceShort} />
-                <RangeSlider label="EMI (per month)" min={0} max={100000}
-                  value={emiRange} onChange={setEmiRange}
-                  format={n => n===0?"Any":`₹${(n/1000).toFixed(0)}K`} />
-                <RangeSlider label="Down Payment" min={0} max={2000000}
-                  value={dpRange} onChange={setDpRange} format={formatPriceShort} />
+                  value={priceRange} onChange={setPriceRange}
+                  format={formatPriceShort} />
+                {/* Area Range */}
                 <RangeSlider label="Area (sqft)" min={0} max={5000}
                   value={areaRange} onChange={setAreaRange}
                   format={n => `${n.toLocaleString()} sqft`} />
-              </div>
-
-              {/* Row 2: Location, Project, Tower, Facing */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-4 mt-2">
-                {/* Location */}
-                <div className="mb-4">
-                  <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Location</p>
-                  <select value={selectedLocation} onChange={e => { setSelectedLocation(e.target.value); setSelectedProject(""); setSelectedTower(""); }}
-                    className="w-full rounded-lg px-3 py-2 text-xs font-bold border focus:outline-none"
-                    style={{ borderColor:"#E2F1FC", color: selectedLocation?"#2A3887":"#999", background:"#F8F9FB" }}>
-                    <option value="">All Locations</option>
-                    {locations.map(l => <option key={l} value={l}>{l}</option>)}
-                  </select>
-                </div>
-
-                {/* Project */}
-                <div className="mb-4">
-                  <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Project</p>
-                  <select value={selectedProject} onChange={e => { setSelectedProject(e.target.value); setSelectedTower(""); setSelectedLocation(""); }}
-                    className="w-full rounded-lg px-3 py-2 text-xs font-bold border focus:outline-none"
-                    style={{ borderColor:"#E2F1FC", color: selectedProject?"#2A3887":"#999", background:"#F8F9FB" }}>
-                    <option value="">All Projects</option>
-                    {allProjects.map((p:any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-
-                {/* Tower */}
-                <div className="mb-4">
-                  <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Tower / Block</p>
-                  <select value={selectedTower} onChange={e => setSelectedTower(e.target.value)}
-                    className="w-full rounded-lg px-3 py-2 text-xs font-bold border focus:outline-none"
-                    style={{ borderColor:"#E2F1FC", color: selectedTower?"#2A3887":"#999", background:"#F8F9FB" }}>
-                    <option value="">All Towers</option>
-                    {towersForProject.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.project_name} — {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Facing */}
-                <div className="mb-4">
+                <div className="mb-5">
                   <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Facing</p>
                   <div className="flex flex-wrap gap-1.5">
                     {FACING_OPTIONS.map(f => (
@@ -565,50 +423,41 @@ export default function StorePage() {
                     ))}
                   </div>
                 </div>
-              </div>
-
-              {/* Row 3: Floor + Bedrooms */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 mt-1 mb-3">
-                <div>
-                  <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Floor Level</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {FLOOR_OPTIONS.map((f,i) => (
-                      <button key={f.label} onClick={() => setFloorIdx(i)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
-                        style={floorIdx===i?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
-                        {f.label}
-                      </button>
-                    ))}
+                {/* Floor & Bedrooms */}
+                <div className="mb-5 space-y-4">
+                  <div>
+                    <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Floor Level</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {FLOOR_OPTIONS.map((f,i) => (
+                        <button key={f.label} onClick={() => setFloorIdx(i)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
+                          style={floorIdx===i?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Min Bedrooms</p>
+                    <div className="flex gap-1.5">
+                      {[0,1,2,3,4].map(n => (
+                        <button key={n} onClick={() => setMinBeds(n)}
+                          className="w-8 h-8 rounded-lg text-xs font-bold border transition-all"
+                          style={minBeds===n?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
+                          {n===0?"Any":n+"+"}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Min Bedrooms</p>
-                  <div className="flex gap-1.5">
-                    {[0,1,2,3,4].map(n => (
-                      <button key={n} onClick={() => setMinBeds(n)}
-                        className="w-8 h-8 rounded-lg text-xs font-bold border transition-all"
-                        style={minBeds===n?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
-                        {n===0?"Any":n+"+"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
-
-              {/* Active filter chips + reset */}
+              {/* Reset */}
               {activeCount > 0 && (
-                <div className="flex items-center justify-between pb-2 pt-1 border-t" style={{ borderColor:"#E2F1FC" }}>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedLocation && <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background:"#E0F2FE",color:"#0369a1" }}>📍 {selectedLocation} <button onClick={()=>setSelectedLocation("")} className="ml-1 opacity-60 hover:opacity-100">✕</button></span>}
-                    {selectedProject && <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background:"#EDE9FE",color:"#6d28d9" }}>🏗 {allProjects.find((p:any)=>p.id===selectedProject)?.name} <button onClick={()=>{setSelectedProject("");setSelectedTower("");}} className="ml-1 opacity-60 hover:opacity-100">✕</button></span>}
-                    {selectedTower && <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background:"#FEF3C7",color:"#92400E" }}>🏢 {allTowers.find(t=>t.id===selectedTower)?.name} <button onClick={()=>setSelectedTower("")} className="ml-1 opacity-60 hover:opacity-100">✕</button></span>}
-                    {(emiRange[1]<100000) && <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background:"#DCFCE7",color:"#166534" }}>EMI ≤ ₹{(emiRange[1]/1000).toFixed(0)}K</span>}
-                    {(dpRange[1]<2000000) && <span className="px-2.5 py-1 rounded-full text-xs font-bold" style={{ background:"#DCFCE7",color:"#166534" }}>DP ≤ {formatPriceShort(dpRange[1])}</span>}
-                  </div>
+                <div className="flex justify-end pb-2">
                   <button onClick={resetFilters}
-                    className="px-4 py-1.5 text-xs font-bold rounded-full flex-shrink-0"
+                    className="px-4 py-1.5 text-xs font-bold rounded-full"
                     style={{ background:"#FEE2E2",color:"#DC2626" }}>
-                    ✕ Reset all
+                    ✕ Reset all filters
                   </button>
                 </div>
               )}
@@ -647,12 +496,6 @@ export default function StorePage() {
 
       <CompareBar />
       <Footer />
-      <ProactiveAssistant
-        searchCount={searchCount}
-        lastResultsCount={lastResultsCount}
-        lastQuery={aiQuery}
-        budget={lastBudget}
-      />
     </main>
   );
 }

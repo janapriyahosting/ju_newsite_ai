@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PhoneOtpVerify from "@/components/PhoneOtpVerify";
@@ -9,15 +9,18 @@ import { saveSession, isLoggedIn } from "@/lib/customerAuth";
 
 function LoginInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [notFound, setNotFound] = useState(false);
 
+  const redirect = searchParams.get("redirect") || "/dashboard";
+
   useEffect(() => {
-    if (isLoggedIn()) router.replace("/dashboard");
-  }, [router]);
+    if (isLoggedIn()) router.replace(redirect);
+  }, [router, redirect]);
 
   function handleVerified(result: any) {
     saveSession(result.access_token, result.customer);
-    router.push("/dashboard");
+    router.push(redirect);
   }
 
   return (
@@ -41,7 +44,7 @@ function LoginInner() {
                   <p className="text-sm text-gray-500">
                     We couldn't find an account with this number. Please create a new account to continue.
                   </p>
-                  <Link href="/register"
+                  <Link href={redirect !== "/dashboard" ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"}
                     className="block w-full py-3.5 text-white font-bold rounded-xl text-sm text-center transition-all hover:opacity-90"
                     style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
                     Create Account
@@ -65,7 +68,7 @@ function LoginInner() {
               <div className="mt-6 pt-6 text-center" style={{ borderTop: "1px solid #E2F1FC" }}>
                 <p className="text-sm" style={{ color: "#555A5C" }}>
                   New to Janapriya?{" "}
-                  <Link href="/register" className="font-bold hover:underline" style={{ color: "#2A3887" }}>Create Account</Link>
+                  <Link href={redirect !== "/dashboard" ? `/register?redirect=${encodeURIComponent(redirect)}` : "/register"} className="font-bold hover:underline" style={{ color: "#2A3887" }}>Create Account</Link>
                 </p>
               </div>
               <div className="mt-6 flex items-center justify-center gap-6 text-xs" style={{ color: "#999" }}>
