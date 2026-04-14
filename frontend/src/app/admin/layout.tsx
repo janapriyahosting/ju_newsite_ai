@@ -16,6 +16,7 @@ const navItems = [
   { href: '/admin/crud',       label: 'Data Manager',icon: '🗄️' },
   { href: '/admin/fields',     label: 'Fields',      icon: '⚙️' },
   { href: '/admin/cms',        label: 'CMS',         icon: '📄' },
+  { href: '/admin/filter-links', label: 'Filter Links', icon: '🔗' },
 { href: '/admin/towers', label: 'Towers', icon: '🏛' },
         { href: '/admin/media',        label: 'Media',         icon: '🖼️' },
         { href: '/admin/media/series', label: 'Series Media',  icon: '🎞️' },

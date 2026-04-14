@@ -4,17 +4,17 @@ import { adminApi } from "@/lib/adminAuth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Tab = "seo" | "sections" | "settings";
-type SettingsGroup = "general" | "contact" | "social" | "seo";
+type SettingsGroup = "general" | "contact" | "social" | "seo" | "filters";
 
 const PAGE_LABELS: Record<string, string> = {
   home: "🏠 Homepage", projects: "📋 Projects Listing",
   units: "🏢 Units / Search", project_detail: "📄 Individual Project Pages",
 };
 const GROUP_LABELS: Record<SettingsGroup, string> = {
-  general: "⚙️ General", contact: "📞 Contact", social: "🔗 Social Media", seo: "🔍 SEO & Analytics",
+  general: "⚙️ General", contact: "📞 Contact", social: "🔗 Social Media", seo: "🔍 SEO & Analytics", filters: "🔎 Store Filters",
 };
 const GROUP_ICONS: Record<string, string> = {
-  general: "⚙️", contact: "📞", social: "🔗", seo: "🔍",
+  general: "⚙️", contact: "📞", social: "🔗", seo: "🔍", filters: "🔎",
 };
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ function SettingsPanel({ onSuccess, onError }: { onSuccess: (m: string) => void;
   const [values, setValues] = useState<Record<string, string>>({});
   const [activeGroup, setActiveGroup] = useState<SettingsGroup>("general");
   const [saving, setSaving] = useState(false);
-  const groups: SettingsGroup[] = ["general", "contact", "social", "seo"];
+  const groups: SettingsGroup[] = ["general", "contact", "social", "seo", "filters"];
 
   useEffect(() => { load(); }, []);
 

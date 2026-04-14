@@ -12,10 +12,10 @@ const PAYMENTS = [
     headline: "Allows you to buy a home for the loved",
     image: "/AnEasyBudget.webp",
     buttons: [
-      { text: "₹ 1.3Cr+", sub: "is my budget", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=13000000&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 90L+",   sub: "is my budget", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=9000000&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 70L+",   sub: "is my budget", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=7000000&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 50L+",   sub: "is my budget", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=5000000&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
+      { text: "₹ 1.3Cr+", sub: "is my budget", href: "/store?min_price=13000000" },
+      { text: "₹ 90L+",   sub: "is my budget", href: "/store?min_price=9000000" },
+      { text: "₹ 70L+",   sub: "is my budget", href: "/store?min_price=7000000" },
+      { text: "₹ 50L+",   sub: "is my budget", href: "/store?min_price=5000000" },
     ],
   },
   {
@@ -24,10 +24,10 @@ const PAYMENTS = [
     headline: "Lets your family enjoy a good lifestyle",
     image: "/ALighterEMI.webp",
     buttons: [
-      { text: "₹ 85K+", sub: "EMI", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=85000&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 75K+", sub: "EMI", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=75000&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 55K+", sub: "EMI", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=55000&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 35K+", sub: "EMI", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=35000&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
+      { text: "₹ 85K+", sub: "EMI", href: "/store?max_emi=85000" },
+      { text: "₹ 75K+", sub: "EMI", href: "/store?max_emi=75000" },
+      { text: "₹ 55K+", sub: "EMI", href: "/store?max_emi=55000" },
+      { text: "₹ 35K+", sub: "EMI", href: "/store?max_emi=35000" },
     ],
   },
   {
@@ -36,10 +36,10 @@ const PAYMENTS = [
     headline: "For your dreamhome to ease stress",
     image: "/ASuitableDownpayment1.webp",
     buttons: [
-      { text: "₹ 18L+", sub: "Downpayment", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=1800000&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 16L+", sub: "Downpayment", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=1600000&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 12L+", sub: "Downpayment", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=1200000&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "₹ 8L+",  sub: "Downpayment", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=800000&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
+      { text: "₹ 18L+", sub: "Downpayment", href: "/store?max_down_payment=1800000" },
+      { text: "₹ 16L+", sub: "Downpayment", href: "/store?max_down_payment=1600000" },
+      { text: "₹ 12L+", sub: "Downpayment", href: "/store?max_down_payment=1200000" },
+      { text: "₹ 8L+",  sub: "Downpayment", href: "/store?max_down_payment=800000" },
     ],
   },
 ];
@@ -51,7 +51,7 @@ const SIZES = [
     headline: "A Treasure Chest of love & happiness",
     image: "/any-size-of-a-cozy.webp",
     buttons: [
-      { text: "500+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=500&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
+      { text: "500+", sub: "sft", href: "/store?min_area=500" },
     ],
   },
   {
@@ -60,8 +60,8 @@ const SIZES = [
     headline: "There is no place like home",
     image: "/full-shot-woman-sitting-floor.webp",
     buttons: [
-      { text: "1500+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=1500&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "1000+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=1000&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
+      { text: "1500+", sub: "sft", href: "/store?min_area=1500" },
+      { text: "1000+", sub: "sft", href: "/store?min_area=1000" },
     ],
   },
   {
@@ -70,8 +70,8 @@ const SIZES = [
     headline: "Work, Passion or just unwind",
     image: "/home-is-where-a-lot-starts.webp",
     buttons: [
-      { text: "1500+", sub: "sft", disabled: true, href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=1500&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
-      { text: "2000+", sub: "sft", href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=2000&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal" },
+      { text: "1500+", sub: "sft", disabled: true, href: "/store?min_area=1500" },
+      { text: "2000+", sub: "sft", href: "/store?min_area=2000" },
     ],
   },
 ];
@@ -82,21 +82,21 @@ const BEDROOMS = [
     label: "3 BEDROOMS ARE SUCH BLISS",
     image: "/3bedroom.webp",
     cta: "Explore 3BHK Options",
-    href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=3&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
+    href: "/store?bedrooms=3&unit_type=3BHK",
   },
   {
     id: "2bhk",
     label: "2 BEDROOM ARE SPECIAL",
     image: "/2-bedroom-are-special.webp",
     cta: "Explore 2BHK Options",
-    href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=2&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
+    href: "/store?bedrooms=2&unit_type=2BHK",
   },
   {
     id: "1bhk",
     label: "INVEST IN A 1 BEDROOM",
     image: "/invest-in-a-1-Bedroom.webp",
     cta: "Explore 1BHK Options",
-    href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
+    href: "/store?bedrooms=1",
   },
 ];
 
@@ -113,14 +113,14 @@ const LOCATIONS = [
     label: "BENGALURU",
     image: "/bengaluru.webp",
     cta: "Know More",
-    href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_multiple_field_3229=4%2C5&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
+    href: "/store",
   },
   {
     id: "hyderabad",
     label: "HYDERABAD",
     image: "/hyderabad.webp",
     cta: "Know More",
-    href: "/property-listing/?widget_id=2&kind=0&sf_unit_field_3076=167&sf_unit_field_3077=167&sf_unit_field_3078=167&sf_select_field_3093=-1&sf_multiple_field_3229=1%2C2%2C4&sf_select_field_3094=-1&sf_min_field_3076=-1&sf_min_field_3077=-1&sf_min_field_3078=-1&sf_unit_living_area=1&sf_min_living_area=-1&sf_tmin_bedrooms=-1&sf_tmin_bathrooms=-1&wplpage=1&wplview=property_listing&wplpagination=normal",
+    href: "/store",
   },
 ];
 
@@ -801,7 +801,7 @@ export default function HomePage() {
             )}
           </div>
         ))}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,27,42,0.35) 0%, rgba(13,27,42,0.1) 50%, rgba(13,27,42,0.55) 100%)", zIndex: 2 }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,27,42,0.35) 0%, rgba(13,27,42,0.1) 50%, rgba(13,27,42,0.55) 100%)", zIndex: 0 }} />
         <div className="absolute top-1/4 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.18), transparent 70%)", zIndex: 2 }} />
         <div className="absolute bottom-1/3 left-0 w-72 h-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.12), transparent 70%)", zIndex: 2 }} />
 
@@ -809,7 +809,7 @@ export default function HomePage() {
         <div
           className="relative mx-auto"
           style={{
-            zIndex: 4,
+            zIndex: 0,
             paddingTop: "clamp(100px, 20vw, 150px)",
             paddingBottom: "clamp(90px, 16vw, 130px)",
             paddingLeft: "clamp(16px, 5vw, 32px)",
@@ -819,16 +819,7 @@ export default function HomePage() {
             boxSizing: "border-box",
           }}
         >
-          {/* ── Hero Headline ── */}
-          <div className="hero-headline fade-in" style={{ animationDelay: "0.05s" }}>
-            <span className="hero-headline-eyebrow">Hyderabad's Most Trusted Builder · Since 1984</span>
-            <h1 className="hero-headline-h1">
-              Find Your<br />Dream Home
-            </h1>
-            <p className="hero-headline-sub">
-              40 years of trust &nbsp;·&nbsp; 70,000+ happy families &nbsp;·&nbsp; Premium locations
-            </p>
-          </div>
+         
 
           {/* ── Search Bar ── */}
           <div
