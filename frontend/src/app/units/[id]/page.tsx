@@ -585,6 +585,20 @@ export default function UnitDetailPage() {
                 <BrochureDownload url={unit.brochure_url || towerData?.brochure_url || String(customFieldMap['series_brochure'].value)} unitId={id as string} />
               )}
 
+              {/* Home Loan + Get Quote */}
+              <div className="grid grid-cols-2 gap-3">
+                <Link href={`/home-loan/${id}`}
+                  className="py-3.5 text-center text-white font-black rounded-xl text-sm transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, #16A34A, #22c55e)' }}>
+                  🏦 Home Loan
+                </Link>
+                <button
+                  className="py-3.5 font-black rounded-xl text-sm transition-all hover:opacity-90"
+                  style={{ background: 'linear-gradient(135deg, #F59E0B, #EAB308)', color: '#fff' }}>
+                  📋 Get Quote
+                </button>
+              </div>
+
               {/* Share Card */}
               <div className="rounded-2xl p-5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
                 <p className="text-xs font-black mb-3" style={{ color: "#2A3887" }}>Share this property</p>
@@ -682,8 +696,7 @@ function BrochureDownload({ url, unitId }: { url: string; unitId: string }) {
   }
 
   return (
-    <div className="rounded-2xl p-5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
-      <p className="text-xs font-black mb-3" style={{ color: "#2A3887" }}>📄 Project Brochure</p>
+    <div>
       <button
         onClick={handleClick}
         className="w-full py-3 text-white font-black rounded-xl text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2"
