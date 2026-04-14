@@ -537,8 +537,6 @@ export default function UnitDetailPage() {
               );
             })}
 
-            {/* Remaining custom fields not assigned to any section */}
-            <DynamicFields entity="unit" entityId={unit.id} entityData={unit} excludeKeys={fieldsInSections} />
           </div>
           {/* Right: Sticky CTA */}
           <div className="lg:col-span-1">

@@ -131,6 +131,14 @@ async def create_booking(
     unit.status = "hold"
     await db.flush()
     await db.refresh(booking)
+
+    # Rescore leads for this customer
+    try:
+        from backend.app.services.lead_scoring import rescore_leads_for_customer
+        await rescore_leads_for_customer(customer.id, customer.phone or "", db)
+    except Exception:
+        pass
+
     await db.commit()
 
     return {

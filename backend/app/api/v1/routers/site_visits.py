@@ -31,6 +31,13 @@ async def request_site_visit(
     await db.flush()
     await db.refresh(visit)
 
+    # Rescore leads for this customer/phone
+    try:
+        from backend.app.services.lead_scoring import rescore_leads_for_customer
+        await rescore_leads_for_customer(visit.customer_id, visit.phone, db)
+    except Exception:
+        pass
+
     # Fire site_visit_requested notification
     asyncio.create_task(fire_notification_background(
         "site_visit_requested", {

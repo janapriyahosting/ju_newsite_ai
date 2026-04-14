@@ -441,4 +441,17 @@ async def session_ping(data: SessionPingRequest, db: AsyncSession = Depends(get_
         db.add(sess)
 
     await db.commit()
+
+    # Rescore leads every 5 page views when customer is known
+    if cid and sess.page_views and sess.page_views % 5 == 0:
+        try:
+            from backend.app.models.customer import Customer
+            from backend.app.services.lead_scoring import rescore_leads_for_customer
+            cust = (await db.execute(select(Customer).where(Customer.id == cid))).scalar_one_or_none()
+            if cust and cust.phone:
+                await rescore_leads_for_customer(cid, cust.phone, db)
+                await db.commit()
+        except Exception:
+            pass
+
     return {"ok": True}
