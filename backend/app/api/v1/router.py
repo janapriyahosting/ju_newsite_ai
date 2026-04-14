@@ -21,6 +21,8 @@ from backend.app.api.v1.routers.admin_customers import router as admin_customers
 from backend.app.api.v1.routers.admin_media import router as admin_media_router
 from backend.app.api.v1.routers.admin_notifications import router as admin_notifications_router
 from backend.app.api.v1.routers.assistant import router as assistant_router
+from backend.app.api.v1.routers.home_loan_requests import router as home_loan_requests_router
+from backend.app.api.v1.routers.admin_home_loans import router as admin_home_loans_router
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(health_router)
@@ -45,3 +47,5 @@ api_router.include_router(admin_customers_router)
 api_router.include_router(admin_media_router)
 api_router.include_router(admin_notifications_router)
 api_router.include_router(assistant_router)
+api_router.include_router(home_loan_requests_router)
+api_router.include_router(admin_home_loans_router)

@@ -9,8 +9,10 @@ from backend.app.models.booking import Booking
 from backend.app.models.coupon import Coupon
 from backend.app.models.search_log import SearchLog
 from backend.app.models.session_log import SessionLog
+from backend.app.models.home_loan_request import HomeLoanRequest
 
 __all__ = [
     "Project", "Tower", "Unit", "Customer", "Lead",
     "SiteVisit", "CartItem", "Booking", "Coupon", "SearchLog", "SessionLog",
+    "HomeLoanRequest",
 ]

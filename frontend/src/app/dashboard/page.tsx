@@ -13,6 +13,7 @@ const TABS = [
   {id:"bookings", label:"My Bookings", icon:"📋"},
   {id:"kyc", label:"KYC Documents", icon:"📄"},
   {id:"visits", label:"Site Visits", icon:"📅"},
+  {id:"home-loans", label:"Home Loans", icon:"🏦"},
   {id:"saved", label:"Saved Properties", icon:"❤️"},
   {id:"password", label:"Change Password", icon:"🔒"},
   {id:"profile", label:"Profile", icon:"👤"},
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [tab, setTab] = useState("overview");
   const [bookings, setBookings] = useState<any[]>([]);
   const [visits, setVisits] = useState<any[]>([]);
+  const [homeLoanRequests, setHomeLoanRequests] = useState<any[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [pwForm, setPwForm] = useState({ current: "", newpw: "", confirm: "" });
@@ -54,14 +56,17 @@ export default function DashboardPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [b, v] = await Promise.allSettled([
+      const [b, v, hl] = await Promise.allSettled([
         customerApi("/bookings"),
         customerApi("/site-visits"),
+        customerApi("/home-loan-requests"),
       ]);
       if (b.status === "fulfilled") { const bv = b.value as any; setBookings(Array.isArray(bv) ? bv : (bv?.items || [])); }
       else { console.error("[Dashboard] bookings fetch failed:", b.reason); }
       if (v.status === "fulfilled") { const vv = v.value as any; setVisits(Array.isArray(vv) ? vv : (vv?.items || [])); }
       else { console.error("[Dashboard] visits fetch failed:", v.reason); }
+      if (hl.status === "fulfilled") { const hlv = hl.value as any; setHomeLoanRequests(Array.isArray(hlv) ? hlv : (hlv?.items || [])); }
+      else { console.error("[Dashboard] home loans fetch failed:", hl.reason); }
     } catch {}
     setLoading(false);
   }
@@ -466,6 +471,11 @@ export default function DashboardPage() {
           <SiteVisitsTab visits={visits} loading={loading} onRefresh={loadData} />
         )}
 
+        {/* ── Home Loan Requests ── */}
+        {tab === "home-loans" && (
+          <HomeLoanTab requests={homeLoanRequests} loading={loading} />
+        )}
+
         {/* ── Saved Properties ── */}
         {tab === "saved" && (
           <div>
@@ -571,6 +581,114 @@ function SavedUnitCard({ unitId, onRemove }: { unitId: string; onRemove: () => v
 }
 
 // ── SiteVisitsTab with reschedule ──────────────────────────────────────────
+function HomeLoanTab({ requests, loading }: { requests: any[]; loading: boolean }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const sc: Record<string, { bg: string; color: string }> = {
+    new: { bg: '#EFF6FF', color: '#2563EB' },
+    contacted: { bg: '#FEF9C3', color: '#CA8A04' },
+    processing: { bg: '#F3E8FF', color: '#9333EA' },
+    approved: { bg: '#DCFCE7', color: '#16A34A' },
+    rejected: { bg: '#FEE2E2', color: '#DC2626' },
+  };
+  function fmtC(v: any) { if (!v) return '—'; const n = parseFloat(v); if (n >= 10000000) return `₹${(n/10000000).toFixed(2)} Cr`; if (n >= 100000) return `₹${(n/100000).toFixed(1)} L`; return `₹${n.toLocaleString('en-IN')}`; }
+  function Row({ label, value }: { label: string; value: any }) { if (!value) return null; return <div><p className="text-xs text-gray-400">{label}</p><p className="text-sm font-semibold">{value}</p></div>; }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-black" style={{ color: "#2A3887" }}>My Home Loan Requests</h2>
+      {requests.length === 0 ? (
+        <div className="text-center py-16 rounded-2xl" style={{ background: "#F8F9FB" }}>
+          <p className="text-5xl mb-3">🏦</p>
+          <p className="font-bold text-lg mb-2" style={{ color: "#555" }}>No home loan requests yet</p>
+          <p className="text-sm text-gray-400 mb-4">Apply for a home loan from any unit detail page.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {requests.map((r: any) => {
+            const s = sc[r.status] || { bg: '#F3F4F6', color: '#6B7280' };
+            const isOpen = expandedId === r.id;
+            const co = r.co_applicant;
+            return (
+              <div key={r.id} className="rounded-2xl bg-white overflow-hidden" style={{ border: '1px solid #E2F1FC' }}>
+                {/* Summary row */}
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-bold" style={{ background: s.bg, color: s.color }}>
+                        {r.status?.charAt(0).toUpperCase() + r.status?.slice(1)}
+                      </span>
+                      {r.unit_number && <span className="text-xs font-semibold" style={{ color: '#2A3887' }}>{[r.project_name, r.tower_name, r.unit_number].filter(Boolean).join(' / ')}</span>}
+                    </div>
+                    <span className="text-xs text-gray-400">{r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <Row label="Property Value" value={fmtC(r.property_value)} />
+                    <Row label="Employment" value={r.employment_type} />
+                    <Row label="Monthly Income" value={r.gross_monthly_income ? fmtC(r.gross_monthly_income) : null} />
+                    <Row label="Co-Applicant" value={r.has_co_applicant ? (co?.name || 'Yes') : 'No'} />
+                  </div>
+                  {r.admin_remarks && (
+                    <div className="mt-3 px-3 py-2 rounded-lg" style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                      <p className="text-xs text-gray-400 mb-0.5">Remarks from team</p>
+                      <p className="text-sm" style={{ color: '#166534' }}>{r.admin_remarks}</p>
+                    </div>
+                  )}
+                  <button onClick={() => setExpandedId(isOpen ? null : r.id)}
+                    className="mt-3 text-xs font-bold hover:underline" style={{ color: '#29A9DF' }}>
+                    {isOpen ? '▲ Hide Details' : '▼ View Details'}
+                  </button>
+                </div>
+
+                {/* Expanded detail */}
+                {isOpen && (
+                  <div className="px-5 pb-5 pt-0 space-y-4" style={{ borderTop: '1px solid #E2F1FC' }}>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#2A3887' }}>Applicant Details</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <Row label="Full Name" value={r.name} />
+                        <Row label="Phone" value={r.phone} />
+                        <Row label="Email" value={r.email} />
+                        <Row label="PAN" value={r.pan} />
+                        <Row label="Aadhar" value={r.aadhar} />
+                        <Row label="Date of Birth" value={r.dob} />
+                        <Row label="Address" value={[r.address_line1, r.address_line2, r.city, r.state, r.pincode].filter(Boolean).join(', ')} />
+                        <Row label="Organisation" value={r.organisation} />
+                        <Row label="Work Experience" value={r.work_experience ? `${r.work_experience} yrs` : null} />
+                        <Row label="Obligations" value={r.current_obligations ? fmtC(r.current_obligations) : null} />
+                      </div>
+                    </div>
+                    {r.has_co_applicant && co && (
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide mb-2" style={{ color: '#2A3887' }}>Co-Applicant Details</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <Row label="Full Name" value={co.name} />
+                          <Row label="Phone" value={co.phone} />
+                          <Row label="Email" value={co.email} />
+                          <Row label="PAN" value={co.pan} />
+                          <Row label="Aadhar" value={co.aadhar} />
+                          <Row label="DOB" value={co.dob} />
+                          <Row label="Employment" value={co.employment_type} />
+                          <Row label="Income" value={co.gross_monthly_income ? fmtC(co.gross_monthly_income) : null} />
+                          <Row label="Organisation" value={co.organisation} />
+                        </div>
+                      </div>
+                    )}
+                    {r.unit_id && (
+                      <a href={`/home-loan/${r.unit_id}`} className="inline-block text-xs font-bold px-4 py-2 rounded-lg" style={{ background: '#E2F1FC', color: '#2A3887' }}>
+                        Edit Application
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SiteVisitsTab({ visits, loading, onRefresh }: { visits: any[]; loading: boolean; onRefresh: () => void }) {
   const [rescheduleModal, setRescheduleModal] = useState<any>(null);
   const [newDate, setNewDate] = useState("");
