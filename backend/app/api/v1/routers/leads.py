@@ -20,6 +20,14 @@ async def create_lead(
     db: AsyncSession = Depends(get_db),
 ):
     lead = Lead(**data.model_dump())
+    # Link to existing customer by phone
+    if not lead.customer_id and lead.phone:
+        from backend.app.models.customer import Customer
+        cust = (await db.execute(
+            select(Customer).where(Customer.phone == lead.phone)
+        )).scalar_one_or_none()
+        if cust:
+            lead.customer_id = cust.id
     db.add(lead)
     await db.flush()
     await db.refresh(lead)

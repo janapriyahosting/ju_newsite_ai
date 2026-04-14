@@ -124,6 +124,31 @@ async def compute_lead_score(lead: Lead, db: AsyncSession) -> tuple[int, dict]:
     return score, details
 
 
+async def rescore_leads_for_customer(customer_id, phone: str, db: AsyncSession) -> int:
+    """Find leads by customer_id or phone, link customer_id if missing, and rescore.
+    Returns count of leads updated."""
+    from backend.app.models.customer import Customer
+    # Find leads by customer_id or phone
+    result = await db.execute(
+        select(Lead).where(
+            (Lead.customer_id == customer_id) | (Lead.phone == phone)
+        )
+    )
+    leads = result.scalars().all()
+    count = 0
+    for lead in leads:
+        if not lead.customer_id and customer_id:
+            lead.customer_id = customer_id
+        score, details = await compute_lead_score(lead, db)
+        if score != lead.lead_score:
+            lead.lead_score = score
+            lead.score_details = details
+            count += 1
+    if count:
+        await db.flush()
+    return count
+
+
 async def score_all_leads(db: AsyncSession) -> int:
     """Recompute scores for all leads. Returns count updated."""
     result = await db.execute(select(Lead))

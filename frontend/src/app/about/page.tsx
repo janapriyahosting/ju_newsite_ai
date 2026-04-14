@@ -99,7 +99,7 @@ export default function AboutPage() {
         You can dream, create, design, and build the most wonderful place in the world. But it requires people to make the dream a reality.
       </p>
     </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
       {TEAM.map((m, i) => (
         <div key={i} className="bg-white rounded-3xl p-8 text-center transition-all duration-300 hover:-translate-y-1"
           style={{ boxShadow: "0 8px 40px rgba(42,56,135,0.1)", border: "1.5px solid #E2F1FC" }}>
