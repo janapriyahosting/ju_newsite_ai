@@ -33,6 +33,20 @@ const TEAM = [
     image: "/satish-sir.jpg",
     color: "#29A9DF",
   },
+  {
+    name: "Maneesh Kumar Dubey",
+    role: "AVP Construction",
+    bio: "Mr. Maneesh Kumar Dubey is a qualified civil engineer with extensive experience in design, execution, and project management.",
+    image: "/manish.png",
+    color: "#29A9DF",
+  },
+  {
+    name: "Kamal Kishan",
+    role: "Vice President / Marketing",
+    bio: "His diverse experience with multi-national clients, agencies, and media houses has contributed to the growth of many brands.",
+    image: "/kamal.png",
+    color: "#29A9DF",
+  },
 ];
 
 const VALUES = [

@@ -151,3 +151,39 @@ async def bulk_update_settings(data: SettingsBulkUpdate, db: AsyncSession = Depe
 async def get_settings_public(db: AsyncSession = Depends(get_db)):
     r = await db.execute(select(SiteSetting).order_by(SiteSetting.group_key, SiteSetting.sort_order))
     return {s.setting_key: s.setting_value for s in r.scalars().all()}
+
+
+# ── Filter Links ──────────────────────────────────────────────────────────────
+from sqlalchemy import text as _text
+
+@router.get("/cms/filter-links")
+async def list_filter_links(db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)):
+    r = await db.execute(_text("SELECT id, label, url, filters, sort_order, created_at FROM filter_links ORDER BY sort_order, created_at"))
+    return [{"id": str(row.id), "label": row.label, "url": row.url, "filters": row.filters, "sort_order": row.sort_order,
+             "created_at": row.created_at.isoformat() if row.created_at else None} for row in r.fetchall()]
+
+@router.get("/cms/public/filter-links")
+async def list_filter_links_public(db: AsyncSession = Depends(get_db)):
+    r = await db.execute(_text("SELECT id, label, url, filters, sort_order FROM filter_links ORDER BY sort_order, created_at"))
+    return [{"id": str(row.id), "label": row.label, "url": row.url, "filters": row.filters} for row in r.fetchall()]
+
+class FilterLinkCreate(BaseModel):
+    label: str
+    url: str
+    filters: Optional[dict] = None
+
+@router.post("/cms/filter-links")
+async def create_filter_link(data: FilterLinkCreate, db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)):
+    import json
+    new_id = uuid.uuid4()
+    await db.execute(_text(
+        "INSERT INTO filter_links (id, label, url, filters) VALUES (:id, :label, :url, :filters)"
+    ), {"id": new_id, "label": data.label, "url": data.url, "filters": json.dumps(data.filters) if data.filters else None})
+    await db.commit()
+    return {"id": str(new_id), "label": data.label, "url": data.url}
+
+@router.delete("/cms/filter-links/{link_id}")
+async def delete_filter_link(link_id: uuid.UUID, db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)):
+    await db.execute(_text("DELETE FROM filter_links WHERE id = :id"), {"id": link_id})
+    await db.commit()
+    return {"detail": "Deleted"}

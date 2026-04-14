@@ -198,6 +198,10 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  // Configurable max values (loaded from admin settings)
+  const [maxPrice, setMaxPrice] = useState(20000000);
+  const [maxArea, setMaxArea] = useState(5000);
+
   // Quick filters
   const [showTrendingOnly, setShowTrendingOnly] = useState(false);
   const [unitType, setUnitType] = useState("All");
@@ -216,15 +220,49 @@ export default function StorePage() {
 
   // Active filter count
   const activeCount = [
-    priceRange[0]>0||priceRange[1]<20000000,
-    areaRange[0]>0||areaRange[1]<5000,
+    priceRange[0]>0||priceRange[1]<maxPrice,
+    areaRange[0]>0||areaRange[1]<maxArea,
     facing!=="Any",
     floorIdx!==0,
     minBeds>0,
     showTrendingOnly,
   ].filter(Boolean).length;
 
-  useEffect(() => { loadAll(); }, []);
+  // Load admin-configured filter ranges + apply URL params
+  useEffect(() => {
+    // Load settings
+    fetch(`${API}/admin/cms/public/settings`).then(r => r.json()).then((s: any) => {
+      const pm = Number(s.filter_price_max) || 20000000;
+      const am = Number(s.filter_area_max) || 5000;
+      setMaxPrice(pm);
+      setMaxArea(am);
+
+      // Read URL params AFTER settings loaded
+      if (typeof window !== 'undefined') {
+        const sp = new URLSearchParams(window.location.search);
+        const minP = Number(sp.get('min_price')) || 0;
+        const maxP = Number(sp.get('max_price')) || pm;
+        setPriceRange([minP, Math.min(maxP, pm)]);
+        const minA = Number(sp.get('min_area')) || 0;
+        const maxA = Number(sp.get('max_area')) || am;
+        setAreaRange([minA, Math.min(maxA, am)]);
+        if (sp.get('unit_type')) setUnitType(sp.get('unit_type')!);
+        if (sp.get('bedrooms')) setMinBeds(Number(sp.get('bedrooms')) || 0);
+        if (sp.get('facing')) setFacing(sp.get('facing')!);
+        if (sp.get('sort')) setSort(sp.get('sort')!);
+        if (sp.get('trending') === '1') setShowTrendingOnly(true);
+        if (sp.get('floor')) {
+          const fi = FLOOR_OPTIONS.findIndex(f => f.label.toLowerCase().startsWith(sp.get('floor')!.toLowerCase()));
+          if (fi > 0) setFloorIdx(fi);
+        }
+        if (sp.get('status') && STATUS_OPTS.includes(sp.get('status')!)) setStatus(sp.get('status')!);
+        if (sp.get('max_emi') || sp.get('max_down_payment') || sp.get('min_price') || sp.get('min_area') || sp.get('unit_type') || sp.get('bedrooms') || sp.get('facing') || sp.get('floor') || sp.get('trending')) {
+          setFiltersOpen(true);
+        }
+      }
+    }).catch(() => {});
+    loadAll();
+  }, []);
 
   async function loadAll() {
     setLoading(true);
@@ -261,7 +299,7 @@ export default function StorePage() {
   function clearAI() { setAiQuery(""); setAiActive(false); loadAll(); }
 
   function resetFilters() {
-    setPriceRange([0,20000000]); setAreaRange([0,5000]);
+    setPriceRange([0,maxPrice]); setAreaRange([0,maxArea]);
     setFacing("Any"); setFloorIdx(0); setMinBeds(0);
     setUnitType("All"); setStatus("All Status");
     setShowTrendingOnly(false);
@@ -403,11 +441,11 @@ export default function StorePage() {
             <div className="mt-3 pt-3 border-t" style={{ borderColor:"#E2F1FC" }}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-2">
                 {/* Price Range */}
-                <RangeSlider label="Price Range" min={0} max={20000000}
+                <RangeSlider label="Price Range" min={0} max={maxPrice}
                   value={priceRange} onChange={setPriceRange}
                   format={formatPriceShort} />
                 {/* Area Range */}
-                <RangeSlider label="Area (sqft)" min={0} max={5000}
+                <RangeSlider label="Area (sqft)" min={0} max={maxArea}
                   value={areaRange} onChange={setAreaRange}
                   format={n => `${n.toLocaleString()} sqft`} />
                 {/* Facing */}
