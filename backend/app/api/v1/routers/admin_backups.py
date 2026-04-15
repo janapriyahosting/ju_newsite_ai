@@ -664,3 +664,245 @@ async def restore_backup(
 async def list_pre_restore_backups(_: dict = Depends(verify_admin_token)):
     """List auto-safety backups taken before restores (last 10)."""
     return _list_backups(PRE_RESTORE_DIR, "pre_restore_*.sql.gz", limit=10)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Source File Browser + Restore (from daily backup tarball)
+# ══════════════════════════════════════════════════════════════════════════════
+
+PROJECT_ROOT = Path("/home/jpuser/projects/janapriyaupscale")
+STAGING_ROOT = Path("/tmp/source_stage")
+
+# Project subpath used inside source.tar.gz — the tarball starts with this top folder
+TAR_TOP_DIR = "janapriyaupscale"
+
+# File extensions OK to preview as text
+PREVIEWABLE_EXTS = {
+    ".py", ".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".txt", ".yaml", ".yml",
+    ".toml", ".ini", ".sh", ".env", ".html", ".css", ".scss", ".sql", ".conf",
+    ".gitignore", ".dockerignore", ".editorconfig",
+}
+PREVIEW_MAX_BYTES = 500_000   # 500KB text preview cap
+
+
+class TreeEntry(BaseModel):
+    name: str
+    path: str           # relative to project root
+    type: str           # "file" or "dir"
+    size: int = 0
+    size_human: str = ""
+
+
+def _stage_dir_for(backup_name: str) -> Path:
+    return STAGING_ROOT / backup_name
+
+
+def _ensure_staged(backup_name: str) -> Path:
+    """Extract source.tar.gz to staging dir if not already there. Returns the project subdir."""
+    if not re.match(r'^backup_\d{8}_\d{6}$', backup_name):
+        raise HTTPException(400, "Invalid backup name")
+
+    tarball = DAILY_DIR / backup_name / "source.tar.gz"
+    if not tarball.exists():
+        raise HTTPException(404, f"No source.tar.gz in {backup_name}")
+
+    stage = _stage_dir_for(backup_name)
+    marker = stage / ".extracted"
+
+    if marker.exists():
+        return stage / TAR_TOP_DIR
+
+    stage.mkdir(parents=True, exist_ok=True)
+    # Extract
+    result = subprocess.run(
+        ["tar", "-xzf", str(tarball), "-C", str(stage)],
+        capture_output=True, text=True, timeout=300,
+    )
+    if result.returncode != 0:
+        raise HTTPException(500, f"Extraction failed: {result.stderr[:500]}")
+    marker.touch()
+    return stage / TAR_TOP_DIR
+
+
+def _safe_join(base: Path, relpath: str) -> Path:
+    """Join base + relpath and ensure result is still inside base."""
+    # Normalize: strip leading slashes, reject .. traversal after resolve
+    rel = relpath.lstrip("/").replace("\\", "/")
+    target = (base / rel).resolve()
+    base_resolved = base.resolve()
+    if not str(target).startswith(str(base_resolved)):
+        raise HTTPException(400, "Invalid path (outside allowed root)")
+    return target
+
+
+@router.post("/daily/{backup_name}/source/extract")
+async def extract_source(backup_name: str, _: dict = Depends(verify_admin_token)):
+    """Extract the daily backup's source.tar.gz to a staging directory for browsing."""
+    stage_project = _ensure_staged(backup_name)
+    total_size = _folder_size(stage_project)
+    return {
+        "backup": backup_name,
+        "stage_path": str(stage_project),
+        "size_bytes": total_size,
+        "size_human": _human_size(total_size),
+        "ready": True,
+    }
+
+
+@router.get("/daily/{backup_name}/source/tree", response_model=List[TreeEntry])
+async def list_source_tree(
+    backup_name: str,
+    path: str = "",
+    _: dict = Depends(verify_admin_token),
+):
+    """List contents of a directory within the staged source."""
+    stage_project = _ensure_staged(backup_name)
+    target = _safe_join(stage_project, path) if path else stage_project
+
+    if not target.exists():
+        raise HTTPException(404, f"Path not found: {path}")
+    if not target.is_dir():
+        raise HTTPException(400, f"Path is not a directory: {path}")
+
+    entries: List[TreeEntry] = []
+    for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
+        # Skip hidden bookkeeping
+        if child.name == ".extracted":
+            continue
+        rel_path = str(child.relative_to(stage_project))
+        try:
+            size = child.stat().st_size if child.is_file() else 0
+        except Exception:
+            size = 0
+        entries.append(TreeEntry(
+            name=child.name,
+            path=rel_path,
+            type="dir" if child.is_dir() else "file",
+            size=size,
+            size_human=_human_size(size) if size else "",
+        ))
+    return entries
+
+
+@router.get("/daily/{backup_name}/source/file")
+async def get_source_file(
+    backup_name: str,
+    path: str,
+    preview: bool = False,
+    _: dict = Depends(verify_admin_token),
+):
+    """Download a file from the staged source, or preview if text and small."""
+    stage_project = _ensure_staged(backup_name)
+    target = _safe_join(stage_project, path)
+
+    if not target.exists() or not target.is_file():
+        raise HTTPException(404, "File not found")
+
+    if preview:
+        ext = target.suffix.lower()
+        size = target.stat().st_size
+        if ext not in PREVIEWABLE_EXTS and target.name not in {".gitignore", ".dockerignore"}:
+            return {"preview": False, "reason": "Not a text file", "size": size}
+        if size > PREVIEW_MAX_BYTES:
+            return {"preview": False, "reason": f"File too large ({_human_size(size)} > {_human_size(PREVIEW_MAX_BYTES)})", "size": size}
+        try:
+            content = target.read_text(encoding="utf-8", errors="replace")
+            return {"preview": True, "content": content, "size": size, "path": path}
+        except Exception as e:
+            return {"preview": False, "reason": str(e), "size": size}
+
+    return FileResponse(
+        target, filename=target.name,
+        headers={"Content-Disposition": f'attachment; filename="{target.name}"'},
+    )
+
+
+class RestoreFileRequest(BaseModel):
+    path: str = Field(..., description="Relative path within the project (e.g. 'frontend/src/app/page.tsx')")
+    confirmation: str = Field(..., description="Must be 'RESTORE_FILE' to confirm")
+
+
+@router.post("/daily/{backup_name}/source/restore-file")
+async def restore_source_file(
+    backup_name: str,
+    data: RestoreFileRequest,
+    _: dict = Depends(verify_admin_token),
+):
+    """
+    Restore a single file from a daily backup to the live project.
+    If the file currently exists, a timestamped .bak copy is saved first.
+    """
+    if data.confirmation != "RESTORE_FILE":
+        raise HTTPException(400, "Confirmation must be 'RESTORE_FILE' exactly")
+
+    stage_project = _ensure_staged(backup_name)
+    source_file = _safe_join(stage_project, data.path)
+    if not source_file.exists() or not source_file.is_file():
+        raise HTTPException(404, f"File not in backup: {data.path}")
+
+    target_file = _safe_join(PROJECT_ROOT, data.path)
+    target_file.parent.mkdir(parents=True, exist_ok=True)
+
+    # Safety: keep a .bak of the current file if it exists
+    bak_path: Optional[Path] = None
+    if target_file.exists():
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        bak_path = target_file.with_suffix(target_file.suffix + f".{ts}.bak")
+        try:
+            shutil.copy2(target_file, bak_path)
+        except Exception as e:
+            raise HTTPException(500, f"Could not create .bak safety copy: {e}")
+
+    try:
+        shutil.copy2(source_file, target_file)
+    except Exception as e:
+        raise HTTPException(500, f"Restore failed: {e}")
+
+    # Log the action
+    log_path = LOGS_DIR / "restore.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "a") as f:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        bak_note = f" (backed up original to {bak_path.name})" if bak_path else " (no prior file)"
+        f.write(f"[{ts}] FILE_RESTORE: {data.path} from {backup_name}{bak_note}\n")
+
+    return {
+        "detail": "File restored successfully",
+        "path": data.path,
+        "backup_source": backup_name,
+        "safety_backup": str(bak_path) if bak_path else None,
+        "size": target_file.stat().st_size,
+    }
+
+
+@router.delete("/daily/{backup_name}/source/stage", status_code=204)
+async def cleanup_staging(backup_name: str, _: dict = Depends(verify_admin_token)):
+    """Remove the staged extraction directory (frees disk)."""
+    if not re.match(r'^backup_\d{8}_\d{6}$', backup_name):
+        raise HTTPException(400, "Invalid backup name")
+    stage = _stage_dir_for(backup_name)
+    if stage.exists():
+        shutil.rmtree(stage, ignore_errors=True)
+
+
+@router.get("/source-stages")
+async def list_source_stages(_: dict = Depends(verify_admin_token)):
+    """List currently staged (extracted) source directories."""
+    if not STAGING_ROOT.exists():
+        return []
+    items = []
+    for entry in STAGING_ROOT.iterdir():
+        if not entry.is_dir():
+            continue
+        marker = entry / ".extracted"
+        if not marker.exists():
+            continue
+        size = _folder_size(entry)
+        items.append({
+            "backup_name": entry.name,
+            "path": str(entry),
+            "size_bytes": size,
+            "size_human": _human_size(size),
+            "extracted_at": datetime.fromtimestamp(marker.stat().st_mtime).isoformat(),
+        })
+    return items

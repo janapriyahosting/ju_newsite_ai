@@ -50,6 +50,14 @@ interface BackupStatus {
   last_snapshot_at: string | null;
 }
 
+interface TreeEntry {
+  name: string;
+  path: string;
+  type: 'file' | 'dir';
+  size: number;
+  size_human: string;
+}
+
 const SCHEDULE_PRESETS = [
   { label: 'Every 5 minutes',    value: '*/5 * * * *' },
   { label: 'Every 15 minutes',   value: '*/15 * * * *' },
@@ -84,6 +92,17 @@ export default function BackupsPage() {
   const [restoreTarget, setRestoreTarget] = useState<{ type: 'snapshot' | 'daily'; name: string; label: string } | null>(null);
   const [restoreConfirm, setRestoreConfirm] = useState('');
   const [restoring, setRestoring] = useState(false);
+
+  // Source browser
+  const [browseBackup, setBrowseBackup] = useState<string | null>(null);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browsePath, setBrowsePath] = useState<string>('');
+  const [browseTree, setBrowseTree] = useState<TreeEntry[]>([]);
+  const [browseSearch, setBrowseSearch] = useState('');
+  const [previewFile, setPreviewFile] = useState<{ path: string; content: string; size: number } | null>(null);
+  const [fileRestoreTarget, setFileRestoreTarget] = useState<{ backup: string; path: string } | null>(null);
+  const [fileRestoreConfirm, setFileRestoreConfirm] = useState('');
+  const [fileRestoring, setFileRestoring] = useState(false);
 
   useEffect(() => {
     loadAll();
@@ -274,6 +293,101 @@ export default function BackupsPage() {
     setRestoring(false);
   }
 
+  // ── Source browse ──
+  async function openSourceBrowser(backupName: string) {
+    setBrowseBackup(backupName);
+    setBrowsePath('');
+    setBrowseLoading(true);
+    setBrowseTree([]);
+    try {
+      await adminApi(`/admin/backups/daily/${backupName}/source/extract`, { method: 'POST' });
+      await loadBrowseTree(backupName, '');
+    } catch {
+      showToast('Failed to extract source backup');
+      setBrowseBackup(null);
+    }
+    setBrowseLoading(false);
+  }
+
+  async function loadBrowseTree(backupName: string, path: string) {
+    setBrowseLoading(true);
+    try {
+      const r = await adminApi(
+        `/admin/backups/daily/${backupName}/source/tree?path=${encodeURIComponent(path)}`
+      );
+      const d = await r.json();
+      setBrowseTree(Array.isArray(d) ? d : []);
+      setBrowsePath(path);
+    } catch { showToast('Failed to list directory'); }
+    setBrowseLoading(false);
+  }
+
+  async function previewBackupFile(backupName: string, path: string) {
+    try {
+      const r = await adminApi(
+        `/admin/backups/daily/${backupName}/source/file?path=${encodeURIComponent(path)}&preview=true`
+      );
+      const d = await r.json();
+      if (d.preview) {
+        setPreviewFile({ path, content: d.content, size: d.size });
+      } else {
+        showToast(d.reason || 'Cannot preview file');
+      }
+    } catch { showToast('Preview failed'); }
+  }
+
+  async function downloadBackupFile(backupName: string, path: string) {
+    const token = localStorage.getItem('admin_token');
+    try {
+      const r = await fetch(
+        `${API_URL}/admin/backups/daily/${backupName}/source/file?path=${encodeURIComponent(path)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!r.ok) { showToast('Download failed'); return; }
+      const blob = await r.blob();
+      const filename = path.split('/').pop() || 'file';
+      triggerBlobDownload(blob, filename);
+    } catch { showToast('Download failed'); }
+  }
+
+  function openFileRestore(backup: string, path: string) {
+    setFileRestoreTarget({ backup, path });
+    setFileRestoreConfirm('');
+  }
+
+  async function performFileRestore() {
+    if (!fileRestoreTarget || fileRestoreConfirm !== 'RESTORE_FILE') return;
+    setFileRestoring(true);
+    try {
+      const r = await adminApi(
+        `/admin/backups/daily/${fileRestoreTarget.backup}/source/restore-file`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ path: fileRestoreTarget.path, confirmation: 'RESTORE_FILE' }),
+        }
+      );
+      const d = await r.json();
+      if (r.ok) {
+        showToast(`✓ Restored ${fileRestoreTarget.path}`);
+        setFileRestoreTarget(null);
+        setFileRestoreConfirm('');
+      } else {
+        showToast(d.detail || 'Restore failed');
+      }
+    } catch { showToast('Restore failed'); }
+    setFileRestoring(false);
+  }
+
+  function browsePathBreadcrumbs(): { name: string; path: string }[] {
+    if (!browsePath) return [{ name: 'root', path: '' }];
+    const parts = browsePath.split('/');
+    const crumbs = [{ name: 'root', path: '' }];
+    for (let i = 0; i < parts.length; i++) {
+      crumbs.push({ name: parts[i], path: parts.slice(0, i + 1).join('/') });
+    }
+    return crumbs;
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -456,6 +570,10 @@ export default function BackupsPage() {
                     <button onClick={() => downloadDaily(b.name, 'source')}
                       className="px-2.5 py-1 text-xs font-medium rounded bg-blue-50 text-blue-700 hover:bg-blue-100">
                       ⬇ Source
+                    </button>
+                    <button onClick={() => openSourceBrowser(b.name)}
+                      className="px-2.5 py-1 text-xs font-medium rounded bg-purple-50 text-purple-700 hover:bg-purple-100">
+                      📁 Browse Source
                     </button>
                     <button onClick={() => openRestore('daily', b.name, `daily backup from ${new Date(b.created_at).toLocaleString()}`)}
                       className="px-2.5 py-1 text-xs font-medium rounded bg-orange-50 text-orange-700 hover:bg-orange-100">
@@ -646,6 +764,167 @@ export default function BackupsPage() {
             <button onClick={performRestore} disabled={restoreConfirm !== 'RESTORE' || restoring}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-40">
               {restoring ? 'Starting restore...' : '⚠️ Start Restore'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* ══════════ Source File Browser Modal ══════════ */}
+      {browseBackup && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={() => setBrowseBackup(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col m-4"
+            onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-[#273b84]">📁 Browse Source Files</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Backup: <code className="bg-gray-100 px-1 rounded">{browseBackup}</code></p>
+              </div>
+              <button onClick={() => setBrowseBackup(null)}
+                className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+            </div>
+
+            {/* Breadcrumbs + search */}
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1 text-sm flex-wrap">
+                {browsePathBreadcrumbs().map((c, i, arr) => (
+                  <span key={c.path} className="flex items-center gap-1">
+                    <button onClick={() => loadBrowseTree(browseBackup, c.path)}
+                      className={`px-2 py-0.5 rounded ${i === arr.length - 1 ? 'bg-[#273b84] text-white font-semibold' : 'text-[#273b84] hover:bg-blue-50'}`}>
+                      {c.name}
+                    </button>
+                    {i < arr.length - 1 && <span className="text-gray-400">/</span>}
+                  </span>
+                ))}
+              </div>
+              <input type="text" value={browseSearch}
+                onChange={e => setBrowseSearch(e.target.value)}
+                placeholder="🔍 Filter in this folder..."
+                className="ml-auto px-3 py-1.5 text-sm border border-gray-300 rounded-lg w-64" />
+            </div>
+
+            {/* Tree */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {browseLoading ? (
+                <div className="space-y-1">
+                  {[1,2,3,4,5].map(i => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}
+                </div>
+              ) : browseTree.length === 0 ? (
+                <p className="text-sm text-gray-400 italic p-4 text-center">Empty directory</p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {browseTree
+                    .filter(e => !browseSearch || e.name.toLowerCase().includes(browseSearch.toLowerCase()))
+                    .map(entry => (
+                      <div key={entry.path}
+                        className="flex items-center gap-3 py-1.5 px-2 hover:bg-gray-50 rounded group">
+                        <span className="text-lg shrink-0">{entry.type === 'dir' ? '📁' : '📄'}</span>
+                        {entry.type === 'dir' ? (
+                          <button onClick={() => loadBrowseTree(browseBackup, entry.path)}
+                            className="text-sm text-[#273b84] hover:underline font-medium flex-1 text-left">
+                            {entry.name}
+                          </button>
+                        ) : (
+                          <>
+                            <span className="text-sm text-gray-800 flex-1 truncate">{entry.name}</span>
+                            <span className="text-xs text-gray-400 shrink-0">{entry.size_human}</span>
+                            <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => previewBackupFile(browseBackup, entry.path)}
+                                className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                title="Preview">
+                                👁
+                              </button>
+                              <button onClick={() => downloadBackupFile(browseBackup, entry.path)}
+                                className="px-2 py-0.5 text-xs font-medium rounded bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                title="Download">
+                                ⬇
+                              </button>
+                              <button onClick={() => openFileRestore(browseBackup, entry.path)}
+                                className="px-2 py-0.5 text-xs font-medium rounded bg-orange-50 text-orange-700 hover:bg-orange-100"
+                                title="Restore this file to project">
+                                ↻
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer hint */}
+            <div className="px-5 py-3 border-t border-gray-100 bg-blue-50 text-xs text-blue-800">
+              <strong>💡 Hover a file</strong> to see Preview / Download / Restore actions.
+              Restoring a file creates a <code className="bg-white px-1 rounded">.bak</code> copy of the current version first.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ File Preview Modal ══════════ */}
+      {previewFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setPreviewFile(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col m-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-[#273b84]">📄 Preview</h2>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">{previewFile.path}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-500">{previewFile.size.toLocaleString()} bytes</span>
+                <button onClick={() => setPreviewFile(null)}
+                  className="text-gray-400 hover:text-gray-700 text-2xl leading-none">×</button>
+              </div>
+            </div>
+            <pre className="flex-1 overflow-auto p-4 text-xs font-mono whitespace-pre-wrap break-all bg-slate-50 text-slate-800">
+              {previewFile.content}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ File Restore Confirmation Modal ══════════ */}
+      {fileRestoreTarget && (
+        <Modal onClose={() => { setFileRestoreTarget(null); setFileRestoreConfirm(''); }}>
+          <div className="p-6 border-b border-orange-100 bg-orange-50">
+            <h2 className="text-lg font-bold text-orange-700">↻ Restore File to Project</h2>
+            <p className="text-sm text-orange-700 mt-1">Overwrite the live file with the backup version.</p>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <p className="text-xs text-gray-500 mb-1">Will be restored from backup:</p>
+              <p className="text-xs font-mono text-gray-800 break-all">{fileRestoreTarget.backup}</p>
+              <p className="text-xs text-gray-500 mt-2 mb-1">Target file in project:</p>
+              <p className="text-sm font-mono font-bold text-[#273b84] break-all">{fileRestoreTarget.path}</p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs text-blue-800">
+                <strong>Safety net:</strong> If the file currently exists in the project, a timestamped{' '}
+                <code className="bg-white px-1 rounded">.bak</code> copy will be saved first (in the same directory).
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type <code className="bg-gray-100 px-1.5 py-0.5 rounded font-bold">RESTORE_FILE</code> to confirm:
+              </label>
+              <input value={fileRestoreConfirm} onChange={e => setFileRestoreConfirm(e.target.value)}
+                placeholder="Type RESTORE_FILE exactly"
+                className="w-full border-2 border-orange-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+          <div className="p-6 border-t border-gray-100 flex justify-end gap-3">
+            <button onClick={() => { setFileRestoreTarget(null); setFileRestoreConfirm(''); }} disabled={fileRestoring}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-60">
+              Cancel
+            </button>
+            <button onClick={performFileRestore}
+              disabled={fileRestoreConfirm !== 'RESTORE_FILE' || fileRestoring}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40">
+              {fileRestoring ? 'Restoring...' : '↻ Restore File'}
             </button>
           </div>
         </Modal>
