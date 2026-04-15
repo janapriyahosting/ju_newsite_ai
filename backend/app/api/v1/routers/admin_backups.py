@@ -1,15 +1,19 @@
 """
-Admin Backups Router — Monitor backup system status, recent backups, and trigger manual runs.
+Admin Backups Router — Monitor backup system status, recent backups, manual runs,
+schedule management, download, and restore.
 """
 import os
+import re
 import shutil
 import subprocess
+import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi.responses import FileResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from backend.app.api.v1.routers.admin_auth import verify_admin_token
 
@@ -21,6 +25,7 @@ DAILY_DIR = BACKUP_ROOT / "daily"
 SNAPSHOTS_DIR = BACKUP_ROOT / "snapshots"
 LOGS_DIR = BACKUP_ROOT / "logs"
 SCRIPTS_DIR = BACKUP_ROOT / "scripts"
+PRE_RESTORE_DIR = BACKUP_ROOT / "pre_restore"
 
 
 # ── Response schemas ──────────────────────────────────────────────────────────
@@ -234,8 +239,8 @@ async def get_backup_status(_: dict = Depends(verify_admin_token)):
 
 @router.get("/logs/{log_name}")
 async def get_log_tail(log_name: str, lines: int = 50, _: dict = Depends(verify_admin_token)):
-    """Tail a backup log file (daily.log or snapshot.log)."""
-    if log_name not in ("daily.log", "snapshot.log"):
+    """Tail a backup log file (daily.log / snapshot.log / restore.log)."""
+    if log_name not in ("daily.log", "snapshot.log", "restore.log"):
         raise HTTPException(400, "Invalid log name")
     log_path = LOGS_DIR / log_name
     if not log_path.exists():
@@ -294,3 +299,368 @@ async def trigger_snapshot(
         raise HTTPException(404, "Snapshot script not found")
     background_tasks.add_task(_run_script_background, "snapshot_backup.sh")
     return {"detail": "Snapshot backup started in background. Check status in ~5 seconds."}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Schedule Management (CRON CRUD)
+# ══════════════════════════════════════════════════════════════════════════════
+
+CRON_MARKER_START = "# BEGIN_ADMIN_MANAGED_BACKUPS"
+CRON_MARKER_END = "# END_ADMIN_MANAGED_BACKUPS"
+
+# Only allow scripts from our SCRIPTS_DIR — can't add arbitrary commands
+ALLOWED_SCRIPTS = {
+    "daily_backup.sh", "snapshot_backup.sh", "restore_backup.sh",
+}
+
+# Cron expression validation — basic sanity check
+CRON_RE = re.compile(r'^(\S+\s+){4}\S+$')
+
+
+class Schedule(BaseModel):
+    id: str                     # unique id (hash of schedule+command)
+    schedule: str               # cron expression
+    script: str                 # script filename (basename)
+    description: str = ""
+    enabled: bool = True
+    managed: bool = True        # True if managed by admin (inside markers)
+
+
+class ScheduleCreate(BaseModel):
+    schedule: str = Field(..., description="Cron expression e.g. '0 5 * * *'")
+    script: str = Field(..., description="Script filename in /home/jpuser/backups/scripts/")
+    description: str = ""
+
+    def validate_fields(self) -> None:
+        if not CRON_RE.match(self.schedule.strip()):
+            raise HTTPException(400, f"Invalid cron expression: '{self.schedule}'. Expected 5 fields.")
+        if self.script not in ALLOWED_SCRIPTS:
+            raise HTTPException(400, f"Script must be one of: {', '.join(sorted(ALLOWED_SCRIPTS))}")
+
+
+class ScheduleUpdate(BaseModel):
+    schedule: Optional[str] = None
+    description: Optional[str] = None
+    enabled: Optional[bool] = None
+
+
+def _read_crontab_raw() -> str:
+    result = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=5)
+    if result.returncode != 0 and "no crontab" not in result.stderr.lower():
+        return ""
+    return result.stdout
+
+
+def _write_crontab_raw(content: str) -> None:
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".cron") as tf:
+        tf.write(content)
+        tf_path = tf.name
+    try:
+        result = subprocess.run(["crontab", tf_path], capture_output=True, text=True, timeout=5)
+        if result.returncode != 0:
+            raise HTTPException(500, f"Failed to write crontab: {result.stderr}")
+    finally:
+        os.unlink(tf_path)
+
+
+def _schedule_id(schedule: str, script: str) -> str:
+    """Deterministic ID from schedule expression + script basename."""
+    import hashlib
+    # Always use just the script basename for consistency across create/parse
+    script_name = os.path.basename(script)
+    return hashlib.sha1(f"{schedule}|{script_name}".encode()).hexdigest()[:12]
+
+
+def _parse_schedules() -> List[Schedule]:
+    """Parse crontab into structured schedules."""
+    raw = _read_crontab_raw()
+    schedules = []
+    in_managed_block = False
+    last_desc = ""
+
+    for line in raw.splitlines():
+        stripped = line.strip()
+
+        if stripped == CRON_MARKER_START:
+            in_managed_block = True
+            continue
+        if stripped == CRON_MARKER_END:
+            in_managed_block = False
+            continue
+
+        if not stripped:
+            last_desc = ""
+            continue
+
+        if stripped.startswith("#"):
+            # Comment — capture as description for next line (if managed block)
+            last_desc = stripped.lstrip("# ").strip()
+            continue
+
+        # Cron entry — 5 fields + command
+        parts = stripped.split(None, 5)
+        if len(parts) < 6:
+            continue
+
+        schedule = " ".join(parts[:5])
+        command = parts[5]
+
+        # Check if it's a backup script
+        script = None
+        for s in ALLOWED_SCRIPTS:
+            if s in command:
+                script = s
+                break
+        if not script:
+            continue  # Skip non-backup cron jobs
+
+        # Determine enabled status (commented out line starts with #)
+        enabled = not stripped.startswith("#")
+
+        schedules.append(Schedule(
+            id=_schedule_id(schedule, script),
+            schedule=schedule,
+            script=script,
+            description=last_desc,
+            enabled=enabled,
+            managed=in_managed_block,
+        ))
+        last_desc = ""
+
+    return schedules
+
+
+def _render_crontab(schedules: List[Schedule]) -> str:
+    """Render schedules + preserve non-backup cron entries."""
+    raw = _read_crontab_raw()
+
+    # Collect non-backup lines (outside our management)
+    preserved_lines = []
+    in_managed_block = False
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if stripped == CRON_MARKER_START:
+            in_managed_block = True
+            continue
+        if stripped == CRON_MARKER_END:
+            in_managed_block = False
+            continue
+        if in_managed_block:
+            continue
+        # Also skip backup-related lines outside markers (legacy)
+        if any(s in line for s in ALLOWED_SCRIPTS):
+            continue
+        preserved_lines.append(line)
+
+    # Build managed block
+    managed = [CRON_MARKER_START]
+    for sch in schedules:
+        if sch.description:
+            managed.append(f"# {sch.description}")
+        cmd = f"{sch.schedule} /home/jpuser/backups/scripts/{sch.script}"
+        if not sch.enabled:
+            cmd = "# " + cmd
+        managed.append(cmd)
+    managed.append(CRON_MARKER_END)
+
+    output = "\n".join(preserved_lines).rstrip() + "\n\n" + "\n".join(managed) + "\n"
+    return output
+
+
+@router.get("/schedules", response_model=List[Schedule])
+async def list_schedules(_: dict = Depends(verify_admin_token)):
+    """List all backup cron schedules."""
+    return _parse_schedules()
+
+
+@router.post("/schedules", response_model=Schedule, status_code=201)
+async def create_schedule(data: ScheduleCreate, _: dict = Depends(verify_admin_token)):
+    """Create a new backup cron schedule."""
+    data.validate_fields()
+
+    schedules = _parse_schedules()
+    new_sch = Schedule(
+        id=_schedule_id(data.schedule, data.script),
+        schedule=data.schedule,
+        script=data.script,
+        description=data.description,
+        enabled=True,
+        managed=True,
+    )
+
+    # Check for duplicate
+    if any(s.id == new_sch.id for s in schedules):
+        raise HTTPException(409, "A schedule with the same expression and script already exists")
+
+    schedules.append(new_sch)
+    _write_crontab_raw(_render_crontab(schedules))
+    return new_sch
+
+
+@router.patch("/schedules/{schedule_id}", response_model=Schedule)
+async def update_schedule(schedule_id: str, data: ScheduleUpdate, _: dict = Depends(verify_admin_token)):
+    """Update an existing backup schedule."""
+    schedules = _parse_schedules()
+    target = next((s for s in schedules if s.id == schedule_id), None)
+    if not target:
+        raise HTTPException(404, "Schedule not found")
+
+    if data.schedule is not None:
+        if not CRON_RE.match(data.schedule.strip()):
+            raise HTTPException(400, "Invalid cron expression")
+        target.schedule = data.schedule
+    if data.description is not None:
+        target.description = data.description
+    if data.enabled is not None:
+        target.enabled = data.enabled
+
+    # Regenerate id since schedule may have changed
+    target.id = _schedule_id(target.schedule, target.script)
+
+    _write_crontab_raw(_render_crontab(schedules))
+    return target
+
+
+@router.delete("/schedules/{schedule_id}", status_code=204)
+async def delete_schedule(schedule_id: str, _: dict = Depends(verify_admin_token)):
+    """Delete a backup schedule."""
+    schedules = _parse_schedules()
+    new_list = [s for s in schedules if s.id != schedule_id]
+    if len(new_list) == len(schedules):
+        raise HTTPException(404, "Schedule not found")
+
+    _write_crontab_raw(_render_crontab(new_list))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Download Backup Files
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _safe_resolve(requested: str, allowed_roots: List[Path]) -> Path:
+    """Resolve path and ensure it stays inside allowed roots."""
+    p = Path(requested).resolve()
+    for root in allowed_roots:
+        try:
+            p.relative_to(root.resolve())
+            if p.exists():
+                return p
+        except ValueError:
+            continue
+    raise HTTPException(404, "File not found or not accessible")
+
+
+@router.get("/download/snapshot/{filename}")
+async def download_snapshot(filename: str, _: dict = Depends(verify_admin_token)):
+    """Download a snapshot file by name."""
+    if not re.match(r'^snapshot_\d{8}_\d{6}\.sql\.gz$', filename):
+        raise HTTPException(400, "Invalid snapshot filename")
+    path = SNAPSHOTS_DIR / filename
+    if not path.exists():
+        raise HTTPException(404, "Snapshot not found")
+    return FileResponse(
+        path, media_type="application/gzip",
+        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/download/daily/{backup_name}/{file_type}")
+async def download_daily(backup_name: str, file_type: str, _: dict = Depends(verify_admin_token)):
+    """Download a file from a daily backup (file_type: db | source)."""
+    if not re.match(r'^backup_\d{8}_\d{6}$', backup_name):
+        raise HTTPException(400, "Invalid backup name")
+    if file_type not in ("db", "source"):
+        raise HTTPException(400, "file_type must be 'db' or 'source'")
+
+    backup_dir = DAILY_DIR / backup_name
+    if not backup_dir.exists():
+        raise HTTPException(404, "Backup not found")
+
+    if file_type == "db":
+        path = backup_dir / "db_dump.sql"
+        media = "application/sql"
+        download_name = f"{backup_name}_db_dump.sql"
+    else:
+        path = backup_dir / "source.tar.gz"
+        media = "application/gzip"
+        download_name = f"{backup_name}_source.tar.gz"
+
+    if not path.exists():
+        raise HTTPException(404, f"{file_type} file not in this backup")
+
+    return FileResponse(
+        path, media_type=media,
+        filename=download_name,
+        headers={"Content-Disposition": f'attachment; filename="{download_name}"'},
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Restore from Backup
+# ══════════════════════════════════════════════════════════════════════════════
+
+class RestoreRequest(BaseModel):
+    source_type: str = Field(..., description="'snapshot' or 'daily'")
+    source_name: str = Field(..., description="Filename (snapshot) or backup folder (daily)")
+    confirmation: str = Field(..., description="Must be 'RESTORE' to confirm")
+
+
+def _run_restore_background(source_path: str) -> None:
+    """Run restore script in background."""
+    script_path = SCRIPTS_DIR / "restore_backup.sh"
+    try:
+        subprocess.Popen(
+            ["bash", str(script_path), source_path],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception:
+        pass
+
+
+@router.post("/restore")
+async def restore_backup(
+    data: RestoreRequest,
+    background_tasks: BackgroundTasks,
+    _: dict = Depends(verify_admin_token),
+):
+    """
+    Restore database from a backup. DESTRUCTIVE — replaces current DB.
+    A safety snapshot is auto-taken before the restore.
+    """
+    if data.confirmation != "RESTORE":
+        raise HTTPException(400, "Confirmation text must be 'RESTORE' exactly")
+
+    if data.source_type == "snapshot":
+        if not re.match(r'^snapshot_\d{8}_\d{6}\.sql\.gz$', data.source_name):
+            raise HTTPException(400, "Invalid snapshot filename")
+        source_path = SNAPSHOTS_DIR / data.source_name
+    elif data.source_type == "daily":
+        if not re.match(r'^backup_\d{8}_\d{6}$', data.source_name):
+            raise HTTPException(400, "Invalid daily backup name")
+        source_path = DAILY_DIR / data.source_name / "db_dump.sql"
+    else:
+        raise HTTPException(400, "source_type must be 'snapshot' or 'daily'")
+
+    if not source_path.exists():
+        raise HTTPException(404, f"Source file not found: {source_path}")
+
+    script = SCRIPTS_DIR / "restore_backup.sh"
+    if not script.exists():
+        raise HTTPException(500, "Restore script not installed")
+
+    background_tasks.add_task(_run_restore_background, str(source_path))
+
+    return {
+        "detail": f"Restore started from {data.source_name}. Safety backup being taken automatically.",
+        "source_path": str(source_path),
+        "estimated_time_seconds": 30,
+        "log_endpoint": "/admin/backups/logs/restore.log",
+    }
+
+
+@router.get("/pre-restore-backups")
+async def list_pre_restore_backups(_: dict = Depends(verify_admin_token)):
+    """List auto-safety backups taken before restores (last 10)."""
+    return _list_backups(PRE_RESTORE_DIR, "pre_restore_*.sql.gz", limit=10)
