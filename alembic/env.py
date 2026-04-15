@@ -15,6 +15,7 @@ from backend.app.models import (
 )
 from backend.app.models.admin_user import AdminUser
 from backend.app.models.field_config import FieldConfig, CustomFieldValue
+from backend.app.models.cms import CmsPage, CmsSection, SiteSetting, StoreFilter
 
 config = context.config
 

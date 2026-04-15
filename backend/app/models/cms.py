@@ -1,9 +1,9 @@
 """
-CMS Models: cms_pages, cms_sections, site_settings
+CMS Models: cms_pages, cms_sections, site_settings, store_filters
 """
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Text, Boolean, DateTime, JSON
+from sqlalchemy import Column, String, Text, Boolean, DateTime, JSON, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from backend.app.core.database import Base
 
@@ -51,3 +51,19 @@ class SiteSetting(Base):
     sort_order    = Column(String(10), default="0")
     created_at    = Column(DateTime, default=datetime.utcnow)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class StoreFilter(Base):
+    __tablename__ = "store_filters"
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    filter_key      = Column(String(100), unique=True, nullable=False)
+    filter_label    = Column(String(200), nullable=False)
+    filter_type     = Column(String(50), nullable=False, default="pills")  # pills, select, range_slider, button_group, checkbox
+    field_name      = Column(String(100), nullable=True)  # unit column to filter on (e.g. "facing", "unit_type", "series_code")
+    options         = Column(JSON, nullable=True)    # [{value, label, ...}]
+    config          = Column(JSON, nullable=True)    # {min, max, format, default_value, ...}
+    is_active       = Column(Boolean, default=True)
+    is_quick_filter = Column(Boolean, default=False)  # quick bar vs advanced panel
+    sort_order      = Column(Integer, default=0)
+    created_at      = Column(DateTime, default=datetime.utcnow)
+    updated_at      = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

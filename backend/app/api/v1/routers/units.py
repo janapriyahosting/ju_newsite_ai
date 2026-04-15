@@ -19,20 +19,19 @@ from sqlalchemy import text as sa_text
 router = APIRouter(prefix="/units", tags=["units"])
 
 
-async def _attach_thumbnails(units: list, db: AsyncSession) -> list:
-    """Attach series thumbnail (3D preferred, 2D fallback) to each unit."""
+async def _attach_custom_fields(units: list, db: AsyncSession) -> list:
+    """Attach custom field values (including thumbnail) to each unit response."""
     if not units:
         return units
     try:
         unit_ids = [str(u.id) for u in units]
-        # Fetch series_floor_plan_3d and series_floor_plan_2d values for all units
         placeholders = ", ".join(f"'{uid}'" for uid in unit_ids)
+        # Fetch ALL custom field values for these units
         rows = await db.execute(sa_text(f"""
             SELECT cfv.entity_id::text AS uid, fc.field_key, cfv.value
             FROM custom_field_values cfv
             JOIN field_configs fc ON fc.id = cfv.field_config_id
             WHERE cfv.entity_id::text IN ({placeholders})
-              AND fc.field_key IN ('series_floor_plan_3d', 'series_floor_plan_2d')
               AND cfv.value IS NOT NULL
         """))
         # Build lookup: unit_id -> {field_key: value}
@@ -40,19 +39,21 @@ async def _attach_thumbnails(units: list, db: AsyncSession) -> list:
         for r in rows.mappings():
             uid = str(r["uid"])
             val = r["value"]
-            if isinstance(val, str) and val:
+            if val is not None and val != "":
                 lookup.setdefault(uid, {})[r["field_key"]] = val
-        # Attach thumbnail: prefer 3D, fallback 2D
+
         results = []
         for u in units:
             resp = UnitResponse.model_validate(u)
             fields = lookup.get(str(u.id), {})
+            # Thumbnail: prefer 3D, fallback 2D
             resp.thumbnail = fields.get("series_floor_plan_3d") or fields.get("series_floor_plan_2d") or None
+            # Attach all custom fields
+            resp.custom_fields = fields
             results.append(resp)
         return results
     except Exception as e:
         import traceback; traceback.print_exc()
-        # Fallback: return without thumbnails if query fails
         return [UnitResponse.model_validate(u) for u in units]
 
 
@@ -123,7 +124,7 @@ async def list_units(
         .offset(offset).limit(page_size)
     )
     units = result.scalars().all()
-    items = await _attach_thumbnails(units, db)
+    items = await _attach_custom_fields(units, db)
 
     return UnitListResponse(
         total=total,
@@ -146,7 +147,7 @@ async def trending_units(
         .limit(limit)
     )
     units = result.scalars().all()
-    items = await _attach_thumbnails(units, db)
+    items = await _attach_custom_fields(units, db)
     return UnitListResponse(total=len(units), page=1, page_size=limit,
                             total_pages=1, items=items)
 

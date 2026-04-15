@@ -4,12 +4,17 @@ import { adminApi } from '@/lib/adminAuth';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 
-const FACINGS = ['East', 'West', 'North', 'South', 'North-East', 'North-West', 'South-East', 'South-West'];
-const FLOORS = ['Ground', 'Low', 'Mid', 'High'];
-const SORTS = [
-  { label: 'Newest First', value: 'newest' }, { label: 'Price: Low → High', value: 'price_asc' },
-  { label: 'Price: High → Low', value: 'price_desc' }, { label: 'Area: Largest', value: 'area_desc' },
-];
+interface FilterConfig {
+  id: string;
+  filter_key: string;
+  filter_label: string;
+  filter_type: string;
+  field_name: string | null;
+  options: { value: string; label: string }[] | null;
+  config: Record<string, any> | null;
+  is_quick_filter: boolean;
+  sort_order: number;
+}
 
 function fmtPrice(v: number) {
   if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)} Cr`;
@@ -18,17 +23,19 @@ function fmtPrice(v: number) {
 }
 
 export default function FilterLinksPage() {
-  const [filters, setFilters] = useState({
-    min_price: '', max_price: '', min_area: '', max_area: '',
-    max_emi: '', max_down_payment: '', unit_type: '', bedrooms: '',
-    facing: '', sort: '', floor: '', trending: '', status: '', label: '',
-  });
+  const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>([]);
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({});
+  const [customLabel, setCustomLabel] = useState('');
   const [savedLinks, setSavedLinks] = useState<any[]>([]);
   const [copied, setCopied] = useState('');
   const [settings, setSettings] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Load filter settings for hints
+    // Load store filter configs
+    adminApi('/admin/cms/store-filters').then(r => r.json()).then(d => {
+      setFilterConfigs(Array.isArray(d) ? d : []);
+    }).catch(() => {});
+    // Load site settings for range hints
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/cms/public/settings`).then(r => r.json()).then(d => setSettings(d)).catch(() => {});
     // Load saved links
     loadLinks();
@@ -42,38 +49,54 @@ export default function FilterLinksPage() {
     } catch { setSavedLinks([]); }
   }
 
+  function up(key: string, val: string) {
+    setFilterValues(f => ({ ...f, [key]: val }));
+  }
+
+  function getRangeMax(cfg: FilterConfig): number {
+    const settingKey = cfg.config?.setting_key;
+    if (settingKey && settings[settingKey]) return Number(settings[settingKey]);
+    return cfg.config?.max ?? 0;
+  }
+
   function buildUrl() {
     const params = new URLSearchParams();
-    if (filters.min_price) params.set('min_price', filters.min_price);
-    if (filters.max_price) params.set('max_price', filters.max_price);
-    if (filters.min_area) params.set('min_area', filters.min_area);
-    if (filters.max_area) params.set('max_area', filters.max_area);
-    if (filters.max_emi) params.set('max_emi', filters.max_emi);
-    if (filters.max_down_payment) params.set('max_down_payment', filters.max_down_payment);
-    if (filters.unit_type) params.set('unit_type', filters.unit_type);
-    if (filters.bedrooms) params.set('bedrooms', filters.bedrooms);
-    if (filters.facing) params.set('facing', filters.facing);
-    if (filters.floor) params.set('floor', filters.floor);
-    if (filters.trending === '1') params.set('trending', '1');
-    if (filters.status) params.set('status', filters.status);
-    if (filters.sort) params.set('sort', filters.sort);
+    for (const cfg of filterConfigs) {
+      if (cfg.filter_type === 'range_slider') {
+        const paramBase = cfg.filter_key.replace(/_range$/, '');
+        const minVal = filterValues[`min_${paramBase}`];
+        const maxVal = filterValues[`max_${paramBase}`];
+        if (minVal) params.set(`min_${paramBase}`, minVal);
+        if (maxVal) params.set(`max_${paramBase}`, maxVal);
+      } else if (cfg.filter_type === 'checkbox') {
+        if (filterValues[cfg.filter_key] === '1') params.set(cfg.filter_key, '1');
+      } else {
+        const val = filterValues[cfg.filter_key];
+        if (val) params.set(cfg.filter_key, val);
+      }
+    }
     const qs = params.toString();
     return qs ? `${SITE_URL}/store?${qs}` : `${SITE_URL}/store`;
   }
 
   function buildLabel() {
-    if (filters.label) return filters.label;
+    if (customLabel) return customLabel;
     const parts: string[] = [];
-    if (filters.max_price) parts.push(`Budget ${fmtPrice(Number(filters.max_price))}`);
-    if (filters.max_emi) parts.push(`EMI ₹${Number(filters.max_emi).toLocaleString('en-IN')}`);
-    if (filters.max_down_payment) parts.push(`DP ${fmtPrice(Number(filters.max_down_payment))}`);
-    if (filters.unit_type) parts.push(filters.unit_type);
-    if (filters.bedrooms) parts.push(`${filters.bedrooms} BHK+`);
-    if (filters.min_area) parts.push(`${filters.min_area}+ sqft`);
-    if (filters.facing) parts.push(filters.facing);
-    if (filters.floor) parts.push(`${filters.floor} Floor`);
-    if (filters.trending === '1') parts.push('Trending');
-    if (filters.status) parts.push(filters.status);
+    for (const cfg of filterConfigs) {
+      if (cfg.filter_type === 'range_slider') {
+        const paramBase = cfg.filter_key.replace(/_range$/, '');
+        const maxVal = filterValues[`max_${paramBase}`];
+        const minVal = filterValues[`min_${paramBase}`];
+        if (maxVal && cfg.config?.format === 'price') parts.push(`Budget ${fmtPrice(Number(maxVal))}`);
+        else if (maxVal) parts.push(`${cfg.filter_label} ≤${Number(maxVal).toLocaleString()}`);
+        if (minVal && !maxVal) parts.push(`${cfg.filter_label} ≥${Number(minVal).toLocaleString()}`);
+      } else if (cfg.filter_type === 'checkbox') {
+        if (filterValues[cfg.filter_key] === '1') parts.push(cfg.filter_label);
+      } else {
+        const val = filterValues[cfg.filter_key];
+        if (val) parts.push(val);
+      }
+    }
     return parts.join(' | ') || 'All Properties';
   }
 
@@ -83,10 +106,11 @@ export default function FilterLinksPage() {
     try {
       await adminApi('/admin/cms/filter-links', {
         method: 'POST',
-        body: JSON.stringify({ label, url, filters }),
+        body: JSON.stringify({ label, url, filters: filterValues }),
       });
       loadLinks();
-      setFilters({ min_price: '', max_price: '', min_area: '', max_area: '', max_emi: '', max_down_payment: '', unit_type: '', bedrooms: '', facing: '', sort: '', floor: '', trending: '', status: '', label: '' });
+      setFilterValues({});
+      setCustomLabel('');
     } catch {}
   }
 
@@ -101,10 +125,62 @@ export default function FilterLinksPage() {
     setTimeout(() => setCopied(''), 2000);
   }
 
-  const up = (k: string, v: string) => setFilters(f => ({ ...f, [k]: v }));
   const url = buildUrl();
-  const priceMax = Number(settings.filter_price_max) || 50000000;
-  const unitTypes = (settings.filter_unit_types || '2BHK,3BHK,4BHK,Villa,Plot,Studio').split(',').map(s => s.trim());
+
+  // ── Render input for a filter config ──
+  function renderFilterInput(cfg: FilterConfig) {
+    if (cfg.filter_type === 'range_slider') {
+      const paramBase = cfg.filter_key.replace(/_range$/, '');
+      const maxHint = getRangeMax(cfg);
+      const formatHint = cfg.config?.format === 'price' ? ` (max ${fmtPrice(maxHint)})` : maxHint ? ` (max ${maxHint.toLocaleString()})` : '';
+      return (
+        <div key={cfg.filter_key} className="col-span-2 grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Min {cfg.filter_label}</label>
+            <input type="number" value={filterValues[`min_${paramBase}`] || ''}
+              onChange={e => up(`min_${paramBase}`, e.target.value)}
+              placeholder="e.g. 0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Max {cfg.filter_label}{formatHint && <span className="text-gray-400">{formatHint}</span>}</label>
+            <input type="number" value={filterValues[`max_${paramBase}`] || ''}
+              onChange={e => up(`max_${paramBase}`, e.target.value)}
+              placeholder={maxHint ? String(maxHint) : ''} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </div>
+        </div>
+      );
+    }
+
+    if (cfg.filter_type === 'checkbox') {
+      return (
+        <div key={cfg.filter_key} className="flex items-end">
+          <label className="flex items-center gap-2 cursor-pointer pb-2">
+            <input type="checkbox" checked={filterValues[cfg.filter_key] === '1'}
+              onChange={e => up(cfg.filter_key, e.target.checked ? '1' : '')}
+              className="accent-green-600 w-4 h-4" />
+            <span className="text-sm font-medium text-gray-700">{cfg.config?.label || cfg.filter_label}</span>
+          </label>
+        </div>
+      );
+    }
+
+    // pills, select, button_group → all render as a dropdown select in the link builder
+    const defaultVal = cfg.config?.default_value;
+    const options = cfg.options || [];
+    return (
+      <div key={cfg.filter_key}>
+        <label className="block text-xs font-medium text-gray-500 mb-1">{cfg.filter_label}</label>
+        <select value={filterValues[cfg.filter_key] || ''}
+          onChange={e => up(cfg.filter_key, e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+          <option value="">Any</option>
+          {options.filter(o => o.value !== defaultVal).map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -118,93 +194,12 @@ export default function FilterLinksPage() {
         <h2 className="text-sm font-bold text-[#273b84] uppercase tracking-wide">Build a Filter Link</h2>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Min Price (₹)</label>
-            <input type="number" value={filters.min_price} onChange={e => up('min_price', e.target.value)}
-              placeholder="e.g. 5000000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Max Price (₹) <span className="text-gray-400">max {fmtPrice(priceMax)}</span></label>
-            <input type="number" value={filters.max_price} onChange={e => up('max_price', e.target.value)}
-              placeholder="e.g. 20000000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Max EMI (₹/month)</label>
-            <input type="number" value={filters.max_emi} onChange={e => up('max_emi', e.target.value)}
-              placeholder="e.g. 30000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Max Down Payment (₹)</label>
-            <input type="number" value={filters.max_down_payment} onChange={e => up('max_down_payment', e.target.value)}
-              placeholder="e.g. 1000000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Unit Type</label>
-            <select value={filters.unit_type} onChange={e => up('unit_type', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">Any</option>
-              {unitTypes.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Min Bedrooms</label>
-            <select value={filters.bedrooms} onChange={e => up('bedrooms', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">Any</option>
-              {[1,2,3,4].map(n => <option key={n} value={String(n)}>{n}+</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Min Area (sqft)</label>
-            <input type="number" value={filters.min_area} onChange={e => up('min_area', e.target.value)}
-              placeholder="e.g. 2000" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Facing</label>
-            <select value={filters.facing} onChange={e => up('facing', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">Any</option>
-              {FACINGS.map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Floor Level</label>
-            <select value={filters.floor} onChange={e => up('floor', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">Any</option>
-              {FLOORS.map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Status</label>
-            <select value={filters.status} onChange={e => up('status', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">All</option>
-              <option value="available">Available</option>
-              <option value="booked">Booked</option>
-              <option value="reserved">Reserved</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Sort</label>
-            <select value={filters.sort} onChange={e => up('sort', e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-              <option value="">Default</option>
-              {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 cursor-pointer pb-2">
-              <input type="checkbox" checked={filters.trending === '1'} onChange={e => up('trending', e.target.checked ? '1' : '')}
-                className="accent-green-600 w-4 h-4" />
-              <span className="text-sm font-medium text-gray-700">Trending Only</span>
-            </label>
-          </div>
+          {filterConfigs.map(cfg => renderFilterInput(cfg))}
         </div>
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Custom Label (optional — auto-generated if empty)</label>
-          <input type="text" value={filters.label} onChange={e => up('label', e.target.value)}
+          <input type="text" value={customLabel} onChange={e => setCustomLabel(e.target.value)}
             placeholder="e.g. 50L Budget 3BHK" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         </div>
 
@@ -218,11 +213,15 @@ export default function FilterLinksPage() {
         <div className="flex gap-3">
           <button onClick={() => copyUrl(url)}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-[#273b84] text-white hover:bg-[#1e2d6b]">
-            {copied === url ? '✓ Copied!' : '📋 Copy URL'}
+            {copied === url ? '✓ Copied!' : 'Copy URL'}
           </button>
           <button onClick={saveLink}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700">
-            💾 Save Link
+            Save Link
+          </button>
+          <button onClick={() => { setFilterValues({}); setCustomLabel(''); }}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">
+            Reset
           </button>
         </div>
       </div>
@@ -241,11 +240,11 @@ export default function FilterLinksPage() {
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => copyUrl(link.url)}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100">
-                    {copied === link.url ? '✓' : '📋 Copy'}
+                    {copied === link.url ? '✓' : 'Copy'}
                   </button>
                   <button onClick={() => deleteLink(link.id)}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100">
-                    🗑
+                    Delete
                   </button>
                 </div>
               </div>

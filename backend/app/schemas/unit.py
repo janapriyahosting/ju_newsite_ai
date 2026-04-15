@@ -80,6 +80,7 @@ class UnitResponse(BaseResponseSchema):
     is_featured: bool = False
     view_count: int = 0
     thumbnail: Optional[str] = None
+    custom_fields: Optional[dict] = None
 
 
 class UnitFilterParams(BaseSchema):
