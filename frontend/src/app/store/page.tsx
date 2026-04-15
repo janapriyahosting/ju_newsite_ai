@@ -39,7 +39,7 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
     setInCompare(r.added);
     showToast(r.added ? "Added to compare ⇄" : "Removed");
     window.dispatchEvent(new Event("jp_compare_update"));
-    onCompareChange(); 
+    onCompareChange();
   }
   function fallbackCopy(text: string) {
     if (navigator.clipboard) { navigator.clipboard.writeText(text).then(() => showToast("Link copied! 📋")).catch(() => showToast("Could not copy")); return; }
@@ -172,95 +172,165 @@ function RangeSlider({ label, min, max, value, onChange, format }: {
   );
 }
 
-// ── Main Page ────────────────────────────────────────────────────────────────
-const UNIT_TYPES = ["All","2BHK","3BHK","4BHK","Villa","Plot","Studio"];
-const FACING_OPTIONS = ["Any","East","West","North","South","North-East","North-West","South-East","South-West"];
-const FLOOR_OPTIONS = [
-  { label:"Any Floor", min:0, max:999 },
-  { label:"Ground (0-2)", min:0, max:2 },
-  { label:"Low (3-7)", min:3, max:7 },
-  { label:"Mid (8-15)", min:8, max:15 },
-  { label:"High (16+)", min:16, max:999 },
-];
-const SORT_OPTIONS = [
-  { label:"Newest First", value:"newest" },
-  { label:"Price: Low → High", value:"price_asc" },
-  { label:"Price: High → Low", value:"price_desc" },
-  { label:"Area: Largest", value:"area_desc" },
-  { label:"Floor: Lowest", value:"floor_asc" },
-  { label:"Floor: Highest", value:"floor_desc" },
-];
-const STATUS_OPTS = ["All Status","available","booked","reserved"];
+// ── Types ────────────────────────────────────────────────────────────────────
+interface FilterConfig {
+  id: string;
+  filter_key: string;
+  filter_label: string;
+  filter_type: string;
+  field_name: string | null;
+  options: { value: string; label: string; min?: number; max?: number }[] | null;
+  config: Record<string, any> | null;
+  is_quick_filter: boolean;
+  sort_order: number;
+}
 
+// Helper: get unit field value — checks built-in fields, then custom_fields
+function getUnitFieldValue(unit: any, fieldName: string): any {
+  // Check direct column first
+  if (unit[fieldName] !== undefined) return unit[fieldName];
+  // Check custom_fields dict
+  if (unit.custom_fields && unit.custom_fields[fieldName] !== undefined) {
+    return unit.custom_fields[fieldName];
+  }
+  return undefined;
+}
+
+// ── Fallback defaults (used only if API fails) ──────────────────────────────
+const FALLBACK_FILTERS: FilterConfig[] = [
+  { id:'1', filter_key:'unit_type', filter_label:'Unit Type', filter_type:'pills', field_name:'unit_type', options:[{value:"All",label:"All"},{value:"2BHK",label:"2BHK"},{value:"3BHK",label:"3BHK"},{value:"4BHK",label:"4BHK"},{value:"Villa",label:"Villa"},{value:"Plot",label:"Plot"},{value:"Studio",label:"Studio"}], config:{default_value:"All"}, is_quick_filter:true, sort_order:1 },
+  { id:'2', filter_key:'trending', filter_label:'Trending', filter_type:'checkbox', field_name:'is_trending', options:null, config:{label:"🔥 Trending"}, is_quick_filter:true, sort_order:2 },
+  { id:'3', filter_key:'status', filter_label:'Status', filter_type:'select', field_name:'status', options:[{value:"All Status",label:"All Status"},{value:"available",label:"Available"},{value:"booked",label:"Booked"},{value:"reserved",label:"Reserved"}], config:{default_value:"All Status"}, is_quick_filter:true, sort_order:3 },
+  { id:'4', filter_key:'sort', filter_label:'Sort By', filter_type:'select', field_name:null, options:[{value:"newest",label:"Newest First"},{value:"price_asc",label:"Price: Low → High"},{value:"price_desc",label:"Price: High → Low"},{value:"area_desc",label:"Area: Largest"},{value:"floor_asc",label:"Floor: Lowest"},{value:"floor_desc",label:"Floor: Highest"}], config:{default_value:"newest"}, is_quick_filter:true, sort_order:4 },
+  { id:'5', filter_key:'price_range', filter_label:'Price Range', filter_type:'range_slider', field_name:'base_price', options:null, config:{min:0,max:20000000,format:"price"}, is_quick_filter:false, sort_order:5 },
+  { id:'6', filter_key:'area_range', filter_label:'Area (sqft)', filter_type:'range_slider', field_name:'area_sqft', options:null, config:{min:0,max:5000,format:"area"}, is_quick_filter:false, sort_order:6 },
+  { id:'7', filter_key:'facing', filter_label:'Facing', filter_type:'pills', field_name:'facing', options:[{value:"Any",label:"Any"},{value:"East",label:"East"},{value:"West",label:"West"},{value:"North",label:"North"},{value:"South",label:"South"},{value:"North-East",label:"North-East"},{value:"North-West",label:"North-West"},{value:"South-East",label:"South-East"},{value:"South-West",label:"South-West"}], config:{default_value:"Any"}, is_quick_filter:false, sort_order:7 },
+  { id:'8', filter_key:'floor_level', filter_label:'Floor Level', filter_type:'pills', field_name:'floor_number', options:[{value:"any",label:"Any Floor",min:0,max:999},{value:"ground",label:"Ground (0-2)",min:0,max:2},{value:"low",label:"Low (3-7)",min:3,max:7},{value:"mid",label:"Mid (8-15)",min:8,max:15},{value:"high",label:"High (16+)",min:16,max:999}], config:{default_value:"any"}, is_quick_filter:false, sort_order:8 },
+  { id:'9', filter_key:'bedrooms', filter_label:'Min Bedrooms', filter_type:'button_group', field_name:'bedrooms', options:[{value:"0",label:"Any"},{value:"1",label:"1+"},{value:"2",label:"2+"},{value:"3",label:"3+"},{value:"4",label:"4+"}], config:{default_value:"0"}, is_quick_filter:false, sort_order:9 },
+];
+
+// ── Main Page ────────────────────────────────────────────────────────────────
 export default function StorePage() {
   const [units, setUnits] = useState<any[]>([]);
   const [trendingIds, setTrendingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Configurable max values (loaded from admin settings)
-  const [maxPrice, setMaxPrice] = useState(20000000);
-  const [maxArea, setMaxArea] = useState(5000);
+  // Dynamic filter config from admin
+  const [filterConfigs, setFilterConfigs] = useState<FilterConfig[]>([]);
+  const [filtersLoaded, setFiltersLoaded] = useState(false);
 
-  // Quick filters
-  const [showTrendingOnly, setShowTrendingOnly] = useState(false);
-  const [unitType, setUnitType] = useState("All");
-  const [status, setStatus] = useState("All Status");
-  const [sort, setSort] = useState("newest");
+  // Dynamic filter values — keyed by filter_key
+  const [filterValues, setFilterValues] = useState<Record<string, any>>({});
+
+  // Configurable max values (loaded from admin settings, may be overridden by filter config)
+  const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
+
   const [aiQuery, setAiQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [aiActive, setAiActive] = useState(false);
 
-  // Advanced filters
-  const [priceRange, setPriceRange] = useState<[number,number]>([0, 20000000]);
-  const [areaRange, setAreaRange] = useState<[number,number]>([0, 5000]);
-  const [facing, setFacing] = useState("Any");
-  const [floorIdx, setFloorIdx] = useState(0);
-  const [minBeds, setMinBeds] = useState(0);
+  // Helper to get a filter value with its default
+  const getVal = useCallback((key: string) => {
+    if (filterValues[key] !== undefined) return filterValues[key];
+    const cfg = filterConfigs.find(f => f.filter_key === key);
+    return cfg?.config?.default_value ?? "";
+  }, [filterValues, filterConfigs]);
 
-  // Active filter count
-  const activeCount = [
-    priceRange[0]>0||priceRange[1]<maxPrice,
-    areaRange[0]>0||areaRange[1]<maxArea,
-    facing!=="Any",
-    floorIdx!==0,
-    minBeds>0,
-    showTrendingOnly,
-  ].filter(Boolean).length;
+  const setVal = (key: string, val: any) => {
+    setFilterValues(prev => ({ ...prev, [key]: val }));
+  };
 
-  // Load admin-configured filter ranges + apply URL params
+  // Get max for range sliders (from filter config, overridden by site setting if configured)
+  const getRangeMax = useCallback((key: string) => {
+    const cfg = filterConfigs.find(f => f.filter_key === key);
+    if (!cfg?.config) return 0;
+    const settingKey = cfg.config.setting_key;
+    if (settingKey && siteSettings[settingKey]) return Number(siteSettings[settingKey]);
+    return cfg.config.max ?? 0;
+  }, [filterConfigs, siteSettings]);
+
+  const getRangeMin = useCallback((key: string) => {
+    const cfg = filterConfigs.find(f => f.filter_key === key);
+    return cfg?.config?.min ?? 0;
+  }, [filterConfigs]);
+
+  // Load filter configs + settings + apply URL params
   useEffect(() => {
-    // Load settings
-    fetch(`${API}/admin/cms/public/settings`).then(r => r.json()).then((s: any) => {
-      const pm = Number(s.filter_price_max) || 20000000;
-      const am = Number(s.filter_area_max) || 5000;
-      setMaxPrice(pm);
-      setMaxArea(am);
+    Promise.all([
+      fetch(`${API}/admin/cms/public/store-filters`).then(r => r.json()).catch(() => null),
+      fetch(`${API}/admin/cms/public/settings`).then(r => r.json()).catch(() => ({})),
+    ]).then(([filtersData, settings]) => {
+      const configs: FilterConfig[] = Array.isArray(filtersData) && filtersData.length > 0
+        ? filtersData
+        : FALLBACK_FILTERS;
+      setFilterConfigs(configs);
+      setSiteSettings(settings || {});
 
-      // Read URL params AFTER settings loaded
+      // Initialize default values
+      const defaults: Record<string, any> = {};
+      for (const cfg of configs) {
+        if (cfg.config?.default_value !== undefined) {
+          defaults[cfg.filter_key] = cfg.config.default_value;
+        }
+        // Initialize range sliders with full range
+        if (cfg.filter_type === 'range_slider') {
+          const min = cfg.config?.min ?? 0;
+          const settingKey = cfg.config?.setting_key;
+          const max = (settingKey && settings?.[settingKey]) ? Number(settings[settingKey]) : (cfg.config?.max ?? 0);
+          defaults[cfg.filter_key] = [min, max];
+        }
+      }
+
+      // Apply URL params dynamically from filter configs
       if (typeof window !== 'undefined') {
         const sp = new URLSearchParams(window.location.search);
-        const minP = Number(sp.get('min_price')) || 0;
-        const maxP = Number(sp.get('max_price')) || pm;
-        setPriceRange([minP, Math.min(maxP, pm)]);
-        const minA = Number(sp.get('min_area')) || 0;
-        const maxA = Number(sp.get('max_area')) || am;
-        setAreaRange([minA, Math.min(maxA, am)]);
-        if (sp.get('unit_type')) setUnitType(sp.get('unit_type')!);
-        if (sp.get('bedrooms')) setMinBeds(Number(sp.get('bedrooms')) || 0);
-        if (sp.get('facing')) setFacing(sp.get('facing')!);
-        if (sp.get('sort')) setSort(sp.get('sort')!);
-        if (sp.get('trending') === '1') setShowTrendingOnly(true);
-        if (sp.get('floor')) {
-          const fi = FLOOR_OPTIONS.findIndex(f => f.label.toLowerCase().startsWith(sp.get('floor')!.toLowerCase()));
-          if (fi > 0) setFloorIdx(fi);
+        let hasAdvancedParam = false;
+
+        for (const cfg of configs) {
+          if (cfg.filter_type === 'range_slider') {
+            // Range sliders: read min_{key}/max_{key} (strip _range suffix for param name)
+            const paramBase = cfg.filter_key.replace(/_range$/, '');
+            const minParam = sp.get(`min_${paramBase}`);
+            const maxParam = sp.get(`max_${paramBase}`);
+            if (minParam || maxParam) {
+              const rMin = cfg.config?.min ?? 0;
+              const settingKey = cfg.config?.setting_key;
+              const rMax = (settingKey && settings?.[settingKey]) ? Number(settings[settingKey]) : (cfg.config?.max ?? 0);
+              defaults[cfg.filter_key] = [
+                Number(minParam) || rMin,
+                Math.min(Number(maxParam) || rMax, rMax),
+              ];
+              if (!cfg.is_quick_filter) hasAdvancedParam = true;
+            }
+          } else if (cfg.filter_type === 'checkbox') {
+            // Checkbox: read filter_key=1
+            if (sp.get(cfg.filter_key) === '1') {
+              defaults[cfg.filter_key] = true;
+              if (!cfg.is_quick_filter) hasAdvancedParam = true;
+            }
+          } else if (cfg.filter_key !== 'sort') {
+            // Pills, select, button_group: read filter_key directly
+            const paramVal = sp.get(cfg.filter_key);
+            if (paramVal) {
+              defaults[cfg.filter_key] = paramVal;
+              if (!cfg.is_quick_filter) hasAdvancedParam = true;
+            }
+          }
+          // Sort
+          if (cfg.filter_key === 'sort' && sp.get('sort')) {
+            defaults['sort'] = sp.get('sort')!;
+          }
         }
-        if (sp.get('status') && STATUS_OPTS.includes(sp.get('status')!)) setStatus(sp.get('status')!);
-        if (sp.get('max_emi') || sp.get('max_down_payment') || sp.get('min_price') || sp.get('min_area') || sp.get('unit_type') || sp.get('bedrooms') || sp.get('facing') || sp.get('floor') || sp.get('trending')) {
+
+        if (hasAdvancedParam) {
           setFiltersOpen(true);
         }
       }
-    }).catch(() => {});
+
+      setFilterValues(defaults);
+      setFiltersLoaded(true);
+    });
     loadAll();
   }, []);
 
@@ -299,59 +369,234 @@ export default function StorePage() {
   function clearAI() { setAiQuery(""); setAiActive(false); loadAll(); }
 
   function resetFilters() {
-    setPriceRange([0,maxPrice]); setAreaRange([0,maxArea]);
-    setFacing("Any"); setFloorIdx(0); setMinBeds(0);
-    setUnitType("All"); setStatus("All Status");
-    setShowTrendingOnly(false);
-  }
-
-  // Client-side filtering
-  const filtered = units.filter(u => {
-    // Trending only
-    if (showTrendingOnly && !trendingIds.has(u.id)) return false;
-    // Unit type
-    if (unitType !== "All") {
-      const t = unitType.toLowerCase();
-      const ut = (u.unit_type||"").toLowerCase();
-      if (!ut.includes(t.replace("bhk","")) && ut !== t) {
-        if (t === "villa" && !ut.includes("villa")) return false;
-        if (t === "plot" && !ut.includes("plot")) return false;
-        if (t === "studio" && !ut.includes("studio")) return false;
-        if (t.includes("bhk")) {
-          const beds = parseInt(t);
-          if (u.bedrooms !== beds) return false;
-        }
+    const defaults: Record<string, any> = {};
+    for (const cfg of filterConfigs) {
+      if (cfg.config?.default_value !== undefined) {
+        defaults[cfg.filter_key] = cfg.config.default_value;
+      }
+      if (cfg.filter_type === 'range_slider') {
+        defaults[cfg.filter_key] = [getRangeMin(cfg.filter_key), getRangeMax(cfg.filter_key)];
+      }
+      if (cfg.filter_type === 'checkbox') {
+        defaults[cfg.filter_key] = false;
       }
     }
-    // Status
-    if (status !== "All Status" && u.status !== status) return false;
-    // Price
-    const price = parseFloat(u.base_price||0);
-    if (price > 0 && (price < priceRange[0] || price > priceRange[1])) return false;
-    // Area
-    const area = parseFloat(u.area_sqft||0);
-    if (area > 0 && (area < areaRange[0] || area > areaRange[1])) return false;
-    // Facing
-    if (facing !== "Any" && u.facing && u.facing !== facing) return false;
-    // Floor
-    if (floorIdx !== 0) {
-      const f = FLOOR_OPTIONS[floorIdx];
-      const floor = u.floor_number ?? 0;
-      if (floor < f.min || floor > f.max) return false;
+    setFilterValues(defaults);
+  }
+
+  // ── Client-side filtering ──────────────────────────────────────────────────
+  const filtered = units.filter(u => {
+    for (const cfg of filterConfigs) {
+      const val = getVal(cfg.filter_key);
+      const defaultVal = cfg.config?.default_value;
+      const fieldName = cfg.field_name;
+
+      // Skip sort (not a data filter) and filters at default value
+      if (!fieldName) continue;
+
+      // ── Checkbox (boolean fields like is_trending) ──
+      if (cfg.filter_type === 'checkbox') {
+        if (val === true) {
+          // Special: trending uses trendingIds set for performance
+          if (fieldName === 'is_trending') {
+            if (!trendingIds.has(u.id)) return false;
+          } else {
+            if (!getUnitFieldValue(u, fieldName)) return false;
+          }
+        }
+        continue;
+      }
+
+      // ── Range slider (numeric fields) ──
+      if (cfg.filter_type === 'range_slider') {
+        if (Array.isArray(val)) {
+          const num = parseFloat(getUnitFieldValue(u, fieldName) || 0);
+          if (num > 0 && (num < val[0] || num > val[1])) return false;
+        }
+        continue;
+      }
+
+      // ── At default value → skip (no filtering) ──
+      if (!val || val === defaultVal) continue;
+
+      // ── Button group with numeric "min" semantics (e.g. bedrooms: "2+" means >=2) ──
+      if (cfg.filter_type === 'button_group') {
+        const minVal = parseInt(val) || 0;
+        if (minVal > 0) {
+          const unitNum = parseInt(getUnitFieldValue(u, fieldName)) || 0;
+          if (unitNum < minVal) return false;
+        }
+        continue;
+      }
+
+      // ── Pills/select with options that have min/max (e.g. floor_level ranges) ──
+      const selectedOpt = cfg.options?.find(o => o.value === val);
+      if (selectedOpt && selectedOpt.min !== undefined && selectedOpt.max !== undefined) {
+        const unitNum = parseFloat(getUnitFieldValue(u, fieldName) ?? 0);
+        if (unitNum < selectedOpt.min || unitNum > selectedOpt.max) return false;
+        continue;
+      }
+
+      // ── Generic exact match: compare selected value against unit field ──
+      const unitVal = getUnitFieldValue(u, fieldName);
+      if (unitVal !== undefined && unitVal !== null) {
+        if (String(unitVal).toLowerCase() !== String(val).toLowerCase()) return false;
+      }
     }
-    // Min bedrooms
-    if (minBeds > 0 && (u.bedrooms||0) < minBeds) return false;
     return true;
   }).sort((a,b) => {
-    if (sort === "price_asc") return (parseFloat(a.base_price)||0)-(parseFloat(b.base_price)||0);
-    if (sort === "price_desc") return (parseFloat(b.base_price)||0)-(parseFloat(a.base_price)||0);
-    if (sort === "area_desc") return (parseFloat(b.area_sqft)||0)-(parseFloat(a.area_sqft)||0);
-    if (sort === "floor_asc") return (a.floor_number??0)-(b.floor_number??0);
-    if (sort === "floor_desc") return (b.floor_number??0)-(a.floor_number??0);
+    const sortVal = getVal('sort') || 'newest';
+    if (sortVal === "price_asc") return (parseFloat(a.base_price)||0)-(parseFloat(b.base_price)||0);
+    if (sortVal === "price_desc") return (parseFloat(b.base_price)||0)-(parseFloat(a.base_price)||0);
+    if (sortVal === "area_desc") return (parseFloat(b.area_sqft)||0)-(parseFloat(a.area_sqft)||0);
+    if (sortVal === "floor_asc") return (a.floor_number??0)-(b.floor_number??0);
+    if (sortVal === "floor_desc") return (b.floor_number??0)-(a.floor_number??0);
     return new Date(b.created_at).getTime()-new Date(a.created_at).getTime();
   });
 
+  // Active filter count (advanced filters only)
+  const activeCount = filterConfigs.filter(cfg => {
+    if (cfg.is_quick_filter && cfg.filter_key !== 'trending') return false;
+    const val = getVal(cfg.filter_key);
+    if (cfg.filter_type === 'checkbox') return val === true;
+    if (cfg.filter_type === 'range_slider') {
+      if (!Array.isArray(val)) return false;
+      return val[0] > getRangeMin(cfg.filter_key) || val[1] < getRangeMax(cfg.filter_key);
+    }
+    return val && val !== cfg.config?.default_value;
+  }).length;
+
   const formatPriceShort = (n:number) => n>=10000000?`₹${(n/10000000).toFixed(1)}Cr`:n>=100000?`₹${(n/100000).toFixed(0)}L`:`₹${n.toLocaleString()}`;
+
+  const quickFilters = filterConfigs.filter(f => f.is_quick_filter);
+  const advancedFilters = filterConfigs.filter(f => !f.is_quick_filter);
+
+  // ── Render a single filter by config ──
+  function renderFilter(cfg: FilterConfig, isQuickBar: boolean) {
+    const val = getVal(cfg.filter_key);
+
+    switch (cfg.filter_type) {
+      case 'pills':
+        if (isQuickBar) {
+          return (
+            <div key={cfg.filter_key} className="flex items-center gap-2">
+              <span className="text-xs font-bold shrink-0" style={{ color:"#2A3887" }}>{cfg.filter_label}</span>
+              <div className="flex gap-1.5 flex-wrap">
+                {(cfg.options || []).map(opt => (
+                  <button key={opt.value} onClick={() => setVal(cfg.filter_key, opt.value)}
+                    className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all"
+                    style={val===opt.value?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"white",color:"#666",borderColor:"#ddd"}}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={cfg.filter_key} className="mb-5">
+            <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>{cfg.filter_label}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(cfg.options || []).map(opt => (
+                <button key={opt.value} onClick={() => setVal(cfg.filter_key, opt.value)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
+                  style={val===opt.value?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 'select':
+        if (isQuickBar) {
+          return (
+            <div key={cfg.filter_key} className="flex items-center gap-1.5">
+              <span className="text-xs font-bold shrink-0" style={{ color:"#2A3887" }}>{cfg.filter_label}</span>
+              <select value={val || ''} onChange={e => setVal(cfg.filter_key, e.target.value)}
+                className="px-3 py-1.5 rounded-xl text-xs font-bold border focus:outline-none"
+                style={{ borderColor:"#ddd",color:"#555" }}>
+                {(cfg.options || []).map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+        return (
+          <div key={cfg.filter_key} className="mb-5">
+            <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>{cfg.filter_label}</p>
+            <select value={val || ''} onChange={e => setVal(cfg.filter_key, e.target.value)}
+              className="w-full px-3 py-2 rounded-xl text-xs font-bold border focus:outline-none"
+              style={{ borderColor:"#E2F1FC",color:"#555",background:"#F8F9FB" }}>
+              {(cfg.options || []).map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        );
+
+      case 'checkbox':
+        return (
+          <button key={cfg.filter_key} onClick={() => setVal(cfg.filter_key, !val)}
+            className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1"
+            style={val?{background:"#f59e0b",color:"white",borderColor:"#f59e0b"}:{background:"white",color:"#666",borderColor:"#ddd"}}>
+            {cfg.config?.label || cfg.filter_label}
+          </button>
+        );
+
+      case 'range_slider': {
+        const rMin = getRangeMin(cfg.filter_key);
+        const rMax = getRangeMax(cfg.filter_key);
+        const rangeVal = Array.isArray(val) ? val as [number,number] : [rMin, rMax] as [number,number];
+        const fmt = cfg.config?.format === 'price'
+          ? formatPriceShort
+          : cfg.config?.format === 'area'
+            ? (n:number) => `${n.toLocaleString()} sqft`
+            : (n:number) => n.toLocaleString();
+        return (
+          <RangeSlider key={cfg.filter_key} label={cfg.filter_label}
+            min={rMin} max={rMax} value={rangeVal}
+            onChange={v => setVal(cfg.filter_key, v)} format={fmt} />
+        );
+      }
+
+      case 'button_group':
+        if (isQuickBar) {
+          return (
+            <div key={cfg.filter_key} className="flex items-center gap-2">
+              <span className="text-xs font-bold shrink-0" style={{ color:"#2A3887" }}>{cfg.filter_label}</span>
+              <div className="flex gap-1.5">
+                {(cfg.options || []).map(opt => (
+                  <button key={opt.value} onClick={() => setVal(cfg.filter_key, opt.value)}
+                    className="px-2.5 py-1 rounded-full text-xs font-bold border transition-all"
+                    style={val===opt.value?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"white",color:"#666",borderColor:"#ddd"}}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div key={cfg.filter_key} className="mb-5">
+            <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>{cfg.filter_label}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(cfg.options || []).map(opt => (
+                <button key={opt.value} onClick={() => setVal(cfg.filter_key, opt.value)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
+                  style={val===opt.value?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  }
 
   return (
     <main style={{ fontFamily:"'Lato',sans-serif" }} className="min-h-screen bg-white">
@@ -396,100 +641,29 @@ export default function StorePage() {
       {/* ── Filter Bar ── */}
       <div className="sticky top-16 z-30 bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-6 py-3">
-          <div className="flex flex-wrap gap-2 items-center">
-            {/* Type pills */}
-            <div className="flex gap-1.5 flex-wrap">
-              {UNIT_TYPES.map(t => (
-                <button key={t} onClick={() => setUnitType(t)}
-                  className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all"
-                  style={unitType===t?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"white",color:"#666",borderColor:"#ddd"}}>
-                  {t}
-                </button>
-              ))}
-              <button onClick={() => setShowTrendingOnly(o => !o)}
-                className="px-3 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1"
-                style={showTrendingOnly?{background:"#f59e0b",color:"white",borderColor:"#f59e0b"}:{background:"white",color:"#666",borderColor:"#ddd"}}>
-                🔥 Trending
-              </button>
-            </div>
+          {/* Quick filters row */}
+          <div className="flex flex-wrap gap-3 items-center">
+            {quickFilters.map(cfg => renderFilter(cfg, true))}
 
-            <div className="flex gap-2 ml-auto items-center flex-wrap">
-              {/* Status */}
-              <select value={status} onChange={e => setStatus(e.target.value)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border focus:outline-none"
-                style={{ borderColor:"#ddd",color:"#555" }}>
-                {STATUS_OPTS.map(s => <option key={s}>{s}</option>)}
-              </select>
-              {/* Sort */}
-              <select value={sort} onChange={e => setSort(e.target.value)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border focus:outline-none"
-                style={{ borderColor:"#ddd",color:"#555" }}>
-                {SORT_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
-              {/* Advanced filters toggle */}
-              <button onClick={() => setFiltersOpen(o => !o)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all"
-                style={filtersOpen||activeCount>0?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"white",color:"#555",borderColor:"#ddd"}}>
-                ⚙ Filters {activeCount > 0 && <span className="w-4 h-4 rounded-full bg-white text-xs font-black flex items-center justify-center" style={{ color:"#2A3887" }}>{activeCount}</span>}
-              </button>
+            {/* Separator + controls */}
+            <div className="flex gap-2 ml-auto items-center shrink-0">
+              {advancedFilters.length > 0 && (
+                <button onClick={() => setFiltersOpen(o => !o)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all"
+                  style={filtersOpen||activeCount>0?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"white",color:"#555",borderColor:"#ddd"}}>
+                  ⚙ Filters {activeCount > 0 && <span className="w-4 h-4 rounded-full bg-white text-xs font-black flex items-center justify-center" style={{ color:"#2A3887" }}>{activeCount}</span>}
+                </button>
+              )}
               <span className="text-xs font-bold" style={{ color:"#29A9DF" }}>{filtered.length} units</span>
             </div>
           </div>
 
           {/* ── Advanced Filter Panel ── */}
-          {filtersOpen && (
+          {filtersOpen && advancedFilters.length > 0 && (
             <div className="mt-3 pt-3 border-t" style={{ borderColor:"#E2F1FC" }}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-2">
-                {/* Price Range */}
-                <RangeSlider label="Price Range" min={0} max={maxPrice}
-                  value={priceRange} onChange={setPriceRange}
-                  format={formatPriceShort} />
-                {/* Area Range */}
-                <RangeSlider label="Area (sqft)" min={0} max={maxArea}
-                  value={areaRange} onChange={setAreaRange}
-                  format={n => `${n.toLocaleString()} sqft`} />
-                {/* Facing */}
-                <div className="mb-5">
-                  <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Facing</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {FACING_OPTIONS.map(f => (
-                      <button key={f} onClick={() => setFacing(f)}
-                        className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
-                        style={facing===f?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
-                        {f}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Floor & Bedrooms */}
-                <div className="mb-5 space-y-4">
-                  <div>
-                    <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Floor Level</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {FLOOR_OPTIONS.map((f,i) => (
-                        <button key={f.label} onClick={() => setFloorIdx(i)}
-                          className="px-2.5 py-1 rounded-lg text-xs font-bold border transition-all"
-                          style={floorIdx===i?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
-                          {f.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs font-black mb-2" style={{ color:"#2A3887" }}>Min Bedrooms</p>
-                    <div className="flex gap-1.5">
-                      {[0,1,2,3,4].map(n => (
-                        <button key={n} onClick={() => setMinBeds(n)}
-                          className="w-8 h-8 rounded-lg text-xs font-bold border transition-all"
-                          style={minBeds===n?{background:"#2A3887",color:"white",borderColor:"#2A3887"}:{background:"#F8F9FB",color:"#555",borderColor:"#E2F1FC"}}>
-                          {n===0?"Any":n+"+"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                {advancedFilters.map(cfg => renderFilter(cfg, false))}
               </div>
-              {/* Reset */}
               {activeCount > 0 && (
                 <div className="flex justify-end pb-2">
                   <button onClick={resetFilters}
