@@ -23,7 +23,8 @@ dist/
 # Logs
 *.log
 logs/
-backups/
+/backups/
+backend/backups/
 
 # OS
 .DS_Store
