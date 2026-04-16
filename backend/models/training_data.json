@@ -11,6 +11,11 @@
         21,
         24,
         "PRICE"
+      ],
+      [
+        25,
+        31,
+        "BUDGET"
       ]
     ]
   },
@@ -53,6 +58,11 @@
     "text": "budget 80l 2 bhk",
     "entities": [
       [
+        0,
+        6,
+        "BUDGET"
+      ],
+      [
         7,
         10,
         "PRICE"
@@ -68,7 +78,12 @@
     "text": "villa with 2000 sqft",
     "entities": [
       [
-        10,
+        0,
+        5,
+        "UNIT_TYPE"
+      ],
+      [
+        11,
         20,
         "AREA"
       ]
@@ -190,56 +205,6 @@
     ]
   },
   {
-    "text": "my budget is 80l need 2bhk",
-    "entities": [
-      [
-        13,
-        16,
-        "PRICE"
-      ],
-      [
-        22,
-        26,
-        "BHK_TYPE"
-      ]
-    ]
-  },
-  {
-    "text": "4bhk premium above 2cr south facing",
-    "entities": [
-      [
-        0,
-        4,
-        "BHK_TYPE"
-      ],
-      [
-        13,
-        19,
-        "PRICE"
-      ],
-      [
-        20,
-        25,
-        "FACING"
-      ]
-    ]
-  },
-  {
-    "text": "plot 1500 sqft budget 50l",
-    "entities": [
-      [
-        5,
-        14,
-        "AREA"
-      ],
-      [
-        22,
-        25,
-        "PRICE"
-      ]
-    ]
-  },
-  {
     "text": "1bhk below 50 lakhs low floor",
     "entities": [
       [
@@ -256,6 +221,411 @@
         22,
         31,
         "FLOOR"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk with down payment under 10 lakhs",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        10,
+        22,
+        "DOWN_PAYMENT"
+      ],
+      [
+        29,
+        38,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "booking amount 20000 for 2bhk",
+    "entities": [
+      [
+        0,
+        14,
+        "BOOKING_AMOUNT"
+      ],
+      [
+        20,
+        25,
+        "PRICE"
+      ],
+      [
+        30,
+        34,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "loan amount below 80 lakhs",
+    "entities": [
+      [
+        0,
+        11,
+        "LOAN_AMOUNT"
+      ],
+      [
+        18,
+        27,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk 3 bathrooms with 2 balconies",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        5,
+        17,
+        "BATHROOMS"
+      ],
+      [
+        23,
+        35,
+        "BALCONIES"
+      ]
+    ]
+  },
+  {
+    "text": "2bhk 2 bathrooms east facing",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        5,
+        17,
+        "BATHROOMS"
+      ],
+      [
+        18,
+        22,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "carpet area above 700 sqft 2bhk",
+    "entities": [
+      [
+        0,
+        11,
+        "CARPET_AREA"
+      ],
+      [
+        18,
+        26,
+        "AREA"
+      ],
+      [
+        27,
+        31,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "plot area 1500 sqft",
+    "entities": [
+      [
+        0,
+        9,
+        "PLOT_AREA"
+      ],
+      [
+        10,
+        19,
+        "AREA"
+      ]
+    ]
+  },
+  {
+    "text": "nilevalley block-6 3bhk",
+    "entities": [
+      [
+        0,
+        10,
+        "PROJECT"
+      ],
+      [
+        11,
+        18,
+        "TOWER"
+      ],
+      [
+        19,
+        23,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk in madinaguda",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        8,
+        18,
+        "LOCATION"
+      ]
+    ]
+  },
+  {
+    "text": "units in tower block 6",
+    "entities": [
+      [
+        15,
+        22,
+        "TOWER"
+      ]
+    ]
+  },
+  {
+    "text": "available 3bhk east facing",
+    "entities": [
+      [
+        0,
+        9,
+        "STATUS"
+      ],
+      [
+        10,
+        14,
+        "BHK_TYPE"
+      ],
+      [
+        15,
+        19,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "ready to move 2bhk under 70l",
+    "entities": [
+      [
+        0,
+        13,
+        "STATUS"
+      ],
+      [
+        14,
+        18,
+        "BHK_TYPE"
+      ],
+      [
+        25,
+        28,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk with low maintenance cost",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        14,
+        25,
+        "MAINTENANCE"
+      ]
+    ]
+  },
+  {
+    "text": "gst included units 2bhk",
+    "entities": [
+      [
+        0,
+        3,
+        "GST"
+      ],
+      [
+        18,
+        22,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk with car parking",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        10,
+        21,
+        "PARKING"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk with club house and lift",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        10,
+        20,
+        "CLUB_HOUSE"
+      ],
+      [
+        25,
+        29,
+        "LIFTS"
+      ]
+    ]
+  },
+  {
+    "text": "trending 3bhk properties",
+    "entities": [
+      [
+        0,
+        8,
+        "TRENDING"
+      ],
+      [
+        9,
+        13,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk east facing 1500 sqft budget 1cr high floor",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        5,
+        9,
+        "FACING"
+      ],
+      [
+        17,
+        26,
+        "AREA"
+      ],
+      [
+        27,
+        33,
+        "BUDGET"
+      ],
+      [
+        34,
+        37,
+        "PRICE"
+      ],
+      [
+        38,
+        48,
+        "FLOOR"
+      ]
+    ]
+  },
+  {
+    "text": "my budget is 1.5 cr",
+    "entities": [
+      [
+        3,
+        9,
+        "BUDGET"
+      ],
+      [
+        13,
+        19,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "looking for carpet area 1000 above",
+    "entities": [
+      [
+        12,
+        23,
+        "CARPET_AREA"
+      ]
+    ]
+  },
+  {
+    "text": "my budget above 1.5cr",
+    "entities": [
+      [
+        3,
+        9,
+        "BUDGET"
+      ],
+      [
+        16,
+        21,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "3 bhk",
+    "entities": [
+      [
+        0,
+        5,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "my budget is above 1.5 cr",
+    "entities": [
+      [
+        3,
+        9,
+        "BUDGET"
+      ],
+      [
+        19,
+        25,
+        "PRICE"
       ]
     ]
   },
@@ -278,18 +648,13 @@
     "text": "my budget above 1.5 cr",
     "entities": [
       [
+        3,
+        9,
+        "BUDGET"
+      ],
+      [
         16,
         22,
-        "PRICE"
-      ]
-    ]
-  },
-  {
-    "text": "my budget is above 1.5 cr",
-    "entities": [
-      [
-        19,
-        25,
         "PRICE"
       ]
     ]
@@ -298,9 +663,24 @@
     "text": "my budget is 90l",
     "entities": [
       [
+        3,
+        9,
+        "BUDGET"
+      ],
+      [
         13,
         16,
         "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "looking for 3 bhk",
+    "entities": [
+      [
+        12,
+        17,
+        "BHK_TYPE"
       ]
     ]
   },
@@ -316,56 +696,11 @@
         20,
         23,
         "PRICE"
-      ]
-    ]
-  },
-  {
-    "text": "i can pay emi upto 1l",
-    "entities": [
+      ],
       [
-        19,
-        21,
-        "PRICE"
-      ]
-    ]
-  },
-  {
-    "text": "budget under 70l",
-    "entities": [
-      [
-        13,
-        16,
-        "PRICE"
-      ]
-    ]
-  },
-  {
-    "text": "what properties i can get with 10l downpayment",
-    "entities": [
-      [
-        31,
-        34,
-        "PRICE"
-      ]
-    ]
-  },
-  {
-    "text": "3bhk",
-    "entities": [
-      [
-        0,
-        4,
-        "BHK_TYPE"
-      ]
-    ]
-  },
-  {
-    "text": "my budget above 1.5cr",
-    "entities": [
-      [
-        16,
-        21,
-        "PRICE"
+        24,
+        30,
+        "BUDGET"
       ]
     ]
   },
@@ -379,18 +714,108 @@
       ],
       [
         6,
-        10,
+        17,
         "FACING"
       ]
     ]
   },
   {
-    "text": "my budget is 1.5 cr",
+    "text": "what properties i can get with 10l downpayment",
     "entities": [
+      [
+        31,
+        34,
+        "PRICE"
+      ],
+      [
+        35,
+        46,
+        "DOWN_PAYMENT"
+      ]
+    ]
+  },
+  {
+    "text": "i can pay emi upto 1l",
+    "entities": [
+      [
+        10,
+        20,
+        "EMI"
+      ]
+    ]
+  },
+  {
+    "text": "budget under 70l",
+    "entities": [
+      [
+        0,
+        6,
+        "BUDGET"
+      ],
+      [
+        13,
+        16,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "2bhk budget 80l",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        5,
+        11,
+        "BUDGET"
+      ],
+      [
+        12,
+        15,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "3 bhk budget 1.2cr",
+    "entities": [
+      [
+        0,
+        5,
+        "BHK_TYPE"
+      ],
+      [
+        6,
+        12,
+        "BUDGET"
+      ],
+      [
+        13,
+        18,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "3 bhk in 90l budget",
+    "entities": [
+      [
+        0,
+        5,
+        "BHK_TYPE"
+      ],
+      [
+        9,
+        12,
+        "PRICE"
+      ],
       [
         13,
         19,
-        "PRICE"
+        "BUDGET"
       ]
     ]
   }

@@ -448,6 +448,12 @@ function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButton
   );
 }
 
+function _getPrice(unit: any) {
+  const ta = unit?.custom_fields?.total_amount;
+  if (ta && parseFloat(ta) > 0) return parseFloat(ta);
+  return unit?.base_price ? parseFloat(unit.base_price) : null;
+}
+
 // ── Trending Card (matches store UnitCard) ──────────────────────────────────
 function TrendingCard({ unit: u, imgUrl, statusColor, formatPrice }: { unit: any; imgUrl: string; statusColor: string; formatPrice: (p: any) => string }) {
   const [saved, setSaved] = useState(false);
@@ -473,7 +479,7 @@ function TrendingCard({ unit: u, imgUrl, statusColor, formatPrice }: { unit: any
   function handleShare(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
     const url = `${window.location.origin}/units/${u.id}`;
-    const text = `${u.unit_number} — ${u.unit_type}, ${formatPrice(u.base_price)} | Janapriya Upscale`;
+    const text = `${u.unit_number} — ${u.unit_type}, ${formatPrice(_getPrice(u))} | Janapriya Upscale`;
     if (navigator.share) navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {});
     else if (navigator.clipboard) navigator.clipboard.writeText(`${text}\n${url}`).then(() => showToast("Link copied! 📋"));
   }
@@ -535,10 +541,10 @@ function TrendingCard({ unit: u, imgUrl, statusColor, formatPrice }: { unit: any
         </div>
         <div className="mt-auto flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
           <div>
-            <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(u.base_price)}</div>
-            {u.area_sqft && u.base_price && (
+            <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(_getPrice(u))}</div>
+            {u.area_sqft && _getPrice(u) && (
               <div className="text-xs" style={{ color: "#999" }}>
-                ₹{Math.round(parseFloat(u.base_price)/parseFloat(u.area_sqft)).toLocaleString()}/sqft
+                ₹{Math.round(_getPrice(u)!/parseFloat(u.area_sqft)).toLocaleString()}/sqft
               </div>
             )}
           </div>
@@ -597,6 +603,12 @@ export default function HomePage() {
     e.preventDefault();
     if (!query.trim()) return;
     window.location.href = `/store?q=${encodeURIComponent(query.trim())}`;
+  }
+
+  function getPrice(unit: any) {
+    const ta = unit.custom_fields?.total_amount;
+    if (ta && parseFloat(ta) > 0) return parseFloat(ta);
+    return unit.base_price ? parseFloat(unit.base_price) : null;
   }
 
   function formatPrice(p: any) {
