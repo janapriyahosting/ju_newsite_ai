@@ -76,7 +76,7 @@ function SuggestedUnit({ unit }: { unit: any }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 12, color: "#2A3887" }}>{unit.unit_number}</div>
-          <div style={{ fontSize: 11, color: "#666" }}>{unit.unit_type}{unit.bedrooms ? ` · ${unit.bedrooms}BHK` : ""}{unit.area_sqft ? ` · ${Math.round(unit.area_sqft)}sqft` : ""}</div>
+          <div style={{ fontSize: 11, color: "#666" }}>{unit.unit_type?.includes("BHK") ? unit.unit_type : `${unit.unit_type || ""}${unit.bedrooms ? (unit.unit_type ? " · " : "") + unit.bedrooms + "BHK" : ""}`}{unit.area_sqft ? ` · ${Math.round(unit.area_sqft)}sqft` : ""}</div>
         </div>
         <div style={{ textAlign: "right", flexShrink: 0 }}>
           <div style={{ fontWeight: 900, fontSize: 12, color: "#2A3887" }}>{fmt(unit.base_price)}</div>

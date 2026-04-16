@@ -1,4 +1,4 @@
-import csv, io, uuid
+import csv, io, re, uuid
 from typing import List, Optional, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
@@ -45,11 +45,27 @@ def model_to_dict(obj):
 UNIT_FIELDS = ["tower_id","unit_number","floor_number","unit_type","bedrooms","bathrooms",
                "balconies","area_sqft","carpet_area","plot_area","base_price","price_per_sqft",
                "down_payment","emi_estimate","token_amount","facing","status","amenities","images",
-               "is_trending","is_featured","description","floor_plan_img","floor_plans","video_url","walkthrough_url","dimensions"]
+               "is_trending","is_featured","floor_plan_img","floor_plans","video_url","walkthrough_url","dimensions"]
 
 CSV_COLUMNS = ["project_name","tower_name","unit_number","floor_number","unit_type","bedrooms","bathrooms","balconies",
                "area_sqft","carpet_area","base_price","price_per_sqft","down_payment",
-               "emi_estimate","facing","status","is_trending","is_featured","description"]
+               "emi_estimate","facing","status","is_trending","is_featured"]
+
+# Common header variants that should map to canonical CSV_COLUMNS keys.
+# Applied during CSV import so files exported from other systems (Salesforce,
+# legacy templates, etc.) work without manual edits.
+CSV_HEADER_ALIASES = {
+    "project":              "project_name",
+    "project_title":        "project_name",
+    "tower":                "tower_name",
+    "block":                "tower_name",
+    "carpet_area_in_sqft":  "carpet_area",
+    "downpayment":          "down_payment",
+    "beds":                 "bedrooms",
+    "bedroom":              "bedrooms",
+    "bath":                 "bathrooms",
+    "bathroom":             "bathrooms",
+}
 
 # ── PROJECTS ──────────────────────────────────────────────────────────────────
 @router.get("/projects/list")
@@ -224,7 +240,29 @@ async def list_units_admin(page:int=Query(1,ge=1), page_size:int=Query(20,ge=1,l
         cq=cq.join(Tower,Unit.tower_id==Tower.id).where(Tower.project_id==uuid.UUID(project_id))
     total=(await db.execute(cq)).scalar()
     items=(await db.execute(q.order_by(Unit.created_at.desc()).offset((page-1)*page_size).limit(page_size))).scalars().all()
-    return {"items":[model_to_dict(u) for u in items],**paginate(total,page,page_size)}
+
+    # Enrich each item with tower + project names so the admin UI can show them
+    tower_ids = {u.tower_id for u in items if u.tower_id}
+    tower_map: dict = {}
+    project_map: dict = {}
+    if tower_ids:
+        trows = (await db.execute(select(Tower).where(Tower.id.in_(tower_ids)))).scalars().all()
+        tower_map = {t.id: t for t in trows}
+        project_ids = {t.project_id for t in trows if t.project_id}
+        if project_ids:
+            prows = (await db.execute(select(Project).where(Project.id.in_(project_ids)))).scalars().all()
+            project_map = {p.id: p for p in prows}
+
+    def _enrich(u):
+        d = model_to_dict(u)
+        t = tower_map.get(u.tower_id)
+        p = project_map.get(t.project_id) if t else None
+        d["tower_name"]   = t.name if t else None
+        d["project_id"]   = str(t.project_id) if t and t.project_id else None
+        d["project_name"] = p.name if p else None
+        return d
+
+    return {"items":[_enrich(u) for u in items],**paginate(total,page,page_size)}
 
 @router.get("/units/csv-template")
 async def get_csv_template(db:AsyncSession=Depends(get_db), _:dict=Depends(verify_admin_token)):
@@ -244,7 +282,7 @@ async def get_csv_template(db:AsyncSession=Depends(get_db), _:dict=Depends(verif
     all_columns = CSV_COLUMNS + custom_keys
 
     # Build sample row
-    base_sample = ["Janapriya Heights","Tower A","A101","1","1BHK","1","1","1","650","580","4500000","6923","900000","35000","East","available","false","false","Sample unit"]
+    base_sample = ["Janapriya Heights","Tower A","A101","1","1BHK","1","1","1","650","580","4500000","6923","900000","35000","East","available","false","false"]
     # Add empty placeholders for custom fields
     sample_row = base_sample + ["" for _ in custom_keys]
 
@@ -288,15 +326,58 @@ async def csv_import_units(file:UploadFile=File(...),
     )
     custom_fields = {cf.field_key: cf for cf in cf_result.scalars().all()}
 
-    content=await file.read(); text=content.decode("utf-8-sig")
+    content=await file.read()
+    # Try multiple encodings to preserve special characters like ₹ (rupee)
+    for enc in ("utf-8-sig", "utf-8", "utf-16", "cp1252", "latin-1"):
+        try:
+            text = content.decode(enc)
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
     reader=csv.DictReader(io.StringIO(text))
     created=0; errors=[]
     bool_f={"is_trending","is_featured"}; int_f={"floor_number","bedrooms","bathrooms","balconies"}
     float_f={"area_sqft","carpet_area","plot_area","base_price","price_per_sqft","down_payment","emi_estimate"}
 
-    # Detect which CSV headers are custom fields
+    # Apply header aliases: build canonical-name view of each row.
+    # If both the alias (e.g. "project") and canonical ("project_name") are
+    # present, the canonical value wins so we never silently overwrite it.
+    # Also fix broken rupee symbols: Salesforce/legacy exports often lose ₹
+    # and replace it with ? (e.g. "?75L" should be "₹75L").
+    _rupee_fix = re.compile(r'\?(\d)')
+    def _normalize_row(raw: dict) -> dict:
+        out = {}
+        for k, v in raw.items():
+            if isinstance(v, str) and '?' in v:
+                v = _rupee_fix.sub(r'₹\1', v)
+            out[k] = v
+        for src, dst in CSV_HEADER_ALIASES.items():
+            if src in raw and not out.get(dst):
+                out[dst] = out.get(src, raw[src])
+        return out
+
+    # Coerce strings like "2.5" into an int by rounding — used for columns
+    # that are native Integer on the Unit model (bedrooms/bathrooms etc.).
+    def _to_int(val: str):
+        if not val:
+            return None
+        try:
+            return int(val)
+        except ValueError:
+            return int(round(float(val)))
+
+    # Detect which CSV headers are custom fields. Skip headers that are
+    # themselves native CSV columns (e.g. "balconies"), but DO include
+    # headers that merely *alias* to native columns (e.g. "carpet_area_in_sqft"
+    # aliases to "carpet_area" for native storage, but should ALSO be saved
+    # as its own custom field value, and "tower" aliases to "tower_name" for
+    # resolution but should also be stored as a custom field).
     csv_headers = reader.fieldnames or []
-    custom_cols_in_csv = [h for h in csv_headers if h in custom_fields]
+    custom_cols_in_csv = [
+        h for h in csv_headers
+        if h in custom_fields
+        and h not in CSV_COLUMNS
+    ]
 
     # Cache project/tower lookups to avoid repeated DB queries
     project_cache: dict = {}
@@ -304,14 +385,17 @@ async def csv_import_units(file:UploadFile=File(...),
 
     data_columns = [c for c in CSV_COLUMNS if c not in ("project_name","tower_name")]
 
-    for i,row in enumerate(reader,start=2):
+    for i,raw_row in enumerate(reader,start=2):
+        row = _normalize_row(raw_row)
         try:
             project_name = row.get("project_name","").strip()
             tower_name   = row.get("tower_name","").strip()
             if not project_name: raise ValueError("project_name is required")
             if not tower_name:   raise ValueError("tower_name is required")
+            unit_number = row.get("unit_number","").strip()
+            if not unit_number: raise ValueError("unit_number is required")
 
-            # Resolve project
+            # Resolve project (outside savepoint — read-only, safe to cache)
             if project_name not in project_cache:
                 r = await db.execute(select(Project).where(func.lower(Project.name)==project_name.lower()))
                 p = r.scalar_one_or_none()
@@ -328,36 +412,54 @@ async def csv_import_units(file:UploadFile=File(...),
                 tower_cache[cache_key] = t
             tower = tower_cache[cache_key]
 
-            ud={"tower_id": tower.id}
-            for col in data_columns:
-                val=row.get(col,"").strip()
-                if col in bool_f: ud[col]=val.lower() in ("true","1","yes")
-                elif col in int_f: ud[col]=int(val) if val else None
-                elif col in float_f: ud[col]=float(val) if val else None
-                else: ud[col]=val if val else None
-            unit = Unit(**{k:v for k,v in ud.items() if k in UNIT_FIELDS+["tower_id"]})
-            db.add(unit)
-            await db.flush()  # get unit.id for custom field values
+            # Use a savepoint so a failed row doesn't break the whole batch
+            async with db.begin_nested():
+                ud={"tower_id": tower.id}
+                for col in data_columns:
+                    val=row.get(col,"").strip()
+                    if col in bool_f: ud[col]=val.lower() in ("true","1","yes")
+                    elif col in int_f: ud[col]=_to_int(val)
+                    elif col in float_f: ud[col]=float(val) if val else None
+                    else: ud[col]=val if val else None
+                unit = Unit(**{k:v for k,v in ud.items() if k in UNIT_FIELDS+["tower_id"]})
+                db.add(unit)
+                await db.flush()  # get unit.id for custom field values
 
-            # Process custom fields from CSV row
-            for ckey in custom_cols_in_csv:
-                raw_val = row.get(ckey, "").strip()
-                if not raw_val:
-                    continue
-                cf = custom_fields[ckey]
-                if cf.field_type in ("number", "currency", "decimal"):
-                    parsed_val = float(raw_val) if "." in raw_val else int(raw_val)
-                elif cf.field_type == "boolean":
-                    parsed_val = raw_val.lower() in ("true", "1", "yes")
-                else:
-                    parsed_val = raw_val
-                db.add(CustomFieldValue(
-                    field_config_id=cf.id,
-                    entity_id=unit.id,
-                    value=parsed_val,
-                ))
+                # Process custom fields from CSV row
+                for ckey in custom_cols_in_csv:
+                    raw_val = row.get(ckey, "").strip()
+                    if not raw_val:
+                        continue
+                    cf = custom_fields[ckey]
+                    try:
+                        if cf.field_type in ("number", "currency", "decimal"):
+                            # Strip non-numeric suffixes like " L" (lakhs), "%", commas
+                            cleaned = raw_val.replace(",", "").strip()
+                            cleaned = cleaned.rstrip("%").rstrip()
+                            # Remove trailing text like " L", " Lakhs", " Cr" etc.
+                            num_match = re.match(r'^([+-]?\d+\.?\d*)', cleaned)
+                            if num_match:
+                                cleaned = num_match.group(1)
+                            parsed_val = float(cleaned) if "." in cleaned else int(cleaned)
+                        elif cf.field_type == "boolean":
+                            parsed_val = raw_val.lower() in ("true", "1", "yes")
+                        else:
+                            parsed_val = raw_val
+                        db.add(CustomFieldValue(
+                            field_config_id=cf.id,
+                            entity_id=unit.id,
+                            value=parsed_val,
+                        ))
+                    except (ValueError, TypeError):
+                        # Store as raw string if numeric parsing fails
+                        db.add(CustomFieldValue(
+                            field_config_id=cf.id,
+                            entity_id=unit.id,
+                            value=raw_val,
+                        ))
             created+=1
-        except Exception as e: errors.append({"row":i,"error":str(e)})
+        except Exception as e:
+            errors.append({"row":i,"error":str(e)})
     if created>0: await db.commit()
     return {"created":created,"errors":errors,"total_rows":created+len(errors),
             "custom_fields_detected":custom_cols_in_csv}

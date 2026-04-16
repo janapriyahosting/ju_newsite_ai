@@ -71,16 +71,18 @@ export default function UnitsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
-              {['Unit','Type','Floor','Facing','Area','Price','Token','EMI','Trending','Status'].map(h => (
+              {['Project','Tower','Unit','Type','Floor','Facing','Area','Price','Token','EMI','Trending','Status'].map(h => (
                 <th key={h} className="text-left text-gray-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={10} className="text-center text-gray-500 py-10">Loading...</td></tr>}
-            {!loading && units.length === 0 && <tr><td colSpan={10} className="text-center text-gray-500 py-10">No units found</td></tr>}
+            {loading && <tr><td colSpan={12} className="text-center text-gray-500 py-10">Loading...</td></tr>}
+            {!loading && units.length === 0 && <tr><td colSpan={12} className="text-center text-gray-500 py-10">No units found</td></tr>}
             {units.map(u => (
               <tr key={u.id} className="border-b border-gray-200 hover:bg-gray-50/60 transition">
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{u.project_name || '—'}</td>
+                <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{u.tower_name || '—'}</td>
                 <td className="px-4 py-3 text-gray-900 font-medium whitespace-nowrap">{u.unit_number}<Link href={`/admin/units/${u.id}`} className="ml-1 text-xs px-1.5 py-0.5 rounded font-bold" style={{background:"rgba(41,169,223,0.12)",color:"#29A9DF"}}>📐</Link></td>
                 <td className="px-4 py-3 text-gray-700">{u.unit_type}</td>
                 <td className="px-4 py-3 text-gray-700">{u.floor_number}</td>

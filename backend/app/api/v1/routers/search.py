@@ -80,10 +80,14 @@ Return only the JSON object, nothing else."""
                 text = text[4:]
         result = json.loads(text.strip())
 
-        # Safety check: if query has "under/below/budget/upto" → ensure no min_price only
+        # Safety check: if query has "under/below/upto" → ensure no min_price only
+        # But skip if "above/over/minimum" is also present (user explicitly wants min)
         q = query.lower()
-        under_words = ["under","below","upto","up to","within","budget","not more","less than","max"]
-        if any(w in q for w in under_words) and "min_price" in result and "max_price" not in result:
+        under_words = ["under","below","upto","up to","within","not more","less than"]
+        above_words_check = ["above","over","minimum","min","atleast","starting"]
+        has_under = any(w in q for w in under_words)
+        has_above = any(w in q for w in above_words_check)
+        if has_under and not has_above and "min_price" in result and "max_price" not in result:
             # Groq confused min/max — swap it
             result["max_price"] = result.pop("min_price")
             print(f"[Groq] ⚠️ Auto-corrected min_price → max_price")
@@ -146,7 +150,7 @@ def parse_with_spacy(query: str) -> dict | None:
                     break
 
         # Price: find NUM tokens near lakh/crore/l keywords
-        under_words = ["under","below","upto","within","budget","max","less"]
+        under_words = ["under","below","upto","within","max","less"]
         above_words = ["above","over","minimum","min","atleast","starting"]
         is_max = any(w in q for w in under_words)
         is_min = any(w in q for w in above_words)
@@ -336,7 +340,8 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
     if filters_dict.get("unit_type"):    conditions.append(Unit.unit_type.ilike(f"%{filters_dict['unit_type']}%"))
     if filters_dict.get("bedrooms"):     conditions.append(Unit.bedrooms == filters_dict["bedrooms"])
     if filters_dict.get("min_price"):    conditions.append(Unit.base_price >= filters_dict["min_price"])
-    if filters_dict.get("max_price"):    conditions.append(Unit.base_price <= filters_dict["max_price"])
+    # Add 10% tolerance on budget so units slightly above aren't excluded
+    if filters_dict.get("max_price"):    conditions.append(Unit.base_price <= filters_dict["max_price"] * 1.10)
     if filters_dict.get("min_area"):     conditions.append(Unit.area_sqft >= filters_dict["min_area"])
     if filters_dict.get("max_area"):     conditions.append(Unit.area_sqft <= filters_dict["max_area"])
     if filters_dict.get("max_down_payment"): conditions.append(Unit.down_payment <= filters_dict["max_down_payment"])
@@ -350,6 +355,21 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
     result = await db.execute(q.order_by(Unit.is_trending.desc()).limit(20))
     units = result.scalars().all()
 
+    # If no results, relax filters and suggest nearby matches
+    suggestions = None
+    if total == 0 and (filters_dict.get("max_price") or filters_dict.get("bedrooms")):
+        relaxed = [Unit.status == "available"]
+        if filters_dict.get("bedrooms"):  relaxed.append(Unit.bedrooms == filters_dict["bedrooms"])
+        elif filters_dict.get("unit_type"): relaxed.append(Unit.unit_type.ilike(f"%{filters_dict['unit_type']}%"))
+        rq = select(Unit).where(and_(*relaxed)).order_by(Unit.base_price.asc()).limit(5)
+        rresult = await db.execute(rq)
+        nearby = rresult.scalars().all()
+        if nearby:
+            units = nearby
+            total = len(nearby)
+            min_p = min(float(u.base_price) for u in nearby if u.base_price)
+            suggestions = [f"No exact matches within budget. Showing {total} closest {filters_dict.get('unit_type', '')} units starting from ₹{min_p/100000:.0f}L"]
+
     db.add(SearchLog(query=data.query, filters=filters_dict, results_count=total, session_id=data.session_id))
     await db.flush()
 
@@ -357,6 +377,7 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
         query=data.query, interpreted_as=filters_dict,
         total=total, page=1, page_size=20,
         total_pages=-(-total // 20), items=units, message=message,
+        suggestions=suggestions,
     )
 
 

@@ -354,7 +354,7 @@ export default function SeriesMediaPage() {
             <p className="text-gray-500 text-sm">No series media yet. Upload your first file above.</p>
           </div>
         ) : (
-          <div className="divide-y" style={{ divideColor: '#e4e9f2' }}>
+          <div className="divide-y" style={{ borderColor: '#e4e9f2' }}>
             {Object.entries(grouped).map(([projName, towers]: any) =>
               Object.entries(towers).map(([towerName, series]: any) => (
                 <div key={`${projName}-${towerName}`} className="p-5">

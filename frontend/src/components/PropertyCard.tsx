@@ -91,7 +91,7 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
           </div>
         </div>
         <div>
-          <p style={{ color: "rgba(255,255,255,0.7)" }} className="text-xs">{unit.unit_type} · {unit.bedrooms} BHK</p>
+          <p style={{ color: "rgba(255,255,255,0.7)" }} className="text-xs">{unit.unit_type?.includes("BHK") ? unit.unit_type : `${unit.unit_type || ""}${unit.bedrooms ? (unit.unit_type ? " · " : "") + unit.bedrooms + " BHK" : ""}`}</p>
           <h3 className="text-white font-black text-lg">{unit.unit_number || "Unit"}</h3>
         </div>
         {shareMsg && <div className="absolute bottom-3 right-3 px-3 py-1 bg-white rounded-full text-xs font-bold" style={{ color: "#2A3887" }}>{shareMsg}</div>}
