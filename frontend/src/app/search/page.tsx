@@ -224,7 +224,7 @@ export default function SearchPage() {
                       <div>
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="font-semibold text-gray-900">{unit.unit_type} · {unit.unit_number}</h3>
-                          <span className="text-brand-gold font-bold text-sm">{formatPrice(unit.base_price)}</span>
+                          <span className="text-brand-gold font-bold text-sm">{formatPrice((unit as any).custom_fields?.total_amount || unit.base_price)}</span>
                         </div>
                         <div className="flex gap-3 text-sm text-gray-500 mb-2">
                           {unit.bedrooms && <span>🛏 {unit.bedrooms}</span>}

@@ -4,11 +4,25 @@ import { useState, useEffect, useRef } from 'react';
 const API = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 const hdrs = () => ({ Authorization: `Bearer ${localStorage.getItem('admin_token')}`, 'Content-Type': 'application/json' });
 
-const LABELS = ['BHK_TYPE', 'PRICE', 'FACING', 'FLOOR', 'AREA', 'LOCATION', 'STATUS', 'EMI'];
-const LABEL_COLORS: Record<string, string> = {
-  BHK_TYPE: '#3B82F6', PRICE: '#10B981', FACING: '#F59E0B', FLOOR: '#8B5CF6',
-  AREA: '#EC4899', LOCATION: '#06B6D4', STATUS: '#EF4444', EMI: '#F97316',
+const LABEL_GROUPS: Record<string, { labels: string[]; color: string }> = {
+  'Core Search':       { labels: ['BHK_TYPE', 'PRICE', 'FACING', 'FLOOR', 'AREA', 'LOCATION', 'STATUS', 'EMI'], color: '#3B82F6' },
+  'Property':          { labels: ['UNIT_NUMBER', 'BEDROOMS', 'BATHROOMS', 'BALCONIES', 'UNIT_TYPE'], color: '#8B5CF6' },
+  'Pricing':           { labels: ['DOWN_PAYMENT', 'BUDGET', 'BASIC_COST', 'GST', 'TOTAL_COST', 'LOAN_AMOUNT', 'BOOKING_AMOUNT', 'TOKEN_AMOUNT'], color: '#10B981' },
+  'Area':              { labels: ['CARPET_AREA', 'PLOT_AREA', 'BALCONY_AREA', 'SALABLE_AREA'], color: '#EC4899' },
+  'Charges':           { labels: ['MAINTENANCE', 'PARKING', 'DOCUMENTATION', 'UTILITIES', 'CLUB_HOUSE'], color: '#F59E0B' },
+  'Project/Tower':     { labels: ['PROJECT', 'TOWER', 'TYPOLOGY', 'CONSTRUCTION_STAGE'], color: '#06B6D4' },
+  'Features':          { labels: ['AMENITY', 'LIFTS', 'CORRIDOR', 'OPEN_SPACE'], color: '#14B8A6' },
+  'Availability':      { labels: ['AVAILABILITY', 'TRENDING', 'FEATURED'], color: '#EF4444' },
 };
+const LABELS = Object.values(LABEL_GROUPS).flatMap(g => g.labels);
+const LABEL_COLORS: Record<string, string> = {};
+Object.values(LABEL_GROUPS).forEach(g => {
+  g.labels.forEach((l, i) => {
+    // Vary brightness slightly per label within group
+    const base = g.color;
+    LABEL_COLORS[l] = base;
+  });
+});
 
 export default function NlpTrainingPage() {
   const [tab, setTab] = useState<'data' | 'train' | 'test' | 'logs'>('data');
@@ -16,6 +30,7 @@ export default function NlpTrainingPage() {
   const [modelInfo, setModelInfo] = useState<any>(null);
   const [trainingStatus, setTrainingStatus] = useState<any>({ status: 'idle' });
   const [logs, setLogs] = useState<any[]>([]);
+  const [parserStats, setParserStats] = useState<any>({});
   const [testQuery, setTestQuery] = useState('');
   const [testResult, setTestResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -43,6 +58,7 @@ export default function NlpTrainingPage() {
     const res = await fetch(`${API}/admin/nlp/search-logs?page_size=100`, { headers: hdrs() });
     const d = await res.json();
     setLogs(d.items || []);
+    setParserStats(d.parser_stats || {});
   }
 
   async function handleSeed() {
@@ -189,7 +205,11 @@ export default function NlpTrainingPage() {
                 style={{ flex: 1, padding: '10px 14px', borderRadius: 8, border: '1.5px solid #ddd', fontSize: 14 }} />
               <select value={selectedLabel} onChange={e => setSelectedLabel(e.target.value)}
                 style={{ padding: '10px 14px', borderRadius: 8, border: '1.5px solid #ddd', fontSize: 13, fontWeight: 600 }}>
-                {LABELS.map(l => <option key={l} value={l}>{l}</option>)}
+                {Object.entries(LABEL_GROUPS).map(([group, { labels }]) => (
+                  <optgroup key={group} label={group}>
+                    {labels.map(l => <option key={l} value={l}>{l}</option>)}
+                  </optgroup>
+                ))}
               </select>
             </div>
             {newText && (
@@ -221,12 +241,17 @@ export default function NlpTrainingPage() {
             </button>
           </div>
 
-          {/* Entity label legend */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            {LABELS.map(l => (
-              <span key={l} style={{ background: LABEL_COLORS[l] + '15', color: LABEL_COLORS[l], border: `1px solid ${LABEL_COLORS[l]}40`, padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
-                {l}
-              </span>
+          {/* Entity label legend — grouped */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {Object.entries(LABEL_GROUPS).map(([group, { labels, color }]) => (
+              <div key={group} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#999', width: 90, flexShrink: 0 }}>{group}</span>
+                {labels.map(l => (
+                  <span key={l} style={{ background: color + '15', color, border: `1px solid ${color}40`, padding: '2px 8px', borderRadius: 5, fontSize: 10, fontWeight: 700 }}>
+                    {l}
+                  </span>
+                ))}
+              </div>
             ))}
           </div>
 
@@ -362,16 +387,54 @@ export default function NlpTrainingPage() {
       {/* ── Search Logs Tab ── */}
       {tab === 'logs' && (
         <div>
+          {/* Parser stats */}
+          {(parserStats.groq > 0 || parserStats.spacy > 0 || parserStats.regex > 0) && (
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              {[
+                { key: 'groq', label: 'Groq LLM', color: '#10B981', bg: '#D1FAE5', icon: '🤖' },
+                { key: 'spacy', label: 'spaCy NLP', color: '#3B82F6', bg: '#DBEAFE', icon: '🧠' },
+                { key: 'regex', label: 'Regex', color: '#F59E0B', bg: '#FEF3C7', icon: '⚡' },
+                { key: 'unknown', label: 'Unknown', color: '#9CA3AF', bg: '#F3F4F6', icon: '❓' },
+              ].filter(p => (parserStats[p.key] || 0) > 0).map(p => {
+                const count = parserStats[p.key] || 0;
+                const total = Object.values(parserStats).reduce((a: number, b: any) => a + (b || 0), 0) as number;
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                return (
+                  <div key={p.key} style={{ flex: 1, background: p.bg, borderRadius: 12, padding: '16px 20px', border: `1px solid ${p.color}30` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: p.color }}>{p.icon} {p.label}</span>
+                      <span style={{ fontSize: 18, fontWeight: 900, color: p.color }}>{count}</span>
+                    </div>
+                    <div style={{ height: 4, background: `${p.color}20`, borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: p.color, borderRadius: 2 }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: p.color, marginTop: 4, display: 'block' }}>{pct}% of searches</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <p style={{ color: '#888', fontSize: 12, marginBottom: 12 }}>Recent searches — click to add as training data</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {logs.map((log, i) => (
-              <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'white', borderRadius: 8, border: '1px solid #f0f0f0', cursor: 'pointer' }}
-                onClick={() => { setNewText(log.query || ''); setNewEntities([]); setTab('data'); }}>
-                <span style={{ fontSize: 13, flex: 1, fontWeight: 500 }}>{log.query}</span>
-                <span style={{ fontSize: 11, color: '#999' }}>{log.results_count} results</span>
-                <span style={{ fontSize: 11, color: '#bbb' }}>{log.created_at ? new Date(log.created_at).toLocaleDateString() : ''}</span>
-              </div>
-            ))}
+            {logs.map((log) => {
+              const parserColor: Record<string, string> = { groq: '#10B981', spacy: '#3B82F6', regex: '#F59E0B', unknown: '#9CA3AF' };
+              const parserBg: Record<string, string> = { groq: '#D1FAE5', spacy: '#DBEAFE', regex: '#FEF3C7', unknown: '#F3F4F6' };
+              const parser = log.parser || 'unknown';
+              return (
+                <div key={log.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'white', borderRadius: 8, border: '1px solid #f0f0f0', cursor: 'pointer' }}
+                  onClick={() => { setNewText(log.query || ''); setNewEntities([]); setTab('data'); }}>
+                  <span style={{
+                    fontSize: 10, fontWeight: 800, padding: '3px 8px', borderRadius: 6,
+                    background: parserBg[parser] || '#F3F4F6', color: parserColor[parser] || '#9CA3AF',
+                    textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0, minWidth: 48, textAlign: 'center',
+                  }}>{parser}</span>
+                  <span style={{ fontSize: 13, flex: 1, fontWeight: 500 }}>{log.query}</span>
+                  <span style={{ fontSize: 11, color: '#999', flexShrink: 0 }}>{log.results_count} results</span>
+                  <span style={{ fontSize: 11, color: '#bbb', flexShrink: 0 }}>{log.created_at ? new Date(log.created_at).toLocaleDateString() : ''}</span>
+                </div>
+              );
+            })}
             {logs.length === 0 && <p style={{ color: '#999', textAlign: 'center', padding: 40 }}>No search logs yet</p>}
           </div>
         </div>

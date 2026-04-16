@@ -22,6 +22,12 @@ function formatPrice(p: any) {
   return `₹${n.toLocaleString()}`;
 }
 
+function getPrice(unit: any) {
+  const ta = unit.custom_fields?.total_amount;
+  if (ta && parseFloat(ta) > 0) return parseFloat(ta);
+  return unit.base_price ? parseFloat(unit.base_price) : null;
+}
+
 
 const MEDIA_BASE = "";
 function mUrl(u: string) {
@@ -178,7 +184,7 @@ export default function UnitDetailPage() {
 
   function handleShare() {
     const url = window.location.href;
-    const text = unit ? `Check out: ${unit.unit_number} — ${unit.unit_type}, ${formatPrice(unit.base_price)} | Janapriya Upscale` : "Janapriya Upscale Property";
+    const text = unit ? `Check out: ${unit.unit_number} — ${unit.unit_type}, ${formatPrice(getPrice(unit))} | Janapriya Upscale` : "Janapriya Upscale Property";
     if (navigator.share) { navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {}); }
     else { copyToClipboard(`${text}\n${url}`); }
   }
@@ -301,10 +307,10 @@ export default function UnitDetailPage() {
     facing:         { icon: '🧭', label: 'Facing',        val: unit.facing || null },
     balconies:      { icon: '🏡', label: 'Balconies',     val: unit.balconies != null ? String(unit.balconies) : null },
     status:         { icon: '●',  label: 'Status',        val: unit.status ? unit.status.charAt(0).toUpperCase() + unit.status.slice(1) : null },
-    base_price:     { icon: '💰', label: 'Base Price',    val: unit.base_price ? formatPrice(unit.base_price) : null },
+    base_price:     { icon: '💰', label: 'Total Price',   val: getPrice(unit) ? formatPrice(getPrice(unit)) : null },
     price_per_sqft: { icon: '📊', label: 'Price / sqft', val: unit.price_per_sqft
       ? `₹${parseFloat(unit.price_per_sqft).toLocaleString()}`
-      : (unit.area_sqft && unit.base_price ? `₹${Math.round(parseFloat(unit.base_price) / parseFloat(unit.area_sqft)).toLocaleString()}` : null) },
+      : (unit.area_sqft && getPrice(unit) ? `₹${Math.round(getPrice(unit)! / parseFloat(unit.area_sqft)).toLocaleString()}` : null) },
     down_payment:   { icon: '💳', label: 'Down Payment',  val: unit.down_payment ? formatPrice(unit.down_payment) : null },
     emi_estimate:   { icon: '📅', label: 'EMI / mo',      val: unit.emi_estimate ? `₹${parseFloat(unit.emi_estimate).toLocaleString()}` : null },
   };
@@ -312,8 +318,9 @@ export default function UnitDetailPage() {
   // Fields that have dedicated renderers — don't treat as generic custom fields
   const SPECIAL_FIELDS = new Set([
     'images', 'floor_plan_img', 'floor_plans', 'video_url', 'walkthrough_url', 'amenities', 'description',
-    'series_floor_plan_2d', 'series_floor_plan_3d', 'series_model_flat_video', 'series_tower_elevation',
+    'series_floor_plan', 'series_floor_plan_2d', 'series_floor_plan_3d', 'series_model_flat_video', 'series_tower_elevation',
     'series_project_video', 'series_project_image', 'series_walkthrough_video', 'series_brochure', 'series_unit_image',
+    'floor_plan_url', 'add_on_video', 'gallery', 'attachments', 'rooms_and_sizes',
   ]);
 
   // All field keys assigned to any section — used to hide them from "Additional Details"
@@ -332,8 +339,12 @@ export default function UnitDetailPage() {
       const fmt = n >= 10000000 ? `₹${(n/10000000).toFixed(2)} Cr` : n >= 100000 ? `₹${(n/100000).toFixed(2)} L` : `₹${n.toLocaleString('en-IN')}`;
       return <span className="font-black" style={{ color: '#2A3887' }}>{fmt}</span>;
     }
+    // Skip image/media rendering inline — they belong in the slider only
+    if (typeof value === 'string' && (/\.(png|jpg|jpeg|webp|gif|svg|mp4|webm|pdf)(\?.*)?$/i.test(value) || value.startsWith('/media/'))) {
+      return null;
+    }
     if ((field_type === 'url' || (typeof value === 'string' && value.startsWith('http'))) && /\.(png|jpg|jpeg|webp|gif|svg)(\?.*)?$/i.test(String(value))) {
-      return <a href={String(value)} target="_blank" rel="noopener noreferrer"><img src={String(value)} alt={item.label} className="rounded-lg object-contain max-h-40" style={{ background: '#f8fafc' }} /></a>;
+      return null;
     }
     if (field_type === 'url' || (typeof value === 'string' && value.startsWith('http'))) {
       return <a href={String(value)} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold underline break-all" style={{ color: '#29A9DF' }}>{String(value)}</a>;
@@ -436,21 +447,19 @@ export default function UnitDetailPage() {
               // Custom field rows for anything not in SPEC_MAP and not a special renderer
               const customItems = fields
                 .filter((f: string) => !SPEC_MAP[f] && !SPECIAL_FIELDS.has(f) && customFieldMap[f] !== undefined
-                  && customFieldMap[f].value !== null && customFieldMap[f].value !== undefined && customFieldMap[f].value !== '')
+                  && customFieldMap[f].value !== null && customFieldMap[f].value !== undefined && customFieldMap[f].value !== ''
+                  && !(typeof customFieldMap[f].value === 'string' && (customFieldMap[f].value.startsWith('/media/') || /\.(png|jpg|jpeg|webp|gif|svg|mp4|webm|pdf)$/i.test(customFieldMap[f].value))))
                 .map((f: string) => ({ key: f, ...customFieldMap[f] }));
 
               // Series media — only shown in the main media slider, not here
               if (s.key === 'series_media') return null;
 
-              const hasFloorPlan   = (fields.includes('floor_plan_img') && unit.floor_plan_img)
-                || (fields.includes('floor_plans') && unit.floor_plans?.length > 0);
-              const hasVideo       = fields.includes('video_url') && unit.video_url;
-              const hasWalkthrough = fields.includes('walkthrough_url') && unit.walkthrough_url;
+              // Media (floor plans, video, walkthrough) only shown in slider, not in sections
               const hasAmenities   = fields.includes('amenities') && (towerAmenities.length > 0 || unit.amenities?.length > 0);
               const hasDescription = fields.includes('description') && unit.description;
 
               // Skip section if nothing to show
-              if (!specItems.length && !customItems.length && !hasFloorPlan && !hasVideo && !hasWalkthrough && !hasAmenities && !hasDescription) return null;
+              if (!specItems.length && !customItems.length && !hasAmenities && !hasDescription) return null;
 
               return (
                 <div key={s.key} className="rounded-2xl p-6" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
@@ -496,43 +505,7 @@ export default function UnitDetailPage() {
                     </div>
                   )}
 
-                  {/* Floor plans */}
-                  {hasFloorPlan && (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-3">
-                        {unit.floor_plan_img && (
-                          <div className="rounded-xl overflow-hidden" style={{ background: "#f1f5f9" }}>
-                            <img src={mUrl(unit.floor_plan_img)} alt="Floor Plan" className="w-full object-contain max-h-52" />
-                          </div>
-                        )}
-                        {(unit.floor_plans || []).map((img: string, i: number) => (
-                          <div key={i} className="rounded-xl overflow-hidden" style={{ background: "#f1f5f9" }}>
-                            <img src={mUrl(img)} alt={`Floor Plan ${i + 1}`} className="w-full object-contain max-h-52" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Video */}
-                  {hasVideo && (
-                    <div className={hasFloorPlan ? "mt-5" : ""}>
-                      <p className="text-sm font-bold mb-2" style={{ color: "#555" }}>📹 Unit Video</p>
-                      <div className="rounded-2xl overflow-hidden" style={{ aspectRatio: "16/9", background: "#111" }}>
-                        <iframe src={toEmbed(unit.video_url)} className="w-full h-full" allowFullScreen title="Video" />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 3D Walkthrough */}
-                  {hasWalkthrough && (
-                    <div className={hasVideo || hasFloorPlan ? "mt-5" : ""}>
-                      <p className="text-sm font-bold mb-2" style={{ color: "#555" }}>🥽 3D Walkthrough</p>
-                      <div className="rounded-2xl overflow-hidden" style={{ height: 400, background: "#111" }}>
-                        <iframe src={unit.walkthrough_url} className="w-full h-full" allowFullScreen title="Walkthrough" />
-                      </div>
-                    </div>
-                  )}
+                  {/* Media (floor plans, video, walkthrough) displayed in slider only */}
                 </div>
               );
             })}
@@ -543,11 +516,11 @@ export default function UnitDetailPage() {
             <div className="sticky top-24 space-y-4">
               {/* Price Card */}
               <div className="rounded-2xl p-6" style={{ boxShadow: "0 8px 30px rgba(42,56,135,0.15)", border: "1px solid #E2F1FC" }}>
-                <p style={{ color: "#999" }} className="text-xs uppercase tracking-wide mb-1">Starting from</p>
-                <p className="text-3xl font-black mb-1" style={{ color: "#2A3887" }}>{formatPrice(unit.base_price)}</p>
-                {unit.area_sqft && unit.base_price && (
+                <p style={{ color: "#999" }} className="text-xs uppercase tracking-wide mb-1">Total Price</p>
+                <p className="text-3xl font-black mb-1" style={{ color: "#2A3887" }}>{formatPrice(getPrice(unit))}</p>
+                {unit.area_sqft && getPrice(unit) && (
                   <p style={{ color: "#29A9DF" }} className="text-sm font-semibold mb-5">
-                    ₹{Math.round(parseFloat(unit.base_price)/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
+                    ₹{Math.round(getPrice(unit)!/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
                   </p>
                 )}
                 <button data-enquire-trigger onClick={() => setEnquireOpen(true)}
@@ -603,7 +576,7 @@ export default function UnitDetailPage() {
                 <div className="flex gap-2">
                   {[
                     { label: "WhatsApp", icon: "📱", color: "#25D366",
-                      fn: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${unit.unit_number} — ${formatPrice(unit.base_price)}\n${window.location.href}`)}`) },
+                      fn: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${unit.unit_number} — ${formatPrice(getPrice(unit))}\n${window.location.href}`)}`) },
                     { label: "Copy Link", icon: "🔗", color: "#2A3887",
                       fn: () => { copyToClipboard(window.location.href); } },
                     { label: "Email", icon: "✉️", color: "#29A9DF",
@@ -651,13 +624,13 @@ export default function UnitDetailPage() {
               )}
 
               {/* RiseUp Calculator */}
-              {unit.base_price && parseFloat(unit.base_price) > 100_000 && (
-                <RiseUpCalculator unitPrice={parseFloat(unit.base_price)} unitName={unit.unit_number} />
+              {getPrice(unit) && getPrice(unit)! > 100_000 && (
+                <RiseUpCalculator unitPrice={getPrice(unit)!} unitName={unit.unit_number} />
               )}
 
               {/* Home Loan EMI Calculator */}
-              {unit.base_price && parseFloat(unit.base_price) > 100_000 && (
-                <HomeLoanEMICalculator unitPrice={parseFloat(unit.base_price)} unitName={unit.unit_number} />
+              {getPrice(unit) && getPrice(unit)! > 100_000 && (
+                <HomeLoanEMICalculator unitPrice={getPrice(unit)!} unitName={unit.unit_number} />
               )}
 
             </div>
@@ -671,7 +644,7 @@ export default function UnitDetailPage() {
           unitId={id as string}
           unitNumber={unit.unit_number}
           unitType={unit.unit_type}
-          unitPrice={unit.base_price}
+          unitPrice={getPrice(unit)}
           projectName={towerData?.project_name || ""}
           onClose={() => setEnquireOpen(false)}
         />

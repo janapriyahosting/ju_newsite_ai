@@ -20,8 +20,26 @@ TRAINING_DATA_FILE = os.path.join(os.path.dirname(__file__), "../../../../models
 # Ensure dirs exist
 os.makedirs(os.path.dirname(TRAINING_DATA_FILE), exist_ok=True)
 
-# Entity labels for real estate NER
-ENTITY_LABELS = ["BHK_TYPE", "PRICE", "FACING", "FLOOR", "AREA", "LOCATION", "STATUS", "EMI"]
+# Entity labels for real estate NER — grouped by category
+ENTITY_LABELS = [
+    # Core search
+    "BHK_TYPE", "PRICE", "FACING", "FLOOR", "AREA", "LOCATION", "STATUS", "EMI",
+    # Property details
+    "UNIT_NUMBER", "BEDROOMS", "BATHROOMS", "BALCONIES", "UNIT_TYPE",
+    # Pricing breakdown
+    "DOWN_PAYMENT", "BUDGET", "BASIC_COST", "GST", "TOTAL_COST", "LOAN_AMOUNT",
+    "BOOKING_AMOUNT", "TOKEN_AMOUNT",
+    # Area variants
+    "CARPET_AREA", "PLOT_AREA", "BALCONY_AREA", "SALABLE_AREA",
+    # Charges
+    "MAINTENANCE", "PARKING", "DOCUMENTATION", "UTILITIES", "CLUB_HOUSE",
+    # Project/Tower
+    "PROJECT", "TOWER", "TYPOLOGY", "CONSTRUCTION_STAGE",
+    # Amenities/Features
+    "AMENITY", "LIFTS", "CORRIDOR", "OPEN_SPACE",
+    # Availability
+    "AVAILABILITY", "TRENDING", "FEATURED",
+]
 
 
 # ── Schemas ──────────────────────────────────────────────────────────────────
@@ -97,8 +115,6 @@ async def auto_generate_from_logs(
     )
     logs = result.all()
 
-    LAKH = 100_000
-    CRORE = 10_000_000
     generated = []
 
     for q_text, filters in logs:
@@ -107,29 +123,89 @@ async def auto_generate_from_logs(
         q = q_text.strip()
         entities = []
 
-        # BHK
-        for m in re.finditer(r'\d\s*bhk', q, re.IGNORECASE):
+        # BHK / Unit type
+        for m in re.finditer(r'\d(?:\.\d)?\s*bhk', q, re.IGNORECASE):
             entities.append([m.start(), m.end(), "BHK_TYPE"])
+        for m in re.finditer(r'\b(?:villa|plot|penthouse|duplex|studio|apartment)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "UNIT_TYPE"])
 
-        # Price patterns: "90l", "1.5cr", "80 lakhs"
-        for m in re.finditer(r'\d+(?:\.\d+)?\s*(?:lakh|lakhs|lac|l\b|crore|crores|cr\b)', q, re.IGNORECASE):
+        # Price patterns: "90l", "1.5cr", "80 lakhs", "₹90L"
+        for m in re.finditer(r'(?:₹\s*)?\d+(?:\.\d+)?\s*(?:lakh|lakhs|lac|l\b|crore|crores|cr\b)', q, re.IGNORECASE):
             entities.append([m.start(), m.end(), "PRICE"])
 
+        # Budget keywords
+        for m in re.finditer(r'\bbudget\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "BUDGET"])
+
+        # Down payment
+        for m in re.finditer(r'\b(?:down\s*payment|downpayment)\s*(?:(?:₹|rs\.?\s*)?\d+(?:\.\d+)?\s*(?:lakh|lakhs|lac|l\b|crore|crores|cr\b)?)?', q, re.IGNORECASE):
+            if m.end() - m.start() > 4:
+                entities.append([m.start(), m.end(), "DOWN_PAYMENT"])
+
+        # EMI
+        for m in re.finditer(r'emi\s*(?:under|below|upto)?\s*(?:rs\.?\s*|₹\s*)?\d+(?:,\d+)?(?:\s*k)?', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "EMI"])
+
+        # Booking / token amount
+        for m in re.finditer(r'\b(?:booking|token)\s*(?:amount)?\s*(?:(?:₹|rs\.?\s*)?\d+(?:\.\d+)?\s*(?:lakh|lakhs|lac|l\b|k\b)?)?', q, re.IGNORECASE):
+            if m.end() - m.start() > 5:
+                entities.append([m.start(), m.end(), "BOOKING_AMOUNT"])
+
         # Facing
-        for m in re.finditer(r'\b(?:east|west|north|south)\b', q, re.IGNORECASE):
+        for m in re.finditer(r'\b(?:east|west|north|south)(?:\s*facing)?\b', q, re.IGNORECASE):
             entities.append([m.start(), m.end(), "FACING"])
 
         # Floor
         for m in re.finditer(r'(?:floor\s*\d+|\d+(?:st|nd|rd|th)?\s*floor|high(?:er)?\s*floor|ground\s*floor|low(?:er)?\s*floor|top\s*floor)', q, re.IGNORECASE):
             entities.append([m.start(), m.end(), "FLOOR"])
 
-        # Area
+        # Area variants
         for m in re.finditer(r'\d+\s*(?:sqft|sq\.?\s*ft|sft)', q, re.IGNORECASE):
             entities.append([m.start(), m.end(), "AREA"])
+        for m in re.finditer(r'\bcarpet\s*area\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "CARPET_AREA"])
+        for m in re.finditer(r'\bplot\s*area\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "PLOT_AREA"])
 
-        # EMI
-        for m in re.finditer(r'emi\s*(?:under|below)?\s*(?:rs\.?\s*|₹\s*)?\d+(?:,\d+)?(?:\s*k)?', q, re.IGNORECASE):
-            entities.append([m.start(), m.end(), "EMI"])
+        # Bedrooms / Bathrooms / Balconies
+        for m in re.finditer(r'\d+\s*(?:bed(?:room)?s?)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "BEDROOMS"])
+        for m in re.finditer(r'\d+\s*(?:bath(?:room)?s?)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "BATHROOMS"])
+        for m in re.finditer(r'\d+\s*(?:balcon(?:y|ies))\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "BALCONIES"])
+
+        # Project / Tower / Location
+        for m in re.finditer(r'\b(?:nilevalley|janapriya|block[- ]?\d+)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "PROJECT"])
+        for m in re.finditer(r'\b(?:tower|block)\s*[a-z0-9-]+\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "TOWER"])
+        for m in re.finditer(r'\b(?:madinaguda|hyderabad|miyapur|kukatpally|gachibowli|kondapur|madhapur)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "LOCATION"])
+
+        # Status
+        for m in re.finditer(r'\b(?:available|booked|sold|reserved|mortgage|ready\s*to\s*move)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "STATUS"])
+
+        # Availability / Trending
+        for m in re.finditer(r'\btrending\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "TRENDING"])
+
+        # Amenities
+        for m in re.finditer(r'\b(?:parking|car\s*parking|scooter\s*parking)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "PARKING"])
+        for m in re.finditer(r'\b(?:lift|elevator)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "LIFTS"])
+        for m in re.finditer(r'\b(?:club\s*house|swimming\s*pool|gym|garden)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "CLUB_HOUSE"])
+
+        # Charges
+        for m in re.finditer(r'\b(?:maintenance|advance\s*maintenance)\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "MAINTENANCE"])
+        for m in re.finditer(r'\bgst\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "GST"])
+        for m in re.finditer(r'\b(?:documentation|registration)\s*(?:charges|cost)?\b', q, re.IGNORECASE):
+            entities.append([m.start(), m.end(), "DOCUMENTATION"])
 
         if entities:
             # Sort and remove overlaps
@@ -156,21 +232,46 @@ async def auto_generate_from_logs(
 
 # ── Seed examples ────────────────────────────────────────────────────────────
 SEED_EXAMPLES = [
-    {"text": "looking for 3 bhk in 90l budget", "entities": [[12, 17, "BHK_TYPE"], [21, 24, "PRICE"]]},
+    # Core search
+    {"text": "looking for 3 bhk in 90l budget", "entities": [[12, 17, "BHK_TYPE"], [21, 24, "PRICE"], [25, 31, "BUDGET"]]},
     {"text": "2bhk east facing under 70 lakhs", "entities": [[0, 4, "BHK_TYPE"], [5, 9, "FACING"], [22, 31, "PRICE"]]},
     {"text": "3bhk above 1.5cr", "entities": [[0, 4, "BHK_TYPE"], [11, 16, "PRICE"]]},
-    {"text": "budget 80l 2 bhk", "entities": [[7, 10, "PRICE"], [11, 16, "BHK_TYPE"]]},
-    {"text": "villa with 2000 sqft", "entities": [[10, 20, "AREA"]]},
+    {"text": "budget 80l 2 bhk", "entities": [[0, 6, "BUDGET"], [7, 10, "PRICE"], [11, 16, "BHK_TYPE"]]},
+    {"text": "villa with 2000 sqft", "entities": [[0, 5, "UNIT_TYPE"], [11, 20, "AREA"]]},
     {"text": "3 bhk west facing high floor", "entities": [[0, 5, "BHK_TYPE"], [6, 10, "FACING"], [18, 28, "FLOOR"]]},
     {"text": "2 bhk under 65 lakhs ground floor", "entities": [[0, 5, "BHK_TYPE"], [12, 22, "PRICE"], [23, 35, "FLOOR"]]},
     {"text": "3bhk 1cr to 1.2cr", "entities": [[0, 4, "BHK_TYPE"], [5, 8, "PRICE"], [12, 17, "PRICE"]]},
     {"text": "emi under 50000 for 2bhk", "entities": [[0, 14, "EMI"], [19, 24, "BHK_TYPE"]]},
     {"text": "north facing 3 bhk above 90 lakhs", "entities": [[0, 5, "FACING"], [13, 18, "BHK_TYPE"], [25, 34, "PRICE"]]},
     {"text": "2.5 bhk east facing 1000 sqft", "entities": [[0, 7, "BHK_TYPE"], [8, 12, "FACING"], [20, 29, "AREA"]]},
-    {"text": "my budget is 80l need 2bhk", "entities": [[13, 16, "PRICE"], [22, 26, "BHK_TYPE"]]},
-    {"text": "4bhk premium above 2cr south facing", "entities": [[0, 4, "BHK_TYPE"], [13, 19, "PRICE"], [20, 25, "FACING"]]},
-    {"text": "plot 1500 sqft budget 50l", "entities": [[5, 14, "AREA"], [22, 25, "PRICE"]]},
     {"text": "1bhk below 50 lakhs low floor", "entities": [[0, 4, "BHK_TYPE"], [11, 21, "PRICE"], [22, 31, "FLOOR"]]},
+    # Down payment / Loan / Booking
+    {"text": "3bhk with down payment under 10 lakhs", "entities": [[0, 4, "BHK_TYPE"], [10, 22, "DOWN_PAYMENT"], [29, 38, "PRICE"]]},
+    {"text": "booking amount 20000 for 2bhk", "entities": [[0, 14, "BOOKING_AMOUNT"], [20, 25, "PRICE"], [30, 34, "BHK_TYPE"]]},
+    {"text": "loan amount below 80 lakhs", "entities": [[0, 11, "LOAN_AMOUNT"], [18, 27, "PRICE"]]},
+    # Bathrooms / Balconies
+    {"text": "3bhk 3 bathrooms with 2 balconies", "entities": [[0, 4, "BHK_TYPE"], [5, 17, "BATHROOMS"], [23, 35, "BALCONIES"]]},
+    {"text": "2bhk 2 bathrooms east facing", "entities": [[0, 4, "BHK_TYPE"], [5, 17, "BATHROOMS"], [18, 22, "FACING"]]},
+    # Area types
+    {"text": "carpet area above 700 sqft 2bhk", "entities": [[0, 11, "CARPET_AREA"], [18, 26, "AREA"], [27, 31, "BHK_TYPE"]]},
+    {"text": "plot area 1500 sqft", "entities": [[0, 9, "PLOT_AREA"], [10, 19, "AREA"]]},
+    # Project / Tower / Location
+    {"text": "nilevalley block-6 3bhk", "entities": [[0, 10, "PROJECT"], [11, 18, "TOWER"], [19, 23, "BHK_TYPE"]]},
+    {"text": "3bhk in madinaguda", "entities": [[0, 4, "BHK_TYPE"], [8, 18, "LOCATION"]]},
+    {"text": "units in tower block 6", "entities": [[15, 22, "TOWER"]]},
+    # Status
+    {"text": "available 3bhk east facing", "entities": [[0, 9, "STATUS"], [10, 14, "BHK_TYPE"], [15, 19, "FACING"]]},
+    {"text": "ready to move 2bhk under 70l", "entities": [[0, 13, "STATUS"], [14, 18, "BHK_TYPE"], [25, 28, "PRICE"]]},
+    # Charges / GST
+    {"text": "3bhk with low maintenance cost", "entities": [[0, 4, "BHK_TYPE"], [14, 25, "MAINTENANCE"]]},
+    {"text": "gst included units 2bhk", "entities": [[0, 3, "GST"], [18, 22, "BHK_TYPE"]]},
+    {"text": "3bhk with car parking", "entities": [[0, 4, "BHK_TYPE"], [10, 21, "PARKING"]]},
+    # Amenities
+    {"text": "3bhk with club house and lift", "entities": [[0, 4, "BHK_TYPE"], [10, 20, "CLUB_HOUSE"], [25, 29, "LIFTS"]]},
+    # Trending
+    {"text": "trending 3bhk properties", "entities": [[0, 8, "TRENDING"], [9, 13, "BHK_TYPE"]]},
+    # Complex queries
+    {"text": "3bhk east facing 1500 sqft budget 1cr high floor", "entities": [[0, 4, "BHK_TYPE"], [5, 9, "FACING"], [17, 26, "AREA"], [27, 33, "BUDGET"], [34, 37, "PRICE"], [38, 48, "FLOOR"]]},
 ]
 
 @router.post("/seed")
@@ -343,17 +444,31 @@ async def get_search_logs(
         .limit(page_size)
     )
     logs = result.scalars().all()
+    items = []
+    parser_stats = {"groq": 0, "spacy": 0, "regex": 0, "unknown": 0}
+    for l in logs:
+        filters = l.filters or {}
+        parser = filters.get("_parser", "unknown")
+        parser_stats[parser] = parser_stats.get(parser, 0) + 1
+        items.append({
+            "id": str(l.id),
+            "query": l.query,
+            "filters": {k: v for k, v in filters.items() if k != "_parser"},
+            "parser": parser,
+            "results_count": l.results_count,
+            "created_at": l.created_at.isoformat() if l.created_at else None,
+        })
+
+    # Get overall stats from all logs
+    all_logs = await db.execute(select(SearchLog.filters))
+    all_stats = {"groq": 0, "spacy": 0, "regex": 0, "unknown": 0}
+    for row in all_logs.scalars():
+        p = (row or {}).get("_parser", "unknown")
+        all_stats[p] = all_stats.get(p, 0) + 1
+
     return {
         "total": total,
         "page": page,
-        "items": [
-            {
-                "id": str(l.id),
-                "query": l.query,
-                "filters": l.filters,
-                "results_count": l.results_count,
-                "created_at": l.created_at.isoformat() if l.created_at else None,
-            }
-            for l in logs
-        ],
+        "parser_stats": all_stats,
+        "items": items,
     }

@@ -36,12 +36,13 @@ interface MediaItem {
 const SERIES_MEDIA_ORDERED: [string, { type: MediaItem['type']; label: string }][] = [
   ['series_floor_plan_2d',       { type: 'floorplan', label: '2D Plan' }],
   ['series_floor_plan_3d',       { type: 'floorplan', label: '3D Plan' }],
+  ['series_floor_plan',          { type: 'floorplan', label: 'Floor Plan' }],
   ['series_model_flat_video',    { type: 'video',     label: 'Model Flat Video' }],
   ['series_tower_elevation',     { type: 'image',     label: 'Tower Elevation' }],
   ['series_project_image',       { type: 'image',     label: 'Project Image' }],
   ['series_project_video',       { type: 'video',     label: 'Project Video' }],
   ['series_walkthrough_video',   { type: 'video',     label: 'Walk Through Video' }],
-  ['series_brochure',            { type: 'image',     label: 'Brochure' }],
+  // series_brochure excluded from slider — shown as download button instead
   ['series_unit_image',          { type: 'image',     label: 'Unit Photo' }],
 ];
 

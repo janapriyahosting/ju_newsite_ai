@@ -61,6 +61,7 @@ async def _attach_custom_fields(units: list, db: AsyncSession) -> list:
 async def list_units(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=200),
+    limit: Optional[int] = Query(None, ge=1, le=200),
     unit_type: Optional[str] = None,
     bedrooms: Optional[int] = None,
     min_price: Optional[Decimal] = None,
@@ -78,6 +79,8 @@ async def list_units(
     project_id: Optional[UUID] = None,
     db: AsyncSession = Depends(get_db),
 ):
+    if limit is not None:
+        page_size = limit
     filters = []
 
     if unit_type:
@@ -187,7 +190,8 @@ async def get_unit(
     unit.view_count += 1
     await db.flush()
     await db.refresh(unit)
-    return unit
+    enriched = await _attach_custom_fields([unit], db)
+    return enriched[0] if enriched else unit
 
 
 @router.post("", response_model=UnitResponse, status_code=201)

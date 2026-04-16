@@ -37,7 +37,7 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
   function handleShare(e: React.MouseEvent) {
     e.preventDefault();
     const url = `${window.location.origin}/units/${unit.id}`;
-    const text = `Check out this property: ${unit.unit_number || unit.name} - ${formatPrice(unit.base_price)} at Janapriya Upscale`;
+    const text = `Check out this property: ${unit.unit_number || unit.name} - ${formatPrice(unitPrice)} at Janapriya Upscale`;
     if (navigator.share) {
       navigator.share({ title: "Janapriya Upscale Property", text, url }).catch(() => {});
     } else if (navigator.clipboard) {
@@ -51,6 +51,12 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
       setTimeout(() => setShareMsg(""), 2500);
     }
   }
+
+  const unitPrice = (() => {
+    const ta = unit.custom_fields?.total_amount;
+    if (ta && parseFloat(ta) > 0) return parseFloat(ta);
+    return unit.base_price ? parseFloat(unit.base_price) : null;
+  })();
 
   function formatPrice(p: any) {
     if (!p) return "Price on request";
@@ -113,7 +119,7 @@ export default function PropertyCard({ unit, onCompareChange }: PropertyCardProp
           ))}
         </div>
         <div className="flex items-center justify-between mt-3">
-          <span className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(unit.base_price)}</span>
+          <span className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(unitPrice)}</span>
           <div className="flex gap-2">
             <Link href={`/units/${unit.id}?enquire=true`}
               className="px-3 py-1.5 text-xs font-bold rounded-lg"

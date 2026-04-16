@@ -18,6 +18,12 @@ function formatPrice(p: any) {
   return `₹${n.toLocaleString()}`;
 }
 
+function getPrice(unit: any) {
+  const ta = unit.custom_fields?.total_amount;
+  if (ta && parseFloat(ta) > 0) return parseFloat(ta);
+  return unit.base_price ? parseFloat(unit.base_price) : null;
+}
+
 // ── Unit Card ────────────────────────────────────────────────────────────────
 function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending?: boolean; onCompareChange: () => void }) {
   const [saved, setSaved] = useState(false);
@@ -51,7 +57,7 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
   function handleShare(e: React.MouseEvent) {
     e.preventDefault(); e.stopPropagation();
     const url = `${window.location.origin}/units/${unit.id}`;
-    const text = `${unit.unit_number} — ${unit.unit_type}, ${formatPrice(unit.base_price)} | Janapriya Upscale`;
+    const text = `${unit.unit_number} — ${unit.unit_type}, ${formatPrice(getPrice(unit))} | Janapriya Upscale`;
     if (navigator.share) navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {});
     else { fallbackCopy(`${text}\n${url}`); }
   }
@@ -115,10 +121,10 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
         </div>
         <div className="mt-auto flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
           <div>
-            <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(unit.base_price)}</div>
-            {unit.area_sqft && unit.base_price && (
+            <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(getPrice(unit))}</div>
+            {unit.area_sqft && getPrice(unit) && (
               <div className="text-xs" style={{ color: "#999" }}>
-                ₹{Math.round(parseFloat(unit.base_price)/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
+                ₹{Math.round(getPrice(unit)!/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
               </div>
             )}
           </div>
@@ -473,8 +479,8 @@ export default function StorePage() {
     return true;
   }).sort((a,b) => {
     const sortVal = getVal('sort') || 'newest';
-    if (sortVal === "price_asc") return (parseFloat(a.base_price)||0)-(parseFloat(b.base_price)||0);
-    if (sortVal === "price_desc") return (parseFloat(b.base_price)||0)-(parseFloat(a.base_price)||0);
+    if (sortVal === "price_asc") return (getPrice(a)||0)-(getPrice(b)||0);
+    if (sortVal === "price_desc") return (getPrice(b)||0)-(getPrice(a)||0);
     if (sortVal === "area_desc") return (parseFloat(b.area_sqft)||0)-(parseFloat(a.area_sqft)||0);
     if (sortVal === "floor_asc") return (a.floor_number??0)-(b.floor_number??0);
     if (sortVal === "floor_desc") return (b.floor_number??0)-(a.floor_number??0);

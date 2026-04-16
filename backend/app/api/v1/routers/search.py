@@ -9,6 +9,10 @@ from backend.app.core.config import settings
 from backend.app.models.unit import Unit
 from backend.app.models.search_log import SearchLog
 from backend.app.models.session_log import SessionLog
+from backend.app.models.field_config import FieldConfig, CustomFieldValue
+from backend.app.api.v1.routers.units import _attach_custom_fields
+from sqlalchemy import cast, Float
+from sqlalchemy.dialects.postgresql import JSONB
 from backend.app.schemas.search import (
     NLPSearchRequest, FilterSearchRequest, SearchResponse
 )
@@ -315,33 +319,42 @@ def parse_with_regex(query: str) -> tuple[dict, str]:
 
 
 # ── Main parser ───────────────────────────────────────────────────────────────
-async def parse_query(query: str) -> tuple[dict, str]:
+async def parse_query(query: str) -> tuple[dict, str, str]:
+    """Returns (filters_dict, message, parser_used)"""
     result = await parse_with_groq(query)
     if result:
         msg = result.pop("message", f"AI understood: {query}")
-        return result, msg
+        return result, msg, "groq"
 
     result = parse_with_spacy(query)
     if result:
         msg = result.pop("message", f"Showing results for: {query}")
-        print(f"[Search] Using spaCy ✅")
-        return result, msg
+        return result, msg, "spacy"
 
-    print(f"[Search] Using Regex ✅")
-    return parse_with_regex(query)
+    filters, msg = parse_with_regex(query)
+    return filters, msg, "regex"
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 @router.post("/nlp", response_model=SearchResponse)
 async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db)):
-    filters_dict, message = await parse_query(data.query)
+    filters_dict, message, parser_used = await parse_query(data.query)
+
+    # Use total_amount (custom field) for price filtering instead of base_price.
+    # Join with custom_field_values to get total_amount for price conditions.
+    need_price_join = filters_dict.get("min_price") or filters_dict.get("max_price")
+
+    # Get the field_config id for total_amount once
+    ta_field_id = None
+    if need_price_join:
+        ta_res = await db.execute(
+            select(FieldConfig.id).where(FieldConfig.entity == "unit", FieldConfig.field_key == "total_amount")
+        )
+        ta_field_id = ta_res.scalar_one_or_none()
 
     conditions = [Unit.status == "available"]
     if filters_dict.get("unit_type"):    conditions.append(Unit.unit_type.ilike(f"%{filters_dict['unit_type']}%"))
     if filters_dict.get("bedrooms"):     conditions.append(Unit.bedrooms == filters_dict["bedrooms"])
-    if filters_dict.get("min_price"):    conditions.append(Unit.base_price >= filters_dict["min_price"])
-    # Add 10% tolerance on budget so units slightly above aren't excluded
-    if filters_dict.get("max_price"):    conditions.append(Unit.base_price <= filters_dict["max_price"] * 1.10)
     if filters_dict.get("min_area"):     conditions.append(Unit.area_sqft >= filters_dict["min_area"])
     if filters_dict.get("max_area"):     conditions.append(Unit.area_sqft <= filters_dict["max_area"])
     if filters_dict.get("max_down_payment"): conditions.append(Unit.down_payment <= filters_dict["max_down_payment"])
@@ -350,7 +363,26 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
     if filters_dict.get("floor_min"):    conditions.append(Unit.floor_number >= filters_dict["floor_min"])
     if filters_dict.get("floor_max"):    conditions.append(Unit.floor_number <= filters_dict["floor_max"])
 
-    q = select(Unit).where(and_(*conditions))
+    if need_price_join and ta_field_id:
+        # Join units with total_amount custom field and filter on it
+        # JSONB value needs cast: value::text::float
+        from sqlalchemy import literal_column
+        ta_val = literal_column("CAST(custom_field_values.value::text AS FLOAT)")
+        q = select(Unit).join(
+            CustomFieldValue,
+            and_(CustomFieldValue.entity_id == Unit.id, CustomFieldValue.field_config_id == ta_field_id)
+        ).where(and_(*conditions))
+        if filters_dict.get("min_price"):
+            q = q.where(ta_val >= filters_dict["min_price"])
+        if filters_dict.get("max_price"):
+            # 10% tolerance on budget
+            q = q.where(ta_val <= filters_dict["max_price"] * 1.10)
+    else:
+        # Fallback to base_price if total_amount field doesn't exist
+        if filters_dict.get("min_price"): conditions.append(Unit.base_price >= filters_dict["min_price"])
+        if filters_dict.get("max_price"): conditions.append(Unit.base_price <= filters_dict["max_price"] * 1.10)
+        q = select(Unit).where(and_(*conditions))
+
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar()
     result = await db.execute(q.order_by(Unit.is_trending.desc()).limit(20))
     units = result.scalars().all()
@@ -370,13 +402,17 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
             min_p = min(float(u.base_price) for u in nearby if u.base_price)
             suggestions = [f"No exact matches within budget. Showing {total} closest {filters_dict.get('unit_type', '')} units starting from ₹{min_p/100000:.0f}L"]
 
+    # Attach custom fields (3D images, etc.) to search results
+    enriched = await _attach_custom_fields(units, db)
+
+    filters_dict["_parser"] = parser_used
     db.add(SearchLog(query=data.query, filters=filters_dict, results_count=total, session_id=data.session_id))
     await db.flush()
 
     return SearchResponse(
         query=data.query, interpreted_as=filters_dict,
         total=total, page=1, page_size=20,
-        total_pages=-(-total // 20), items=units, message=message,
+        total_pages=-(-total // 20), items=enriched, message=message,
         suggestions=suggestions,
     )
 
@@ -404,10 +440,11 @@ async def filter_search(data: FilterSearchRequest, db: AsyncSession = Depends(ge
         .offset(offset).limit(data.page_size)
     )
     units = result.scalars().all()
+    enriched = await _attach_custom_fields(units, db)
 
     return SearchResponse(
         total=total, page=data.page, page_size=data.page_size,
-        total_pages=-(-total // data.page_size), items=units,
+        total_pages=-(-total // data.page_size), items=enriched,
     )
 
 
