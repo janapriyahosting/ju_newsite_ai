@@ -564,7 +564,7 @@ function SavedUnitCard({ unitId, onRemove }: { unitId: string; onRemove: () => v
         <p className="text-white font-black text-sm">{unit.unit_number}</p>
       </div>
       <div className="p-3">
-        <p style={{ color: "#555" }} className="text-xs">{unit.unit_type} · {unit.bedrooms} BHK</p>
+        <p style={{ color: "#555" }} className="text-xs">{unit.unit_type?.includes("BHK") ? unit.unit_type : `${unit.unit_type || ""}${unit.bedrooms ? (unit.unit_type ? " · " : "") + unit.bedrooms + " BHK" : ""}`}</p>
         <p className="font-black text-sm mt-1" style={{ color: "#2A3887" }}>
           {unit.base_price ? `₹${(parseFloat(unit.base_price)/100000).toFixed(0)}L` : "On Request"}
         </p>

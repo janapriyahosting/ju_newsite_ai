@@ -56,12 +56,15 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
     else { fallbackCopy(`${text}\n${url}`); }
   }
   const statusColor = unit.status === "available" ? "#22c55e" : unit.status === "booked" ? "#ef4444" : "#f59e0b";
+  const img3d = unit.custom_fields?.series_floor_plan_3d;
+  const imgUrl = img3d || "";
   return (
     <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
       style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
       <div className="h-44 relative flex flex-col justify-between p-4"
-        style={{ background: "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
-        <div className="flex justify-between items-center">
+        style={{ background: imgUrl ? `url(${imgUrl}) center/cover no-repeat` : "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
+        {imgUrl && <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.55) 100%)" }} />}
+        <div className="relative z-10 flex justify-between items-center">
           <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
             ● {(unit.status||"available").charAt(0).toUpperCase()+(unit.status||"available").slice(1)}
           </span>
@@ -77,17 +80,17 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
             ))}
           </div>
         </div>
-        <div>
+        <div className="relative z-10">
           <div className="flex items-center gap-2">
             <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
-              {unit.unit_type}{unit.bedrooms ? ` · ${unit.bedrooms} BHK` : ""}
+              {unit.unit_type?.includes("BHK") ? unit.unit_type : `${unit.unit_type || ""}${unit.bedrooms ? (unit.unit_type ? " · " : "") + unit.bedrooms + " BHK" : ""}`}
             </p>
             {isTrending && <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"white" }}>🔥</span>}
           </div>
           <h3 className="text-white font-black text-lg leading-tight">{unit.unit_number||"Unit"}</h3>
         </div>
         {toast && (
-          <div className="absolute bottom-3 left-3 right-3 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
+          <div className="absolute bottom-3 left-3 right-3 z-10 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
             style={{ color: "#2A3887" }}>{toast}</div>
         )}
       </div>
@@ -331,8 +334,32 @@ export default function StorePage() {
       setFilterValues(defaults);
       setFiltersLoaded(true);
     });
-    loadAll();
+
+    // Check for ?q= param (from home page search) and auto-trigger AI search
+    const sp = new URLSearchParams(window.location.search);
+    const qParam = sp.get("q");
+    if (qParam) {
+      setAiQuery(qParam);
+      triggerAISearch(qParam);
+    } else {
+      loadAll();
+    }
   }, []);
+
+  async function triggerAISearch(q: string) {
+    setSearching(true);
+    try {
+      const res = await fetch(`${API}/search/nlp`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q }),
+      });
+      const d = await res.json() as any;
+      setUnits(d.items || []);
+      setAiActive(true);
+    } catch {}
+    setSearching(false);
+    setLoading(false);
+  }
 
   async function loadAll() {
     setLoading(true);

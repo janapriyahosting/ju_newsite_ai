@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { isSaved, toggleSaved, isInCompare, toggleCompare } from "@/lib/savedProperties";
 
 const PAYMENTS = [
   {
@@ -447,6 +448,117 @@ function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButton
   );
 }
 
+// ── Trending Card (matches store UnitCard) ──────────────────────────────────
+function TrendingCard({ unit: u, imgUrl, statusColor, formatPrice }: { unit: any; imgUrl: string; statusColor: string; formatPrice: (p: any) => string }) {
+  const [saved, setSaved] = useState(false);
+  const [inCompare, setInCompare] = useState(false);
+  const [toast, setToast] = useState("");
+  useEffect(() => { setSaved(isSaved(u.id)); setInCompare(isInCompare(u.id)); }, [u.id]);
+  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(""), 2000); };
+
+  function handleSave(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    setSaved(toggleSaved(u.id));
+    showToast(isSaved(u.id) ? "Saved ❤️" : "Removed");
+    window.dispatchEvent(new Event("jp_saved_update"));
+  }
+  function handleCompare(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    const r = toggleCompare(u.id);
+    if (r.error) { showToast(r.error); return; }
+    setInCompare(r.added);
+    showToast(r.added ? "Added to compare ⇄" : "Removed");
+    window.dispatchEvent(new Event("jp_compare_update"));
+  }
+  function handleShare(e: React.MouseEvent) {
+    e.preventDefault(); e.stopPropagation();
+    const url = `${window.location.origin}/units/${u.id}`;
+    const text = `${u.unit_number} — ${u.unit_type}, ${formatPrice(u.base_price)} | Janapriya Upscale`;
+    if (navigator.share) navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(`${text}\n${url}`).then(() => showToast("Link copied! 📋"));
+  }
+
+  return (
+    <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
+      style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
+      <div className="h-44 relative flex flex-col justify-between p-4"
+        style={{ background: imgUrl ? `url(${imgUrl}) center/cover no-repeat` : "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
+        {imgUrl && <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.55) 100%)" }} />}
+        <div className="relative z-10 flex justify-between items-center">
+          <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
+            ● {(u.status||"available").charAt(0).toUpperCase()+(u.status||"available").slice(1)}
+          </span>
+          <div className="flex gap-1.5">
+            {[
+              { fn: handleSave, icon: saved?"♥":"♡", bg: saved?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.2)" },
+              { fn: handleCompare, icon: "⇄", bg: inCompare?"rgba(245,158,11,0.85)":"rgba(255,255,255,0.2)" },
+              { fn: handleShare, icon: "↗", bg: "rgba(255,255,255,0.2)" },
+            ].map((btn,i) => (
+              <button key={i} onClick={btn.fn}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm transition-all hover:scale-110"
+                style={{ background: btn.bg }}>{btn.icon}</button>
+            ))}
+          </div>
+        </div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-2">
+            <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
+              {u.unit_type?.includes("BHK") ? u.unit_type : `${u.unit_type || ""}${u.bedrooms ? (u.unit_type ? " · " : "") + u.bedrooms + " BHK" : ""}`}
+            </p>
+            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"white" }}>🔥</span>
+          </div>
+          <h3 className="text-white font-black text-lg leading-tight">{u.unit_number||"Unit"}</h3>
+        </div>
+        {toast && (
+          <div className="absolute bottom-3 left-3 right-3 z-10 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
+            style={{ color: "#2A3887" }}>{toast}</div>
+        )}
+      </div>
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {[
+            { icon: "🛏", val: u.bedrooms||"—", label: "BHK" },
+            { icon: "📐", val: u.area_sqft ? `${parseFloat(u.area_sqft).toFixed(0)}` : "—", label: "sqft" },
+            { icon: "🏢", val: u.floor_number??  "—", label: "Floor" },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl py-2 text-center" style={{ background: "#F8F9FB" }}>
+              <div className="text-base">{s.icon}</div>
+              <div className="font-black text-sm" style={{ color: "#2A3887" }}>{s.val}</div>
+              <div className="text-xs" style={{ color: "#999" }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {u.bathrooms && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🚿 {u.bathrooms} Bath</span>}
+          {u.facing && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🧭 {u.facing}</span>}
+          {u.balconies > 0 && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🏡 {u.balconies} Balc</span>}
+        </div>
+        <div className="mt-auto flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
+          <div>
+            <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(u.base_price)}</div>
+            {u.area_sqft && u.base_price && (
+              <div className="text-xs" style={{ color: "#999" }}>
+                ₹{Math.round(parseFloat(u.base_price)/parseFloat(u.area_sqft)).toLocaleString()}/sqft
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <div onClick={e=>{e.preventDefault();e.stopPropagation();}}>
+              <AddToCartBtn unitId={u.id} status={u.status} size="sm" />
+            </div>
+            <Link href={`/contact?unit=${u.id}`}
+              className="px-3 py-1.5 text-xs font-bold rounded-xl"
+              style={{ border:"1.5px solid #2A3887",color:"#2A3887" }}>Enquire</Link>
+            <Link href={`/units/${u.id}`}
+              className="px-3 py-1.5 text-xs font-bold text-white rounded-xl"
+              style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>Details →</Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -484,17 +596,7 @@ export default function HomePage() {
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
-    setSearching(true); setSearched(false);
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "/api/v1"}/search/nlp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
-      });
-      const d = await res.json();
-      setResults(d.items || d.results || []);
-    } catch { setResults([]); }
-    finally { setSearching(false); setSearched(true); }
+    window.location.href = `/store?q=${encodeURIComponent(query.trim())}`;
   }
 
   function formatPrice(p: any) {
@@ -719,7 +821,7 @@ export default function HomePage() {
           align-items: center;
           gap: 0;
           box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
-          background: white;
+          
           width: 100%;
           box-sizing: border-box;
         }
@@ -809,7 +911,7 @@ export default function HomePage() {
         <div
           className="relative mx-auto"
           style={{
-            zIndex: 0,
+            zIndex: 1,
             paddingTop: "clamp(100px, 20vw, 150px)",
             paddingBottom: "clamp(90px, 16vw, 130px)",
             paddingLeft: "clamp(16px, 5vw, 32px)",
@@ -852,7 +954,7 @@ export default function HomePage() {
                   className="input-search hero-search-input"
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  style={{ flex: 1, fontSize: 15, color: "#0D1B2A", padding: "12px 0", fontWeight: 600 }}
+                  style={{ flex: 1, fontSize: 15, color: "#fff", padding: "12px 0", fontWeight: 600 }}
                   placeholder={`Search ${activeTab === "Buy" ? "properties to buy" : activeTab === "Rent" ? "rental properties" : "investment opportunities"}…`}
                 />
 
@@ -865,7 +967,7 @@ export default function HomePage() {
                 {/* Location */}
                 <div
                   className="hero-location"
-                  style={{ display: "flex", alignItems: "center", gap: 5, color: "#6B7280", fontSize: 13, fontWeight: 700, flexShrink: 0, marginRight: 10, whiteSpace: "nowrap" }}
+                  style={{ display: "flex", alignItems: "center", gap: 5, color: "#fff", fontSize: 13, fontWeight: 700, flexShrink: 0, marginRight: 10, whiteSpace: "nowrap" }}
                 >
                   <span style={{ fontSize: 15 }}>📍</span> Hyderabad
                 </div>
@@ -904,25 +1006,7 @@ export default function HomePage() {
             </form>
           </div>
 
-          {/* ── Search Results ── */}
-          {searched && (
-            <div style={{ width: "100%", margin: "14px auto 0", boxSizing: "border-box" }}>
-              {(Array.isArray(results) ? results : []).length === 0 ? (
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: 16, padding: 18, color: "rgba(255,255,255,0.65)", fontSize: 14, backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                  No results found. <Link href="/store" style={{ color: "#7b8fd4", fontWeight: 800 }}>Browse all listings →</Link>
-                </div>
-              ) : (Array.isArray(results) ? results : []).map((r: any, i: number) => (
-                <Link key={i} href={`/units/${r.id}`} style={{ background: "rgba(255,255,255,0.96)", borderRadius: 14, padding: "13px 18px", textDecoration: "none", display: "flex", alignItems: "center", gap: 14, marginTop: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.2)" }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 12, background: "linear-gradient(135deg, #e8ebf8, #b8c0e8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🏠</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontWeight: 800, fontSize: 14, color: "#0D1B2A", margin: 0 }}>{r.unit_number || r.name}</p>
-                    <p style={{ color: "#6B7280", fontSize: 12, margin: 0 }}>{r.unit_type} · {r.bedrooms} BHK · {r.area_sqft} sqft</p>
-                  </div>
-                  <div style={{ fontWeight: 900, color: "#273b84", fontSize: 15, flexShrink: 0 }}>{formatPrice(r.base_price)}</div>
-                </Link>
-              ))}
-            </div>
-          )}
+          {/* Search redirects to /store?q=... */}
         </div>
 
         {/* ── Slide Dots + Scroll indicator ── */}
@@ -1065,43 +1149,14 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trending.map((u: any) => (
-                <Link key={u.id} href={`/units/${u.id}`} style={{ textDecoration: "none" }}>
-                  <div className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
-                    <div style={{ height: 200, position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 16 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <span className="badge badge-brand">● Available</span>
-                        <span style={{ background: "rgba(255,255,255,0.15)", color: "white", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>🔥 Trending</span>
-                      </div>
-                      <div>
-                        <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 2 }}>{u.unit_type}{u.bedrooms ? ` · ${u.bedrooms} BHK` : ""}</p>
-                        <p style={{ color: "white", fontWeight: 900, fontSize: 16 }}>{u.unit_number}</p>
-                        {u.area_sqft && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>📐 {parseFloat(u.area_sqft).toFixed(0)} sqft · Fl {u.floor_number ?? "–"}</p>}
-                      </div>
-                    </div>
-                    <div style={{ padding: "16px 18px" }}>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-                        {u.bedrooms && <span style={{ background: "#F3F4F6", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#374151" }}>🛏 {u.bedrooms} BHK</span>}
-                        {u.area_sqft && <span style={{ background: "#F3F4F6", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#374151" }}>📐 {parseFloat(u.area_sqft).toFixed(0)} sqft</span>}
-                        {u.floor_number != null && <span style={{ background: "#F3F4F6", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#374151" }}>🏢 Floor {u.floor_number}</span>}
-                      </div>
-                      <div style={{ height: 1, background: "#F3F4F6", marginBottom: 12 }} />
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <div>
-                          <div style={{ fontWeight: 900, fontSize: 17, color: "#0D1B2A" }}>{formatPrice(u.base_price)}</div>
-                          {u.area_sqft && u.base_price && (
-                            <div style={{ color: "#9CA3AF", fontSize: 11 }}>₹{Math.round(parseFloat(u.base_price) / parseFloat(u.area_sqft)).toLocaleString()}/sqft</div>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={e => e.preventDefault()}>
-                          <AddToCartBtn unitId={u.id} status={u.status} size="sm" />
-                          <span style={{ background: "#273b84", color: "white", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 800 }}>View →</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+              {trending.map((u: any) => {
+                const img3d = u.custom_fields?.series_floor_plan_3d;
+                const imgUrl = img3d || "";
+                const statusColor = u.status === "available" ? "#22c55e" : u.status === "booked" ? "#ef4444" : "#f59e0b";
+                return (
+                  <TrendingCard key={u.id} unit={u} imgUrl={imgUrl} statusColor={statusColor} formatPrice={formatPrice} />
+                );
+              })}
             </div>
           </div>
         </section>

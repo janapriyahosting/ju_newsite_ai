@@ -31,25 +31,43 @@ async def list_units(
         .offset((page-1)*page_size).limit(page_size)
     )
     units = result.scalars().all()
+
+    # Resolve tower + project names for display
+    tower_ids = {u.tower_id for u in units if u.tower_id}
+    tower_map: dict = {}
+    project_map: dict = {}
+    if tower_ids:
+        trows = (await db.execute(select(Tower).where(Tower.id.in_(tower_ids)))).scalars().all()
+        tower_map = {t.id: t for t in trows}
+        project_ids = {t.project_id for t in trows if t.project_id}
+        if project_ids:
+            prows = (await db.execute(select(Project).where(Project.id.in_(project_ids)))).scalars().all()
+            project_map = {p.id: p for p in prows}
+
+    def _row(u):
+        t = tower_map.get(u.tower_id)
+        p = project_map.get(t.project_id) if t else None
+        return {
+            "id": str(u.id), "unit_number": u.unit_number,
+            "unit_type": u.unit_type, "bedrooms": u.bedrooms,
+            "floor_number": u.floor_number, "facing": u.facing,
+            "area_sqft": str(u.area_sqft) if u.area_sqft else None,
+            "base_price": str(u.base_price) if u.base_price else None,
+            "token_amount": str(u.token_amount) if u.token_amount else "20000",
+            "emi_estimate": str(u.emi_estimate) if u.emi_estimate else None,
+            "status": u.status,
+            "is_trending": bool(u.is_trending) if u.is_trending is not None else False,
+            "is_featured": bool(u.is_featured) if u.is_featured is not None else False,
+            "view_count": u.view_count or 0,
+            "tower_id": str(u.tower_id) if u.tower_id else None,
+            "tower_name": t.name if t else None,
+            "project_id": str(t.project_id) if t and t.project_id else None,
+            "project_name": p.name if p else None,
+        }
+
     return {
         "total": total, "page": page, "page_size": page_size,
-        "items": [
-            {
-                "id": str(u.id), "unit_number": u.unit_number,
-                "unit_type": u.unit_type, "bedrooms": u.bedrooms,
-                "floor_number": u.floor_number, "facing": u.facing,
-                "area_sqft": str(u.area_sqft) if u.area_sqft else None,
-                "base_price": str(u.base_price) if u.base_price else None,
-                "token_amount": str(u.token_amount) if u.token_amount else "20000",
-                "emi_estimate": str(u.emi_estimate) if u.emi_estimate else None,
-                "status": u.status,
-                "is_trending": bool(u.is_trending) if u.is_trending is not None else False,
-                "is_featured": bool(u.is_featured) if u.is_featured is not None else False,
-                "view_count": u.view_count or 0,
-                "tower_id": str(u.tower_id) if u.tower_id else None,
-            }
-            for u in units
-        ]
+        "items": [_row(u) for u in units]
     }
 
 
@@ -90,7 +108,7 @@ async def update_unit(
     allowed = {
         "status", "base_price", "emi_estimate", "down_payment", "price_per_sqft",
         "is_trending", "is_featured", "facing", "floor_number", "unit_type",
-        "bedrooms", "bathrooms", "area_sqft", "carpet_area", "description",
+        "bedrooms", "bathrooms", "area_sqft", "carpet_area",
         "dimensions", "images", "floor_plan_img", "floor_plans",
         "video_url", "walkthrough_url", "amenities", "token_amount",
     }

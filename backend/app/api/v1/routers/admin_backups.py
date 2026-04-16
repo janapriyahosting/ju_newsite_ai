@@ -27,6 +27,28 @@ LOGS_DIR = BACKUP_ROOT / "logs"
 SCRIPTS_DIR = BACKUP_ROOT / "scripts"
 PRE_RESTORE_DIR = BACKUP_ROOT / "pre_restore"
 
+# Owner of the crontab that holds the backup schedules.
+# The API typically runs as root (pm2), but the backup jobs live in jpuser's
+# crontab so the scripts execute as jpuser with the right file ownership.
+# Overridable via env var in case the deployment user differs.
+CRON_USER = os.environ.get("BACKUP_CRON_USER", "jpuser")
+
+
+def _crontab_cmd(*extra: str) -> list:
+    """Build a `crontab` invocation that targets CRON_USER when possible.
+    Falls back to the current user's crontab if -u isn't permitted
+    (e.g. backend not running as root)."""
+    # When already running as CRON_USER, -u is unnecessary (and some systems
+    # disallow `crontab -u <self>` unless root).
+    try:
+        import pwd
+        current_user = pwd.getpwuid(os.geteuid()).pw_name
+    except Exception:
+        current_user = ""
+    if current_user and current_user != CRON_USER:
+        return ["crontab", "-u", CRON_USER, *extra]
+    return ["crontab", *extra]
+
 
 # ── Response schemas ──────────────────────────────────────────────────────────
 
@@ -139,7 +161,7 @@ def _list_backups(root: Path, pattern: str, limit: int = 20) -> List[BackupFile]
 def _read_cron() -> List[CronJob]:
     try:
         result = subprocess.run(
-            ["crontab", "-l"], capture_output=True, text=True, timeout=5,
+            _crontab_cmd("-l"), capture_output=True, text=True, timeout=5,
         )
         if result.returncode != 0:
             return []
@@ -345,7 +367,7 @@ class ScheduleUpdate(BaseModel):
 
 
 def _read_crontab_raw() -> str:
-    result = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=5)
+    result = subprocess.run(_crontab_cmd("-l"), capture_output=True, text=True, timeout=5)
     if result.returncode != 0 and "no crontab" not in result.stderr.lower():
         return ""
     return result.stdout
@@ -356,7 +378,7 @@ def _write_crontab_raw(content: str) -> None:
         tf.write(content)
         tf_path = tf.name
     try:
-        result = subprocess.run(["crontab", tf_path], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(_crontab_cmd(tf_path), capture_output=True, text=True, timeout=5)
         if result.returncode != 0:
             raise HTTPException(500, f"Failed to write crontab: {result.stderr}")
     finally:
