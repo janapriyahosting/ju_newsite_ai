@@ -3,6 +3,8 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import api from '@/lib/api'
 import { customerApi } from '@/lib/customerAuth'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
 
 const TIME_SLOTS = [
   '10:00 AM', '11:00 AM', '12:00 PM',
@@ -141,7 +143,8 @@ export default function SiteVisitPage() {
 
   return (
     <main className="min-h-screen" style={{ background: "#F8F9FB" }}>
-      <header className="text-white shadow-lg" style={{ background: "linear-gradient(135deg, #262262, #2A3887)" }}>
+      <Navbar />
+      <header className="pt-16 text-white shadow-lg" style={{ background: "linear-gradient(135deg, #262262, #2A3887)" }}>
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-serif font-bold" style={{ color: "#29A9DF" }}>Janapriya Upscale</Link>
           <Link href="/" className="text-sm text-gray-300 hover:text-[#29A9DF]">← Back to Home</Link>

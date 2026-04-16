@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import api from '@/lib/api'
 import { Unit } from '@/types'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
 
 function formatPrice(price: string | undefined) {
   if (!price) return 'POA'
@@ -73,7 +75,8 @@ export default function SearchPage() {
 
   return (
     <main className="min-h-screen">
-      <header className="bg-brand-dark text-white shadow-lg">
+      <Navbar />
+      <header className="pt-16 bg-brand-dark text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-serif font-bold text-brand-gold">Janapriya Upscale</Link>
           <nav className="hidden md:flex gap-6 text-sm">
