@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import DynamicFields from '@/components/DynamicFields';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -172,7 +174,8 @@ export default function TowerDetailPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="py-12 px-4" style={{ background:'linear-gradient(135deg,#262262,#2A3887)' }}>
+      <Navbar />
+      <div className="pt-16 py-12 px-4" style={{ background:'linear-gradient(135deg,#262262,#2A3887)' }}>
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center gap-2 text-sm mb-4" style={{ color:'#93c5fd' }}>
             <Link href="/projects" className="hover:text-white">Projects</Link>
@@ -256,6 +259,7 @@ export default function TowerDetailPage() {
           </div>
         )}
       </section>
+      <Footer />
     </div>
 );
 }

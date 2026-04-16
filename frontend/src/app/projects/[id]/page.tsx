@@ -2,6 +2,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import DynamicFields from '@/components/DynamicFields';
 import { customerApi } from '@/lib/customerAuth';
 const API=process.env.NEXT_PUBLIC_API_URL||'';
@@ -32,7 +34,7 @@ export default function ProjectDetailPage(){
   if(loading)return<div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 border-4 rounded-full animate-spin"style={{borderColor:'#E2F1FC',borderTopColor:'#2A3887'}}/></div>;
   if(!project)return<div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">Project not found</p></div>;
   const avail=units.filter((u:any)=>u.status==='available');
-  const prices=units.filter((u:any)=>+u.base_price>0).map((u:any)=>+u.base_price);
+  const prices=units.map((u:any)=>{const ta=u.custom_fields?.total_amount;return ta&&parseFloat(ta)>0?parseFloat(ta):+u.base_price;}).filter((p:number)=>p>0);
   const minP=prices.length?Math.min(...prices):0;const maxP=prices.length?Math.max(...prices):0;
   const LABELS:Record<string,string>={description:'About the Project',location:'Location',address:'Address',city:'City',state:'State',pincode:'Pincode',rera_number:'RERA Number'};
   const renderSection=(s:any)=>{
@@ -51,7 +53,8 @@ export default function ProjectDetailPage(){
   };
   return(
     <div className="min-h-screen bg-white">
-      <div className="py-12 px-4"style={{background:'linear-gradient(135deg,#262262,#2A3887)'}}>
+      <Navbar />
+      <div className="pt-16 py-12 px-4"style={{background:'linear-gradient(135deg,#262262,#2A3887)'}}>
         <div className="max-w-6xl mx-auto">
           <p className="text-xs font-bold tracking-widest mb-2"style={{color:'#29A9DF'}}>{project.city?.toUpperCase()}{project.rera_number?' · RERA REGISTERED':''}</p>
           <div className="flex items-start justify-between flex-wrap gap-4">
@@ -123,6 +126,7 @@ export default function ProjectDetailPage(){
         </div>
         );})}</div>}</div>)}
       {tab==='towers'&&(<div className="max-w-6xl mx-auto px-4 py-8"><h2 className="text-2xl font-black mb-6"style={{color:'#262262'}}>Towers ({towers.length})</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{towers.map((t:any)=>{const tThumb=t.thumbnail||t.images?.[0];return(<Link key={t.id}href={`/projects/${slug}/towers/${t.id}`}className="rounded-2xl overflow-hidden border hover:shadow-lg transition-all block"style={{borderColor:'#e2e8f0'}}>{tThumb?(<div className="relative"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}><img src={tThumb.split('/').map((s:string)=>encodeURIComponent(s)).join('/')}alt={t.name}className="absolute inset-0 w-full h-full object-cover"onError={(e:any)=>{e.target.style.display='none'}}/><div className="absolute inset-0"style={{background:'linear-gradient(to bottom,rgba(0,0,0,0.2) 0%,rgba(0,0,0,0.5) 100%)'}}/><h3 className="absolute bottom-4 left-4 font-black text-xl text-white"style={{zIndex:1}}>{t.name}</h3></div>):(<div className="relative p-5"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}><h3 className="absolute bottom-4 left-4 font-black text-xl text-white">{t.name}</h3></div>)}<div className="p-5">{t.description&&<p className="text-sm text-gray-500 mb-3">{t.description}</p>}<div className="flex gap-4 text-sm font-medium"style={{color:'#2A3887'}}><span>{t.total_floors} Floors</span><span>{t.total_units} Units</span></div><div className="flex gap-2 mt-3 flex-wrap">{t.video_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>▶ Video</span>}{t.walkthrough_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>🥽 Tour</span>}{t.floor_plans?.length>0&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>📐 Plans</span>}</div></div></Link>)})}</div></div>)}
+      <Footer />
     </div>
   );
 }
