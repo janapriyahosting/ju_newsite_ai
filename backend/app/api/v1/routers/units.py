@@ -20,7 +20,8 @@ router = APIRouter(prefix="/units", tags=["units"])
 
 
 async def _attach_custom_fields(units: list, db: AsyncSession) -> list:
-    """Attach custom field values (including thumbnail) to each unit response."""
+    """Attach custom field values (including thumbnail) and project info
+    (project_name, location, city) to each unit response."""
     if not units:
         return units
     try:
@@ -42,6 +43,19 @@ async def _attach_custom_fields(units: list, db: AsyncSession) -> list:
             if val is not None and val != "":
                 lookup.setdefault(uid, {})[r["field_key"]] = val
 
+        # Resolve tower → project so we can surface location/city/project_name
+        # for the store's location filter and card display.
+        tower_ids = {u.tower_id for u in units if u.tower_id}
+        tower_map: dict = {}
+        project_map: dict = {}
+        if tower_ids:
+            trows = (await db.execute(select(Tower).where(Tower.id.in_(tower_ids)))).scalars().all()
+            tower_map = {t.id: t for t in trows}
+            project_ids = {t.project_id for t in trows if t.project_id}
+            if project_ids:
+                prows = (await db.execute(select(Project).where(Project.id.in_(project_ids)))).scalars().all()
+                project_map = {p.id: p for p in prows}
+
         results = []
         for u in units:
             resp = UnitResponse.model_validate(u)
@@ -50,6 +64,16 @@ async def _attach_custom_fields(units: list, db: AsyncSession) -> list:
             resp.thumbnail = fields.get("series_floor_plan_3d") or fields.get("series_floor_plan_2d") or None
             # Attach all custom fields
             resp.custom_fields = fields
+            # Inject project info (read from tower → project map)
+            t = tower_map.get(u.tower_id)
+            p = project_map.get(t.project_id) if t else None
+            if p:
+                resp.project_id   = str(p.id)
+                resp.project_name = p.name
+                resp.location     = p.location
+                resp.city         = p.city
+            if t:
+                resp.tower_name = t.name
             results.append(resp)
         return results
     except Exception as e:

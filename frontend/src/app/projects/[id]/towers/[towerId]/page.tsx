@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import DynamicFields from '@/components/DynamicFields';
 import ProactiveAssistant from '@/components/ProactiveAssistant';
+import UnitCard from '@/components/UnitCard';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const MEDIA = "";
@@ -70,27 +71,7 @@ function FloorPlans({ plans, svgPlan }: { plans: string[]; svgPlan?: string }) {
   );
 }
 
-function UnitCard({ unit }: { unit: any }) {
-  const sc: Record<string,string> = { available:'#dcfce7', booked:'#fee2e2', hold:'#fef3c7', blocked:'#f3f4f6' };
-  const tc: Record<string,string> = { available:'#16A34A', booked:'#DC2626', hold:'#d97706', blocked:'#6b7280' };
-  const price = fmt(unit.base_price);
-  return (
-    <Link href={`/units/${unit.id}`} className="rounded-2xl p-5 border hover:shadow-lg transition-all block" style={{ borderColor:'#e2e8f0' }}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ background:sc[unit.status]||'#f3f4f6', color:tc[unit.status]||'#666' }}>{unit.status}</span>
-        <span className="text-sm font-bold" style={{ color:'#2A3887' }}>{unit.unit_type}</span>
-      </div>
-      <p className="font-black text-lg" style={{ color:'#262262' }}>{unit.unit_number}</p>
-      <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-500">
-        {unit.bedrooms && <span>🛏 {unit.bedrooms} BHK</span>}
-        {unit.floor_number && <span>🏢 F{unit.floor_number}</span>}
-        {unit.area_sqft && <span>📐 {unit.area_sqft} sqft</span>}
-        {unit.facing && <span>🧭 {unit.facing}</span>}
-      </div>
-      {price && <p className="font-bold mt-3" style={{ color:'#2A3887' }}>{price}</p>}
-    </Link>
-  );
-}
+// UnitCard is now the shared @/components/UnitCard
 
 export default function TowerDetailPage() {
   const params = useParams();
@@ -238,8 +219,19 @@ export default function TowerDetailPage() {
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map((u: any) => <UnitCard key={u.id} unit={u} />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filtered.map((u: any) => (
+              <UnitCard
+                key={u.id}
+                unit={{
+                  ...u,
+                  project_name: u.project_name || project?.name,
+                  location:     u.location     || project?.location,
+                  city:         u.city         || project?.city,
+                  tower_name:   u.tower_name   || tower?.name,
+                }}
+              />
+            ))}
           </div>
           {!filtered.length && <p className="text-center text-gray-400 py-12">No units match the selected filters</p>}
         </div>

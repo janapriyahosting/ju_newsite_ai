@@ -84,6 +84,12 @@ class UnitResponse(BaseResponseSchema):
     view_count: int = 0
     thumbnail: Optional[str] = None
     custom_fields: Optional[dict] = None
+    # Project info — joined from Tower→Project so location/city filters work.
+    project_id: Optional[str] = None
+    project_name: Optional[str] = None
+    tower_name: Optional[str] = None
+    location: Optional[str] = None
+    city: Optional[str] = None
 
 
 class UnitFilterParams(BaseSchema):

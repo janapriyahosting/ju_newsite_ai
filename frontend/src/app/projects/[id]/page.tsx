@@ -7,6 +7,7 @@ import BackButton from '@/components/BackButton';
 import Footer from '@/components/Footer';
 import DynamicFields from '@/components/DynamicFields';
 import ProactiveAssistant from '@/components/ProactiveAssistant';
+import UnitCard from '@/components/UnitCard';
 import { customerApi } from '@/lib/customerAuth';
 const API=process.env.NEXT_PUBLIC_API_URL||'';
 const MEDIA='';
@@ -81,61 +82,7 @@ export default function ProjectDetailPage(){
         </div>
       </div>
       {tab==='overview'&&(<div>{sections.filter((s:any)=>s.visible).map(renderSection)}{project?.id&&<div className="max-w-6xl mx-auto px-4 py-6"><DynamicFields entity="project" entityId={project.id} entityData={project}/></div>}<ProjectFormsSection projectName={project.name}/></div>)}
-      {tab==='units'&&(<div className="max-w-6xl mx-auto px-4 py-8"><h2 className="text-2xl font-black mb-6"style={{color:'#262262'}}>All Units ({units.length})</h2>{units.length===0?<div className="rounded-2xl p-10 text-center"style={{border:'1.5px dashed #E2F1FC'}}><div className="text-5xl mb-4">🏠</div><p className="font-bold text-lg mb-2"style={{color:'#555'}}>No units available yet</p><p style={{color:'#999'}} className="text-sm">Units will be listed here once added by the team.</p></div>:<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">{units.map((u:any)=>{
-        const img3d=u.custom_fields?.series_floor_plan_3d;
-        const imgUrl=img3d||'';
-        const statusColor=u.status==='available'?'#22c55e':u.status==='booked'?'#ef4444':u.status==='sold'?'#dc2626':'#f59e0b';
-        const price=(()=>{const ta=u.custom_fields?.total_amount;return ta&&parseFloat(ta)>0?parseFloat(ta):u.base_price?parseFloat(u.base_price):null;})();
-        return(
-        <div key={u.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"style={{boxShadow:'0 4px 20px rgba(42,56,135,0.1)',border:'1.5px solid #E2F1FC'}}>
-          <div
-  className="relative flex flex-col justify-between p-4"
-  style={{
-    height: "350px",
-    background: imgUrl
-      ? `url(${mUrl(imgUrl)}) center/cover no-repeat`
-      : "linear-gradient(135deg,#2A3887,#29A9DF)",
-  }}
->
-            {imgUrl&&<div className="absolute inset-0" />}
-            <div className="relative z-10 flex justify-between items-start">
-              <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white"style={{color:statusColor}}>● {(u.status||'available').charAt(0).toUpperCase()+(u.status||'available').slice(1)}</span>
-            </div>
-            <div className="relative z-10">
-              <p className="text-xs uppercase tracking-wide" style={{color:"#2a3887"}}>
-                {u.unit_type?.includes('BHK')?u.unit_type:`${u.unit_type||''}${u.bedrooms?(u.unit_type?' · ':'')+u.bedrooms+' BHK':''}`}
-              </p>
-              <h3 className="font-black text-lg leading-tight" style={{ color: "#2a3887" }}>{u.unit_number}</h3>
-            </div>
-          </div>
-          <div className="p-4 flex flex-col">
-            <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-              {[['🛏',u.bedrooms||'—','BHK'],['📐',u.area_sqft?`${parseFloat(u.area_sqft).toFixed(0)}`:'—','sqft'],['🏢',u.floor_number??'—','Floor']].map(([icon,val,lbl])=>(
-                <div key={String(lbl)} className="rounded-xl py-2"style={{background:'#F8F9FB'}}>
-                  <div className="text-base">{icon}</div>
-                  <div className="font-black text-sm"style={{color:'#2A3887'}}>{val}</div>
-                  <div className="text-xs"style={{color:'#999'}}>{lbl}</div>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-1.5 mb-3">
-              {u.bathrooms&&<span className="px-2 py-0.5 rounded-full text-xs"style={{background:'#F0F4FF',color:'#2A3887'}}>🚿 {u.bathrooms} Bath</span>}
-              {u.facing&&<span className="px-2 py-0.5 rounded-full text-xs"style={{background:'#F0F4FF',color:'#2A3887'}}>🧭 {u.facing}</span>}
-              {u.balconies>0&&<span className="px-2 py-0.5 rounded-full text-xs"style={{background:'#F0F4FF',color:'#2A3887'}}>🏡 {u.balconies} Balc</span>}
-            </div>
-            <div className="mt-auto flex items-center justify-between pt-3"style={{borderTop:'1px solid #F0F4FF'}}>
-              <div>
-                <div className="font-black text-lg"style={{color:'#2A3887'}}>{price?fmt(price):'—'}</div>
-                {u.area_sqft&&price&&<div className="text-xs"style={{color:'#999'}}>₹{Math.round(price/parseFloat(u.area_sqft)).toLocaleString()}/sqft</div>}
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3">
-              <Link href={`/units/${u.id}?enquire=true`} className="flex-1 text-center py-2.5 text-xs font-bold rounded-xl transition-colors"style={{border:'1.5px solid #2A3887',color:'#2A3887'}}>Enquire</Link>
-              <Link href={`/units/${u.id}`} className="flex-1 text-center py-2.5 text-xs font-bold text-white rounded-xl"style={{background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}>Details →</Link>
-            </div>
-          </div>
-        </div>
-        );})}</div>}</div>)}
+      {tab==='units'&&(<div className="max-w-6xl mx-auto px-4 py-8"><h2 className="text-2xl font-black mb-6" style={{color:'#262262'}}>All Units ({units.length})</h2>{units.length===0?(<div className="rounded-2xl p-10 text-center" style={{border:'1.5px dashed #E2F1FC'}}><div className="text-5xl mb-4">🏠</div><p className="font-bold text-lg mb-2" style={{color:'#555'}}>No units available yet</p><p style={{color:'#999'}} className="text-sm">Units will be listed here once added by the team.</p></div>):(<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">{units.map((u:any)=>(<UnitCard key={u.id} unit={{...u, project_name: u.project_name || project?.name, location: u.location || project?.location, city: u.city || project?.city}} />))}</div>)}</div>)}
       {tab==='towers'&&(<div className="max-w-6xl mx-auto px-4 py-8"><h2 className="text-2xl font-black mb-6"style={{color:'#262262'}}>Towers ({towers.length})</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{towers.map((t:any)=>{const tThumb=t.thumbnail||t.images?.[0];return(<Link key={t.id}href={`/projects/${slug}/towers/${t.id}`}className="rounded-2xl overflow-hidden border hover:shadow-lg transition-all block"style={{borderColor:'#e2e8f0'}}>{tThumb?(<div className="relative"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}><img src={tThumb.split('/').map((s:string)=>encodeURIComponent(s)).join('/')}alt={t.name}className="absolute inset-0 w-full h-full object-cover"onError={(e:any)=>{e.target.style.display='none'}}/>
 	  <div className="absolute inset-0"style={{background:'linear-gradient(to bottom,rgba(0,0,0,0.2) 0%,rgba(0,0,0,0.5) 100%)'}}/>
 	  <h3 className="absolute bottom-4 left-4 font-black text-xl text-white"style={{zIndex:1}}>{t.name}</h3></div>):(<div className="relative p-5"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}>

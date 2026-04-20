@@ -309,9 +309,6 @@ export default function UnitDetailPage() {
     balconies:      { icon: '🏡', label: 'Balconies',     val: unit.balconies != null ? String(unit.balconies) : null },
     status:         { icon: '●',  label: 'Status',        val: unit.status ? unit.status.charAt(0).toUpperCase() + unit.status.slice(1) : null },
     base_price:     { icon: '💰', label: 'Total Price',   val: getPrice(unit) ? formatPrice(getPrice(unit)) : null },
-    price_per_sqft: { icon: '📊', label: 'Price / sqft', val: unit.price_per_sqft
-      ? `₹${parseFloat(unit.price_per_sqft).toLocaleString()}`
-      : (unit.area_sqft && getPrice(unit) ? `₹${Math.round(getPrice(unit)! / parseFloat(unit.area_sqft)).toLocaleString()}` : null) },
     down_payment:   { icon: '💳', label: 'Down Payment',  val: unit.down_payment ? formatPrice(unit.down_payment) : null },
     emi_estimate:   { icon: '📅', label: 'EMI / mo',      val: unit.emi_estimate ? `₹${parseFloat(unit.emi_estimate).toLocaleString()}` : null },
   };
@@ -518,12 +515,7 @@ export default function UnitDetailPage() {
               {/* Price Card */}
               <div className="rounded-2xl p-6" style={{ boxShadow: "0 8px 30px rgba(42,56,135,0.15)", border: "1px solid #E2F1FC" }}>
                 <p style={{ color: "#999" }} className="text-xs uppercase tracking-wide mb-1">Total Price</p>
-                <p className="text-3xl font-black mb-1" style={{ color: "#2A3887" }}>{formatPrice(getPrice(unit))}</p>
-                {unit.area_sqft && getPrice(unit) && (
-                  <p style={{ color: "#29A9DF" }} className="text-sm font-semibold mb-5">
-                    ₹{Math.round(getPrice(unit)!/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
-                  </p>
-                )}
+                <p className="text-3xl font-black mb-5" style={{ color: "#2A3887" }}>{formatPrice(getPrice(unit))}</p>
                 <button data-enquire-trigger onClick={() => setEnquireOpen(true)}
                   className="w-full py-3.5 text-white font-black rounded-xl text-sm mb-3 transition-all hover:opacity-90"
                   style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
