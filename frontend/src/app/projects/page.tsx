@@ -13,6 +13,15 @@ function statusColor(s: string) {
   if (s?.toLowerCase().includes("new")) return "#29A9DF";
   return "#f59e0b";
 }
+function statusBg(s: string) {
+  if (s?.toLowerCase().includes("ready")) return "#f0fdf4";
+  if (s?.toLowerCase().includes("new")) return "#eff6ff";
+  return "#fffbeb";
+}
+function stageLabel(s: string) {
+  if (!s) return "—";
+  return String(s).replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+}
 function fmtPrice(p: number) {
   if (!p) return "On Request";
   if (p >= 10000000) return `₹${(p/10000000).toFixed(1)}Cr`;
@@ -32,9 +41,11 @@ export default function ProjectsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const filtered = allProjects.filter(p =>
-    filter === "All" || (p.status || "").replace(/_/g," ").toLowerCase() === filter.toLowerCase()
-  );
+  const filtered = allProjects.filter(p => {
+    if (filter === "All") return true;
+    const stage = (p.construction_stage || "").toString().replace(/_/g, " ").toLowerCase();
+    return stage === filter.toLowerCase();
+  });
 
   return (
     <main className="min-h-screen bg-white">
@@ -68,65 +79,177 @@ export default function ProjectsPage() {
       </div>
 
       <section className="py-16 max-w-7xl mx-auto px-6">
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="text-4xl animate-spin mb-3">⟳</div>
-            <p style={{ color:"#999" }}>Loading projects...</p>
+  {loading ? (
+    <div className="text-center py-20">
+      <div className="text-4xl animate-spin mb-3">⟳</div>
+      <p style={{ color: "#999" }}>Loading projects...</p>
+    </div>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {filtered.map((p) => (
+        <div
+          key={p.id}
+          className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
+          style={{
+            boxShadow: "0 4px 24px rgba(42,56,135,0.10)",
+            border: "1.5px solid #E2F1FC",
+          }}
+        >
+          {/* ── Top bar: status + units count ── */}
+          <div className="px-4 pt-4 pb-2 flex justify-between items-center">
+            <span
+              className="px-3 py-1 rounded-full text-xs font-black"
+              style={{
+                color: statusColor(p.construction_stage),
+                background: statusBg(p.construction_stage),
+              }}
+            >
+              ● {stageLabel(p.construction_stage) || "—"}
+            </span>
+            <span
+              className="text-xs font-bold px-3 py-1 rounded-full"
+              style={{ background: "#F8F9FB", color: "#2A3887" }}
+            >
+              🏠 {p.total_units || "—"} units
+            </span>
           </div>
-        ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filtered.map(p => (
-            <div key={p.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
-              style={{ boxShadow:"0 4px 20px rgba(42,56,135,0.1)", border:"1px solid #E2F1FC" }}>
-              <Link href={`/projects/${p.slug}`} className="block h-52 relative flex flex-col justify-between p-5 cursor-pointer"
-                style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-                {(p.thumbnail || (p.images && p.images[0])) && (
-                  <img src={(p.thumbnail || p.images[0]).split('/').map((s:string) => encodeURIComponent(s)).join('/')}
-                    alt={p.name} className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 0 }}
-                    onError={(e:any) => { e.target.style.display = 'none'; }} />
+
+          {/* ── Project image ── */}
+          <div className="px-3 pb-1">
+            <Link href={`/projects/${p.slug}`} className="block">
+              <div
+                className="relative rounded-xl overflow-hidden w-full cursor-pointer"
+                style={{ height: "220px", background: "#F4F6FB" }}
+              >
+                {/* Image */}
+                {(p.thumbnail || (p.images && p.images[0])) ? (
+                  <img
+                    src={(p.thumbnail || p.images[0])
+                      .split("/")
+                      .map((s: string) => encodeURIComponent(s))
+                      .join("/")}
+                    alt={p.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    onError={(e: any) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  /* Placeholder */
+                  <div
+                    className="w-full h-full flex flex-col items-center justify-center gap-2"
+                    style={{
+                      background:
+                        "linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%)",
+                    }}
+                  >
+                    <span style={{ fontSize: 48, opacity: 0.2 }}>🏗️</span>
+                    <span
+                      className="text-xs font-semibold"
+                      style={{ color: "#aac" }}
+                    >
+                      Image coming soon
+                    </span>
+                  </div>
                 )}
-                <div className="absolute inset-0" style={{ background:"linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.05) 40%, rgba(0,0,0,0.6) 100%)", zIndex: 1 }} />
-                <div className="flex justify-between items-start relative" style={{ zIndex: 2 }}>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-white"
-                    style={{ color: statusColor(p.status) }}>
-                    {(p.status||"Active").replace(/_/g," ").replace(/\w/g,(c:string)=>c.toUpperCase())}
-                  </span>
-                  <span className="text-xs font-bold text-white/70 bg-white/10 px-3 py-1 rounded-full">
-                    {p.total_units || "—"} units
-                  </span>
-                </div>
-                <div className="relative" style={{ zIndex: 2 }}>
-                  <p style={{ color:"rgba(255,255,255,0.7)" }} className="text-xs mb-1">{p.property_type || p.unit_types || "Residential"}</p>
-                  <h3 className="text-white font-black text-xl">{p.name}</h3>
-                  <p className="text-xs mt-1" style={{ color:"rgba(255,255,255,0.5)" }}>View Details →</p>
-                </div>
-              </Link>
-              <div className="p-6">
-                <p style={{ color:"#555A5C" }} className="text-sm mb-2">📍 {p.location || p.city}, {p.city !== p.location ? p.city : "Hyderabad"}</p>
-                <p style={{ color:"#555A5C" }} className="text-xs mb-4 leading-relaxed">{p.description?.substring(0,100)}{p.description?.length > 100 ? "..." : ""}</p>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="font-black text-lg" style={{ color:"#2A3887" }}>
-                    {p.min_price && p.max_price ? `${fmtPrice(p.min_price)} – ${fmtPrice(p.max_price)}` : "On Request"}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Link href={`/projects/${p.slug}`} className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors"
-                    style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>View Details</Link>
-                  <Link href={`/projects/${p.slug}#enquire`} className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors"
-                    style={{ border:"1px solid #2A3887", color:"#2A3887" }}>Enquire</Link>
+
+                {/* Subtle bottom fade for name overlay */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 px-3 py-2"
+                  style={{
+                    background:
+                      "linear-gradient(0deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0) 100%)",
+                  }}
+                >
+                  <p className="text-xs font-semibold" style={{ color: "#888" }}>
+                    {p.property_type || p.unit_types || "Residential"}
+                  </p>
+                  <h3
+                    className="font-black text-base leading-tight"
+                    style={{ color: "#2A3887" }}
+                  >
+                    {p.name}
+                  </h3>
                 </div>
               </div>
+            </Link>
+          </div>
+
+          {/* ── Card body ── */}
+          <div className="p-4 flex flex-col gap-3">
+            {/* Location */}
+            <p className="text-sm" style={{ color: "#555A5C" }}>
+              📍 {p.location || p.city},{" "}
+              {p.city !== p.location ? p.city : "Hyderabad"}
+            </p>
+
+            {/* Description */}
+            <p
+              className="text-xs leading-relaxed"
+              style={{ color: "#777" }}
+            >
+              {p.description?.substring(0, 100)}
+              {p.description?.length > 100 ? "..." : ""}
+            </p>
+
+            {/* Price */}
+            <div
+              className="flex items-center justify-between pt-2"
+              style={{ borderTop: "1px solid #F0F4FF" }}
+            >
+              <div>
+                <div
+                  className="font-black text-lg"
+                  style={{ color: "#2A3887" }}
+                >
+                  {p.min_price && p.max_price
+                    ? `${fmtPrice(p.min_price)} – ${fmtPrice(p.max_price)}`
+                    : "On Request"}
+                </div>
+                {p.min_price && (
+                  <div className="text-xs" style={{ color: "#999" }}>
+                    Starting price
+                  </div>
+                )}
+              </div>
             </div>
-          ))}
-          {filtered.length === 0 && !loading && (
-            <div className="col-span-3 text-center py-20" style={{ color:"#999" }}>
-              <p className="text-4xl mb-3">🏗️</p>
-              <p className="font-bold">No projects found for this filter</p>
+
+            {/* CTA buttons */}
+            <div className="flex gap-2">
+              <Link
+                href={`/projects/${p.slug}`}
+                className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors"
+                style={{
+                  background: "linear-gradient(135deg,#2A3887,#29A9DF)",
+                }}
+              >
+                View Details
+              </Link>
+              <Link
+                href={`/projects/${p.slug}#enquire`}
+                className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors"
+                style={{ border: "1.5px solid #2A3887", color: "#2A3887" }}
+              >
+                Enquire
+              </Link>
             </div>
-          )}
+          </div>
         </div>
-        )}
-      </section>
+      ))}
+
+      {/* Empty state */}
+      {filtered.length === 0 && !loading && (
+        <div
+          className="col-span-3 text-center py-20"
+          style={{ color: "#999" }}
+        >
+          <p className="text-4xl mb-3">🏗️</p>
+          <p className="font-bold">No projects found for this filter</p>
+        </div>
+      )}
+    </div>
+  )}
+</section>
 
       {/* CTA */}
       <section className="py-16" style={{ background:"#F8F9FB" }}>

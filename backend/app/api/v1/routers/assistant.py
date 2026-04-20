@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, func, case
 from backend.app.core.database import get_db
 from backend.app.core.config import settings
 from backend.app.models.unit import Unit
 from backend.app.models.project import Project
+from backend.app.models.tower import Tower
 from backend.app.models.assistant_flow import AssistantFlow
 import re
 
@@ -16,9 +17,9 @@ MEDIA_BASE = "http://173.168.0.81:8000"
 
 RISEUP_CONTEXT = """
 RiseUp by Janapriya Upscale:
-- Customer pays only 80% of unit cost upfront; remaining 20% at possession (within 6 months of handover)
+- Customer pays only 80% of unit cost upfront; remaining 20% is paid after the builder's final demand is raised (i.e. once all construction-linked demands are completed)
 - On the 80%: 10% or 20% down payment depending on loan profile; bank funds the rest
-- Example: ₹1 Cr unit → pay for ₹80L → DP ₹8L (10%) → Bank ₹72L → possession ₹20L after 2 yrs
+- Example: ₹1 Cr unit → pay for ₹80L → DP ₹8L (10%) → Bank ₹72L → ₹20L due after the final demand is raised
 - Benefit: buy a bigger home on a smaller budget; interest only on 80% during construction
 - Learn more: riseup.house
 """
@@ -78,6 +79,46 @@ def _riseup_data(unit_price: float) -> dict:
         "bank_loan_90":    round(unit_price * 0.8 * 0.9),
         "bank_loan_80":    round(unit_price * 0.8 * 0.8),
     }
+
+async def _build_site_context(db: AsyncSession) -> str:
+    """Snapshot of the site's projects + unit availability.
+    Passed to the LLM as the sole source of truth — it must not answer from
+    general knowledge about other developers, prices, or localities."""
+    res = await db.execute(
+        select(Project).where(Project.is_active == True).order_by(Project.name)
+    )
+    projects = res.scalars().all()
+    if not projects:
+        return "SITE DATA: No projects are currently listed."
+
+    lines = []
+    for p in projects:
+        stats_res = await db.execute(
+            select(
+                func.count(Unit.id),
+                func.sum(case((Unit.status == "available", 1), else_=0)),
+                func.min(Unit.base_price),
+                func.max(Unit.base_price),
+            )
+            .join(Tower, Unit.tower_id == Tower.id)
+            .where(Tower.project_id == p.id)
+        )
+        total, available, min_p, max_p = stats_res.one()
+        bits = [f"- {p.name}"]
+        loc = ", ".join(x for x in [p.location, p.city] if x)
+        if loc:
+            bits.append(f"({loc})")
+        if total:
+            bits.append(f"{total} units, {available or 0} available")
+        if min_p:
+            price_range = _fmt(float(min_p)) if min_p == max_p else f"{_fmt(float(min_p))}–{_fmt(float(max_p))}"
+            bits.append(f"price {price_range}")
+        if p.rera_number:
+            bits.append(f"RERA {p.rera_number}")
+        lines.append(" · ".join(bits))
+
+    return "SITE DATA (the only facts you may use):\n" + "\n".join(lines)
+
 
 async def _find_brochure(query: str, db: AsyncSession) -> Optional[dict]:
     """Detect brochure request and find the matching unit/project brochure URL."""
@@ -146,19 +187,24 @@ async def assistant_chat(data: AssistantRequest, db: AsyncSession = Depends(get_
         client = Groq(api_key=settings.GROQ_API_KEY)
 
         budget_str = _fmt(budget) if budget else "not specified"
+        site_context = await _build_site_context(db)
 
-        system_prompt = f"""You are a warm, helpful real estate assistant for Janapriya Upscale, Hyderabad.
+        system_prompt = f"""You are the Janapriya Upscale website assistant. You help visitors with Janapriya Upscale's own projects only.
+
+{site_context}
 
 {RISEUP_CONTEXT}
 
-Context: searched="{search_query}", results={results_count}, budget={budget_str}
+Visitor context: searched="{search_query}", results={results_count}, budget={budget_str}
 
-Rules:
-- 2-3 short sentences only. No markdown, no bullet points.
-- If budget is a concern or 0 results, mention RiseUp naturally.
-- If they ask for a brochure and one is available, say you're sharing it below.
-- If no brochure is available, apologise and offer a callback.
-- If they seem stuck, offer to connect with a sales advisor."""
+STRICT RULES — these override everything else:
+1. ONLY use facts from SITE DATA above and the RiseUp description. Never invent projects, prices, locations, floor plans, amenities, or availability that are not listed.
+2. Never name, compare to, recommend, or discuss other developers, builders, competitors, or properties outside Janapriya Upscale. If asked about competitors, alternatives, other projects, market comparisons, reviews, or ratings, reply exactly: "I can only share information about Janapriya Upscale's own projects. Would you like me to connect you with our sales team?"
+3. If the visitor asks about anything not in SITE DATA (specific unit numbers, floor plans, exact layouts, possession dates, legal/tax advice, news, opinions, general real-estate questions), say you don't have that detail on hand and offer a callback.
+4. Do not guess. Do not use your general training knowledge about Hyderabad, real estate, or developers.
+5. Answer in 2-3 short sentences. No markdown, no bullet points, no lists.
+6. If budget is a concern or 0 results, you may mention RiseUp naturally.
+7. If they ask for a brochure and one is available, say you're sharing it below. If none is available, apologise and offer a callback."""
 
         groq_messages = [{"role": "system", "content": system_prompt}]
         for msg in data.messages[-6:]:
@@ -167,7 +213,7 @@ Rules:
         response = client.chat.completions.create(
             model=settings.GROQ_MODEL,
             messages=groq_messages,
-            temperature=0.7,
+            temperature=0.2,
             max_tokens=180,
         )
         reply = response.choices[0].message.content.strip()
@@ -191,7 +237,8 @@ Rules:
                 {"id": str(u.id), "unit_number": u.unit_number, "unit_type": u.unit_type,
                  "base_price": float(u.base_price or 0), "bedrooms": u.bedrooms,
                  "area_sqft": float(u.area_sqft or 0), "images": u.images or [],
-                 "riseup_price": round(float(u.base_price or 0) * 0.8)}
+                 "is_riseup_eligible": bool(u.is_riseup_eligible),
+                 "riseup_price": round(float(u.base_price or 0) * 0.8) if u.is_riseup_eligible else 0}
                 for u in res.scalars().all()
             ]
 

@@ -27,6 +27,7 @@ class UnitCreate(BaseSchema):
     images: List[str] = []
     is_trending: bool = False
     is_featured: bool = False
+    is_riseup_eligible: bool = False
 
 
 class UnitUpdate(BaseSchema):
@@ -48,6 +49,7 @@ class UnitUpdate(BaseSchema):
     images: Optional[List[str]] = None
     is_trending: Optional[bool] = None
     is_featured: Optional[bool] = None
+    is_riseup_eligible: Optional[bool] = None
 
 
 class UnitResponse(BaseResponseSchema):
@@ -78,6 +80,7 @@ class UnitResponse(BaseResponseSchema):
     brochure_url: Optional[str] = None
     is_trending: bool = False
     is_featured: bool = False
+    is_riseup_eligible: bool = False
     view_count: int = 0
     thumbnail: Optional[str] = None
     custom_fields: Optional[dict] = None

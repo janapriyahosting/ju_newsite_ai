@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import BackButton from "@/components/BackButton";
 import Footer from "@/components/Footer";
 import CompareBar from "@/components/CompareBar";
+import ProactiveAssistant from "@/components/ProactiveAssistant";
 import { isSaved, toggleSaved, isInCompare, toggleCompare } from "@/lib/savedProperties";
 import Link from "next/link";
 
@@ -64,85 +65,100 @@ function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending
   const statusColor = unit.status === "available" ? "#22c55e" : unit.status === "booked" ? "#ef4444" : "#f59e0b";
   const img3d = unit.custom_fields?.series_floor_plan_3d;
   const imgUrl = img3d || "";
-  return (
-    <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
-      style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
-      <div className="h-44 relative flex flex-col justify-between p-4"
-        style={{ background: imgUrl ? `url(${imgUrl}) center/cover no-repeat` : "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
-        {imgUrl && <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.55) 100%)" }} />}
-        <div className="relative z-10 flex justify-between items-center">
-          <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
-            ● {(unit.status||"available").charAt(0).toUpperCase()+(unit.status||"available").slice(1)}
+return (
+  <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
+    style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
+    
+    {/* Status badge on white background above image */}
+    <div className="px-4 pt-4 pb-2 flex justify-between items-center">
+      <div className="flex items-center gap-2">
+        <span className="px-2.5 py-1 rounded-full text-xs font-black" style={{ color: statusColor }}>
+          ● {(unit.status||"available").charAt(0).toUpperCase()+(unit.status||"available").slice(1)}
+        </span>
+        {unit.unit_number && (
+          <span className="px-2.5 py-1 rounded-full text-xs font-black"
+            style={{ background: "#F0F4FF", color: "#2A3887" }}>
+            #{unit.unit_number}
           </span>
-          <div className="flex gap-1.5">
-            {[
-              { fn: handleSave, icon: saved?"♥":"♡", bg: saved?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.2)" },
-              { fn: handleCompare, icon: "⇄", bg: inCompare?"rgba(245,158,11,0.85)":"rgba(255,255,255,0.2)" },
-              { fn: handleShare, icon: "↗", bg: "rgba(255,255,255,0.2)" },
-            ].map((btn,i) => (
-              <button key={i} onClick={btn.fn}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm transition-all hover:scale-110"
-                style={{ background: btn.bg }}>{btn.icon}</button>
-            ))}
-          </div>
-        </div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-2">
-            <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
-              {unit.unit_type?.includes("BHK") ? unit.unit_type : `${unit.unit_type || ""}${unit.bedrooms ? (unit.unit_type ? " · " : "") + unit.bedrooms + " BHK" : ""}`}
-            </p>
-            {isTrending && <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"white" }}>🔥</span>}
-          </div>
-          <h3 className="text-white font-black text-lg leading-tight">{unit.unit_number||"Unit"}</h3>
-        </div>
-        {toast && (
-          <div className="absolute bottom-3 left-3 right-3 z-10 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
-            style={{ color: "#2A3887" }}>{toast}</div>
         )}
       </div>
-      <div className="p-4 flex-1 flex flex-col">
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {[
-            { icon: "🛏", val: unit.bedrooms||"—", label: "BHK" },
-            { icon: "📐", val: unit.area_sqft ? `${parseFloat(unit.area_sqft).toFixed(0)}` : "—", label: "sqft" },
-            { icon: "🏢", val: unit.floor_number??  "—", label: "Floor" },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl py-2 text-center" style={{ background: "#F8F9FB" }}>
-              <div className="text-base">{s.icon}</div>
-              <div className="font-black text-sm" style={{ color: "#2A3887" }}>{s.val}</div>
-              <div className="text-xs" style={{ color: "#999" }}>{s.label}</div>
-            </div>
-          ))}
+      <div className="flex gap-1.5">
+        {[
+          { fn: handleSave, icon: saved?"♥":"♡", bg: saved?"rgba(239,68,68,0.15)":"#F8F9FB", color: saved?"#ef4444":"#999" },
+          { fn: handleCompare, icon: "⇄", bg: inCompare?"rgba(245,158,11,0.15)":"#F8F9FB", color: inCompare?"#f59e0b":"#999" },
+          { fn: handleShare, icon: "↗", bg: "#F8F9FB", color: "#999" },
+        ].map((btn,i) => (
+          <button key={i} onClick={btn.fn}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all hover:scale-110"
+            style={{ background: btn.bg, color: btn.color }}>{btn.icon}</button>
+        ))}
+      </div>
+    </div>
+
+    {/* Large image area — white bg, no overlay */}
+    <div className="relative mx-3 rounded-xl overflow-hidden" style={{ height: "350px", background: "#F8F9FB" }}>
+      {imgUrl ? (
+        <img src={imgUrl} alt={unit.unit_number} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center"
+          style={{ background: "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
+          <span className="text-white text-4xl opacity-30">🏢</span>
         </div>
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {unit.bathrooms && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🚿 {unit.bathrooms} Bath</span>}
-          {unit.facing && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🧭 {unit.facing}</span>}
-          {unit.balconies > 0 && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🏡 {unit.balconies} Balc</span>}
-        </div>
-        <div className="mt-auto flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
-          <div>
-            <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(getPrice(unit))}</div>
-            {unit.area_sqft && getPrice(unit) && (
-              <div className="text-xs" style={{ color: "#999" }}>
-                ₹{Math.round(getPrice(unit)!/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
-              </div>
-            )}
+      )}
+      {isTrending && (
+        <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-xs font-bold"
+          style={{ background:"rgba(245,158,11,0.9)", color:"white" }}>🔥</span>
+      )}
+      {toast && (
+        <div className="absolute bottom-3 left-3 right-3 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
+          style={{ color: "#2A3887" }}>{toast}</div>
+      )}
+    </div>
+
+    {/* Card body */}
+    <div className="p-4 flex-1 flex flex-col">
+      <div className="grid grid-cols-3 gap-2 mb-3">
+        {[
+          { icon: "🛏", val: unit.bedrooms||"—", label: "BHK" },
+          { icon: "📐", val: unit.area_sqft ? `${parseFloat(unit.area_sqft).toFixed(0)}` : "—", label: "sqft" },
+          { icon: "🏢", val: unit.floor_number?? "—", label: "Floor" },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl py-2 text-center" style={{ background: "#F8F9FB" }}>
+            <div className="text-base">{s.icon}</div>
+            <div className="font-black text-sm" style={{ color: "#2A3887" }}>{s.val}</div>
+            <div className="text-xs" style={{ color: "#999" }}>{s.label}</div>
           </div>
-          <div className="flex gap-2">
-            <div onClick={e=>{e.preventDefault();e.stopPropagation();}}>
-              <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        {unit.bathrooms && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🚿 {unit.bathrooms} Bath</span>}
+        {unit.facing && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🧭 {unit.facing}</span>}
+        {unit.balconies > 0 && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🏡 {unit.balconies} Balc</span>}
+      </div>
+      <div className="mt-auto flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
+        <div>
+          <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(getPrice(unit))}</div>
+          {unit.area_sqft && getPrice(unit) && (
+            <div className="text-xs" style={{ color: "#999" }}>
+              ₹{Math.round(getPrice(unit)!/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
             </div>
-            <Link href={`/contact?unit=${unit.id}`}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl"
-              style={{ border:"1.5px solid #2A3887",color:"#2A3887" }}>Enquire</Link>
-            <Link href={`/units/${unit.id}`}
-              className="px-3 py-1.5 text-xs font-bold text-white rounded-xl"
-              style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>Details →</Link>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <div onClick={e=>{e.preventDefault();e.stopPropagation();}}>
+            <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
           </div>
+          <Link href={`/contact?unit=${unit.id}`}
+            className="px-3 py-1.5 text-xs font-bold rounded-xl"
+            style={{ border:"1.5px solid #2A3887",color:"#2A3887" }}>Enquire</Link>
+          <Link href={`/units/${unit.id}`}
+            className="px-3 py-1.5 text-xs font-bold text-white rounded-xl"
+            style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>Details →</Link>
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 // ── Range Slider ─────────────────────────────────────────────────────────────
@@ -238,6 +254,8 @@ export default function StorePage() {
   const [aiQuery, setAiQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [aiActive, setAiActive] = useState(false);
+  const [searchCount, setSearchCount] = useState(0);
+  const [lastResultsCount, setLastResultsCount] = useState(-1);
 
   // Helper to get a filter value with its default
   const getVal = useCallback((key: string) => {
@@ -360,8 +378,11 @@ export default function StorePage() {
         body: JSON.stringify({ query: q }),
       });
       const d = await res.json() as any;
-      setUnits(d.items || []);
+      const items = d.items || [];
+      setUnits(items);
       setAiActive(true);
+      setSearchCount(c => c + 1);
+      setLastResultsCount(items.length);
     } catch {}
     setSearching(false);
     setLoading(false);
@@ -393,8 +414,11 @@ export default function StorePage() {
         body: JSON.stringify({ query: aiQuery }),
       });
       const d = await res.json() as any;
-      setUnits(d.items || []);
+      const items = d.items || [];
+      setUnits(items);
       setAiActive(true);
+      setSearchCount(c => c + 1);
+      setLastResultsCount(items.length);
     } catch {}
     setSearching(false);
   }
@@ -741,6 +765,12 @@ export default function StorePage() {
 
       <CompareBar />
       <Footer />
+      <ProactiveAssistant
+        searchCount={searchCount}
+        lastResultsCount={lastResultsCount}
+        lastQuery={aiQuery}
+        budget={0}
+      />
     </main>
   );
 }

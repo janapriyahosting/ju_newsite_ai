@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text as sa_text
 from typing import Optional
 from uuid import UUID
 from backend.app.core.database import get_db
@@ -39,15 +39,64 @@ async def list_projects(
     result = await db.execute(query.offset(offset).limit(page_size))
     projects = result.scalars().all()
 
-    # Compute min/max price per project from available units
+    # Bulk-load custom field values for these projects so we can surface
+    # values like `construction_stage` on the listing without N+1 queries.
+    project_custom_fields: dict = {}
+    if projects:
+        pid_list = [str(p.id) for p in projects]
+        placeholders = ", ".join(f"'{pid}'" for pid in pid_list)
+        cf_rows = await db.execute(sa_text(f"""
+            SELECT cfv.entity_id::text AS pid, fc.field_key, cfv.value
+            FROM custom_field_values cfv
+            JOIN field_configs fc ON fc.id = cfv.field_config_id
+            WHERE fc.entity = 'project'
+              AND cfv.entity_id::text IN ({placeholders})
+              AND cfv.value IS NOT NULL
+        """))
+        for r in cf_rows.mappings():
+            pid = str(r["pid"])
+            val = r["value"]
+            if val is None or val == "":
+                continue
+            project_custom_fields.setdefault(pid, {})[r["field_key"]] = val
+
+    # Compute min/max price + unit counts per project from units
+    # For pricing, prefer custom_fields.total_amount (when present & > 0), else fall back to base_price.
     items = []
     for p in projects:
-        price_result = await db.execute(
-            select(func.min(Unit.base_price), func.max(Unit.base_price))
-            .join(Tower, Unit.tower_id == Tower.id)
-            .where(Tower.project_id == p.id, Unit.status == "available", Unit.base_price.isnot(None))
-        )
-        min_price, max_price = price_result.one()
+        stats_sql = sa_text("""
+            SELECT
+                COUNT(u.id) AS total_units,
+                COUNT(CASE WHEN u.status = 'available' THEN 1 END) AS available_units,
+                MIN(CASE WHEN u.status = 'available' THEN effective_price END) AS min_price,
+                MAX(CASE WHEN u.status = 'available' THEN effective_price END) AS max_price
+            FROM (
+                SELECT u.id, u.status,
+                    COALESCE(
+                        NULLIF((
+                            SELECT CASE
+                                WHEN jsonb_typeof(cfv.value) = 'number'
+                                    THEN CAST(cfv.value #>> '{}' AS NUMERIC)
+                                WHEN jsonb_typeof(cfv.value) = 'string'
+                                     AND (cfv.value #>> '{}') ~ '^-?[0-9]+(\.[0-9]+)?$'
+                                    THEN CAST(cfv.value #>> '{}' AS NUMERIC)
+                                ELSE NULL
+                            END
+                            FROM custom_field_values cfv
+                            JOIN field_configs fc ON fc.id = cfv.field_config_id
+                            WHERE cfv.entity_id = u.id
+                              AND fc.field_key = 'total_amount'
+                              AND fc.entity = 'unit'
+                            LIMIT 1
+                        ), 0),
+                        u.base_price
+                    ) AS effective_price
+                FROM units u
+                JOIN towers t ON u.tower_id = t.id
+                WHERE t.project_id = :project_id
+            ) u
+        """)
+        stats = (await db.execute(stats_sql, {"project_id": p.id})).mappings().one()
 
         # Serialize project columns
         d = {col.name: getattr(p, col.name) for col in p.__table__.columns}
@@ -57,8 +106,16 @@ async def list_projects(
                 d[k] = str(v)
             elif hasattr(v, 'isoformat'):
                 d[k] = v.isoformat()
-        d["min_price"] = str(min_price) if min_price else None
-        d["max_price"] = str(max_price) if max_price else None
+        d["min_price"] = str(stats["min_price"]) if stats["min_price"] else None
+        d["max_price"] = str(stats["max_price"]) if stats["max_price"] else None
+        d["total_units"] = int(stats["total_units"] or 0)
+        d["available_units"] = int(stats["available_units"] or 0)
+
+        # Attach custom field values (e.g. construction_stage) onto the project.
+        cf = project_custom_fields.get(str(p.id), {})
+        d["custom_fields"] = cf
+        # Promote construction_stage to a top-level field for easy consumption.
+        d["construction_stage"] = cf.get("construction_stage")
         items.append(d)
 
     # Thumbnail = first image from media uploads

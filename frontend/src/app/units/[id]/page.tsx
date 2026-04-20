@@ -623,8 +623,8 @@ export default function UnitDetailPage() {
                 </div>
               )}
 
-              {/* RiseUp Calculator */}
-              {getPrice(unit) && getPrice(unit)! > 100_000 && (
+              {/* RiseUp Calculator — only when admin has flagged this unit as RiseUp-eligible */}
+              {unit.is_riseup_eligible && getPrice(unit) && getPrice(unit)! > 100_000 && (
                 <RiseUpCalculator unitPrice={getPrice(unit)!} unitName={unit.unit_number} />
               )}
 
