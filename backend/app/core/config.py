@@ -67,6 +67,18 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.1-8b-instant"
 
+    # Google Gemini / Gemma fallback(s) when Groq is rate-limited or down.
+    # GEMINI_MODEL is the primary fallback; GEMINI_MODEL_FALLBACK is the
+    # secondary, tried only if the primary itself 429s/fails.
+    # Defaults:
+    #   Gemma 3 27B — 14,400 RPD, 30 RPM, 15K TPM (primary fallback)
+    #   Gemma 4 31B —  1,500 RPD, 15 RPM, 16K TPM (last-resort fallback)
+    # Set GEMINI_MODEL_FALLBACK="" to disable the tertiary tier.
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemma-3-27b-it"
+    GEMINI_MODEL_FALLBACK: str = "gemma-4-31b-it"
+    GEMINI_DAILY_LIMIT: int = 14400   # shown on admin page; use the primary model's quota
+
     # Salesforce
     SF_USERNAME: str = ""
     SF_PASSWORD: str = ""

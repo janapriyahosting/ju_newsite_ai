@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import BackButton from '@/components/BackButton';
 import Footer from '@/components/Footer';
 import DynamicFields from '@/components/DynamicFields';
+import ProactiveAssistant from '@/components/ProactiveAssistant';
 import { customerApi } from '@/lib/customerAuth';
 const API=process.env.NEXT_PUBLIC_API_URL||'';
 const MEDIA='';
@@ -140,6 +141,14 @@ export default function ProjectDetailPage(){
 	  <h3 className="absolute bottom-4 left-4 font-black text-xl text-white"style={{zIndex:1}}>{t.name}</h3></div>):(<div className="relative p-5"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}>
 	  <h3 className="absolute bottom-4 left-4 font-black text-xl text-white">{t.name}</h3></div>)}<div className="p-5">{t.description&&<p className="text-sm text-gray-500 mb-3">{t.description}</p>}<div className="flex gap-4 text-sm font-medium"style={{color:'#2A3887'}}><span>{t.total_floors} Floors</span><span>{t.total_units} Units</span></div><div className="flex gap-2 mt-3 flex-wrap">{t.video_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>▶ Video</span>}{t.walkthrough_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>🥽 Tour</span>}{t.floor_plans?.length>0&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>📐 Plans</span>}</div></div></Link>)})}</div></div>)}
       <Footer />
+      <ProactiveAssistant
+        pageContext={{
+          page: "project",
+          project_id: project?.id,
+          project_slug: project?.slug,
+          project_name: project?.name,
+        }}
+      />
     </div>
   );
 }

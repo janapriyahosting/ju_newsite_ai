@@ -467,7 +467,14 @@ export default function StorePage() {
       // ── Range slider (numeric fields) ──
       if (cfg.filter_type === 'range_slider') {
         if (Array.isArray(val)) {
-          const num = parseFloat(getUnitFieldValue(u, fieldName) || 0);
+          // For the price filter, use getPrice() which prefers custom_fields.total_amount
+          // over stale base_price values — same logic the card display uses.
+          let num: number;
+          if (cfg.filter_key === 'price_range' || fieldName === 'base_price') {
+            num = getPrice(u) || 0;
+          } else {
+            num = parseFloat(getUnitFieldValue(u, fieldName) || 0);
+          }
           if (num > 0 && (num < val[0] || num > val[1])) return false;
         }
         continue;

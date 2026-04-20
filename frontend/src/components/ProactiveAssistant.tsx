@@ -5,6 +5,50 @@ import Link from "next/link";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const MEDIA_BASE = "";
 
+// ── Visitor / session identifiers (reuse what SessionTracker already sets) ──
+
+function getOrCreateLocalId(key: string): string {
+  if (typeof window === "undefined") return "";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = `${key}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+function collectCookies(): Record<string, string> {
+  if (typeof document === "undefined" || !document.cookie) return {};
+  const out: Record<string, string> = {};
+  document.cookie.split(";").forEach(pair => {
+    const eq = pair.indexOf("=");
+    if (eq === -1) return;
+    const k = pair.slice(0, eq).trim();
+    const v = pair.slice(eq + 1).trim();
+    if (k) out[k] = v;
+  });
+  return out;
+}
+
+function collectVisitorMeta(): Record<string, any> {
+  if (typeof window === "undefined") return {};
+  const url = new URL(window.location.href);
+  const meta: Record<string, any> = {
+    referrer: document.referrer || null,
+    landing_page: localStorage.getItem("jp_landing_page") || window.location.pathname,
+    cookies: collectCookies(),
+  };
+  for (const k of ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"]) {
+    const v = url.searchParams.get(k);
+    if (v) meta[k] = v;
+  }
+  // Stash landing page on first visit so we keep it across navigations
+  if (!localStorage.getItem("jp_landing_page")) {
+    localStorage.setItem("jp_landing_page", window.location.pathname);
+  }
+  return meta;
+}
+
 function fmt(p: number) {
   if (!p) return "Price on request";
   if (p >= 10_000_000) return `₹${(p / 10_000_000).toFixed(1)} Cr`;
@@ -64,6 +108,53 @@ function RiseUpCard({ data }: { data: any }) {
       </a>
     </div>
   );
+}
+
+function ActionCard({ action }: { action: AssistantAction }) {
+  if (!action || action.type === "none") return null;
+
+  // Primary CTA button — navigate_* variants
+  if (action.type === "navigate_store" || action.type === "navigate_unit" || action.type === "navigate_project") {
+    if (!action.url) return null;
+    return (
+      <div style={{ marginTop: 8 }}>
+        <a href={action.url}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white",
+            borderRadius: 10, padding: "10px 16px", fontSize: 12, fontWeight: 800,
+            textDecoration: "none", boxShadow: "0 4px 12px rgba(42,56,135,0.25)",
+          }}>
+          <span style={{ fontSize: 14 }}>✨</span>
+          {action.label || "Open"}
+        </a>
+      </div>
+    );
+  }
+
+  // Pick-a-project follow-up: render options as buttons
+  if (action.type === "ask_which" && action.options?.length) {
+    return (
+      <div style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#999", marginBottom: 6 }}>
+          {action.label || "CHOOSE ONE"}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {action.options.map(opt => (
+            <a key={opt.value} href={opt.url || "#"}
+              style={{
+                background: "white", border: "1.5px solid #2A3887", borderRadius: 20,
+                padding: "5px 12px", fontSize: 11, fontWeight: 700, color: "#2A3887",
+                textDecoration: "none",
+              }}>
+              {opt.label}
+            </a>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
 
 function SuggestedUnit({ unit }: { unit: any }) {
@@ -237,18 +328,43 @@ function FlowRenderer({ steps, onComplete, onSearchUnits }: {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-interface Props {
-  searchCount: number;
-  lastResultsCount: number;
-  lastQuery: string;
-  budget: number;
+export interface AssistantPageContext {
+  page?: "home" | "store" | "project" | "tower" | "unit";
+  project_id?: string;
+  project_slug?: string;
+  project_name?: string;
+  tower_id?: string;
+  unit_id?: string;
+  unit_number?: string;
 }
 
-export default function ProactiveAssistant({ searchCount, lastResultsCount, lastQuery, budget }: Props) {
+interface AssistantAction {
+  type: "navigate_store" | "navigate_unit" | "navigate_project" | "ask_which" | "none";
+  url?: string;
+  label?: string;
+  options?: { label: string; value: string; url?: string }[];
+  params?: Record<string, any>;
+}
+
+interface Props {
+  searchCount?: number;
+  lastResultsCount?: number;
+  lastQuery?: string;
+  budget?: number;
+  pageContext?: AssistantPageContext;
+}
+
+export default function ProactiveAssistant({
+  searchCount = 0,
+  lastResultsCount = -1,
+  lastQuery = "",
+  budget = 0,
+  pageContext,
+}: Props) {
   const [visible, setVisible]           = useState(false);
   const [open, setOpen]                 = useState(false);
   const [tab, setTab]                   = useState<"chat" | "flow" | "riseup" | "callback">("chat");
-  const [messages, setMessages]         = useState<{ role: string; content: string; brochure?: any; riseup?: any; units?: any[] }[]>([]);
+  const [messages, setMessages]         = useState<{ role: string; content: string; brochure?: any; riseup?: any; units?: any[]; action?: AssistantAction }[]>([]);
   const [input, setInput]               = useState("");
   const [loading, setLoading]           = useState(false);
   const [riseupData, setRiseupData]     = useState<any>(null);
@@ -288,12 +404,55 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  // Restore chat history for this session on mount (so reopening the widget
+  // shows the visitor their prior conversation)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sid = localStorage.getItem("jp_session_id");
+    if (!sid) return;
+    try {
+      const raw = localStorage.getItem(`jp_chat_${sid}`);
+      if (raw) {
+        const prior = JSON.parse(raw);
+        if (Array.isArray(prior) && prior.length > 0) {
+          setMessages(prior);
+          triggered.current = true;  // don't fire greeting over existing history
+          setVisible(true);          // show the launcher immediately
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Persist chat history whenever messages change
+  useEffect(() => {
+    if (typeof window === "undefined" || messages.length === 0) return;
+    const sid = localStorage.getItem("jp_session_id");
+    if (!sid) return;
+    try { localStorage.setItem(`jp_chat_${sid}`, JSON.stringify(messages)); } catch {}
+  }, [messages]);
+
   async function callAssistant(msgs: { role: string; content: string }[]) {
     try {
+      const session_id = getOrCreateLocalId("jp_session_id");
+      const visitor_id = getOrCreateLocalId("jp_visitor_id");
+      const visitor_meta = collectVisitorMeta();
       const r = await fetch(`${API}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: msgs, context: { search_query: lastQuery, budget, results_count: lastResultsCount } }),
+        credentials: "include",
+        body: JSON.stringify({
+          messages: msgs,
+          session_id,
+          context: {
+            search_query: lastQuery,
+            budget,
+            results_count: lastResultsCount,
+            session_id,
+            visitor_id,
+            visitor_meta,
+            ...(pageContext || {}),
+          },
+        }),
       });
       return await r.json();
     } catch { return null; }
@@ -301,13 +460,23 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
 
   async function fireGreeting() {
     setLoading(true);
-    const initMsg = lastResultsCount === 0
-      ? `I searched for "${lastQuery}" but found no results`
-      : "I've been browsing for a while and need help";
+    // Context-aware opening message that reflects which page the visitor is on.
+    let initMsg: string;
+    if (lastResultsCount === 0) {
+      initMsg = `I searched for "${lastQuery}" but found no results`;
+    } else if (pageContext?.page === "unit" && pageContext.unit_number) {
+      initMsg = `I'm looking at unit ${pageContext.unit_number} — give me a quick summary and what I should consider.`;
+    } else if (pageContext?.page === "project" && pageContext.project_name) {
+      initMsg = `I'm on the ${pageContext.project_name} project page — tell me briefly what it offers.`;
+    } else if (pageContext?.page === "tower") {
+      initMsg = "I'm viewing a tower — what's worth knowing here?";
+    } else {
+      initMsg = "I've been browsing for a while and need help";
+    }
     const msgs = [{ role: "user", content: initMsg }];
     const res = await callAssistant(msgs);
     if (res) {
-      setMessages([{ role: "assistant", content: res.reply, brochure: res.brochure, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units }]);
+      setMessages([{ role: "assistant", content: res.reply, brochure: res.brochure, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units, action: res.action }]);
       if (res.suggested_units?.length) setSuggestedUnits(res.suggested_units);
       if (res.riseup_data) setRiseupData(res.riseup_data);
     }
@@ -323,7 +492,7 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
     setLoading(true);
     const res = await callAssistant(newMsgs);
     if (res) {
-      setMessages(m => [...m, { role: "assistant", content: res.reply, brochure: res.brochure, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units?.length ? res.suggested_units : undefined }]);
+      setMessages(m => [...m, { role: "assistant", content: res.reply, brochure: res.brochure, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units?.length ? res.suggested_units : undefined, action: res.action }]);
       if (res.suggested_units?.length) setSuggestedUnits(res.suggested_units);
       if (res.riseup_data) setRiseupData(res.riseup_data);
     }
@@ -441,6 +610,7 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
                         {m.units.map((u: any) => <SuggestedUnit key={u.id} unit={u} />)}
                       </div>
                     ) : null}
+                    {m.action && <div style={{ marginLeft: 34 }}><ActionCard action={m.action} /></div>}
                   </div>
                 ))}
 
@@ -460,10 +630,45 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
                 <div ref={endRef} />
               </div>
 
-              {/* Quick actions */}
+              {/* Quick actions — tailored to page context */}
               {messages.length <= 1 && !loading && (
                 <div style={{ padding: "8px 14px", background: "#F8F9FB", display: "flex", gap: 6, flexWrap: "wrap", flexShrink: 0 }}>
-                  {["Show similar properties", "Get the brochure", "Tell me about RiseUp", "I want a callback"].map(q => (
+                  {(
+                    pageContext?.page === "unit"
+                      ? [
+                          "Get this brochure",
+                          "Does RiseUp apply here?",
+                          "Book a site visit",
+                          "Show similar units",
+                        ]
+                      : pageContext?.page === "project"
+                      ? [
+                          `Which units fit a ₹80L budget?`,
+                          "Get the brochure",
+                          "Book a site visit",
+                          "Show me 3BHKs here",
+                        ]
+                      : pageContext?.page === "tower"
+                      ? [
+                          "Show available units in this tower",
+                          "Get floor plans",
+                          "Tell me about RiseUp",
+                          "Book a site visit",
+                        ]
+                      : pageContext?.page === "store"
+                      ? [
+                          "Spacious 3BHK under ₹1Cr",
+                          "East-facing, ready to move",
+                          "What's the cheapest available?",
+                          "Tell me about RiseUp",
+                        ]
+                      : [
+                          "My salary is ₹1.5L, what fits?",
+                          "Show 3BHK under ₹1Cr",
+                          "Which projects are ready to move?",
+                          "Tell me about RiseUp",
+                        ]
+                  ).map(q => (
                     <button key={q} onClick={() => { setInput(q); }}
                       style={{ background: "white", border: "1px solid #E2F1FC", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#2A3887", cursor: "pointer" }}>
                       {q}
