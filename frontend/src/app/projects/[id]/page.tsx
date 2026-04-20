@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import BackButton from '@/components/BackButton';
 import Footer from '@/components/Footer';
 import DynamicFields from '@/components/DynamicFields';
 import { customerApi } from '@/lib/customerAuth';
@@ -54,7 +55,8 @@ export default function ProjectDetailPage(){
   return(
     <div className="min-h-screen bg-white">
       <Navbar />
-      <div className="pt-16 py-12 px-4"style={{background:'linear-gradient(135deg,#262262,#2A3887)'}}>
+      <div className="pt-16"><BackButton /></div>
+      <div className="py-12 px-4"style={{background:'linear-gradient(135deg,#262262,#2A3887)'}}>
         <div className="max-w-6xl mx-auto">
           <p className="text-xs font-bold tracking-widest mb-2"style={{color:'#29A9DF'}}>{project.city?.toUpperCase()}{project.rera_number?' · RERA REGISTERED':''}</p>
           <div className="flex items-start justify-between flex-wrap gap-4">
@@ -85,16 +87,24 @@ export default function ProjectDetailPage(){
         const price=(()=>{const ta=u.custom_fields?.total_amount;return ta&&parseFloat(ta)>0?parseFloat(ta):u.base_price?parseFloat(u.base_price):null;})();
         return(
         <div key={u.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"style={{boxShadow:'0 4px 20px rgba(42,56,135,0.1)',border:'1.5px solid #E2F1FC'}}>
-          <div className="h-44 relative flex flex-col justify-between p-4"style={{background:imgUrl?`url(${mUrl(imgUrl)}) center/cover no-repeat`:'linear-gradient(135deg,#2A3887,#29A9DF)'}}>
-            {imgUrl&&<div className="absolute inset-0"style={{background:'linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.55) 100%)'}}/>}
+          <div
+  className="relative flex flex-col justify-between p-4"
+  style={{
+    height: "350px",
+    background: imgUrl
+      ? `url(${mUrl(imgUrl)}) center/cover no-repeat`
+      : "linear-gradient(135deg,#2A3887,#29A9DF)",
+  }}
+>
+            {imgUrl&&<div className="absolute inset-0" />}
             <div className="relative z-10 flex justify-between items-start">
               <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white"style={{color:statusColor}}>● {(u.status||'available').charAt(0).toUpperCase()+(u.status||'available').slice(1)}</span>
             </div>
             <div className="relative z-10">
-              <p className="text-xs uppercase tracking-wide" style={{color:'rgba(255,255,255,0.65)'}}>
+              <p className="text-xs uppercase tracking-wide" style={{color:"#2a3887"}}>
                 {u.unit_type?.includes('BHK')?u.unit_type:`${u.unit_type||''}${u.bedrooms?(u.unit_type?' · ':'')+u.bedrooms+' BHK':''}`}
               </p>
-              <h3 className="text-white font-black text-lg leading-tight">{u.unit_number}</h3>
+              <h3 className="font-black text-lg leading-tight" style={{ color: "#2a3887" }}>{u.unit_number}</h3>
             </div>
           </div>
           <div className="p-4 flex flex-col">
@@ -125,7 +135,10 @@ export default function ProjectDetailPage(){
           </div>
         </div>
         );})}</div>}</div>)}
-      {tab==='towers'&&(<div className="max-w-6xl mx-auto px-4 py-8"><h2 className="text-2xl font-black mb-6"style={{color:'#262262'}}>Towers ({towers.length})</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{towers.map((t:any)=>{const tThumb=t.thumbnail||t.images?.[0];return(<Link key={t.id}href={`/projects/${slug}/towers/${t.id}`}className="rounded-2xl overflow-hidden border hover:shadow-lg transition-all block"style={{borderColor:'#e2e8f0'}}>{tThumb?(<div className="relative"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}><img src={tThumb.split('/').map((s:string)=>encodeURIComponent(s)).join('/')}alt={t.name}className="absolute inset-0 w-full h-full object-cover"onError={(e:any)=>{e.target.style.display='none'}}/><div className="absolute inset-0"style={{background:'linear-gradient(to bottom,rgba(0,0,0,0.2) 0%,rgba(0,0,0,0.5) 100%)'}}/><h3 className="absolute bottom-4 left-4 font-black text-xl text-white"style={{zIndex:1}}>{t.name}</h3></div>):(<div className="relative p-5"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}><h3 className="absolute bottom-4 left-4 font-black text-xl text-white">{t.name}</h3></div>)}<div className="p-5">{t.description&&<p className="text-sm text-gray-500 mb-3">{t.description}</p>}<div className="flex gap-4 text-sm font-medium"style={{color:'#2A3887'}}><span>{t.total_floors} Floors</span><span>{t.total_units} Units</span></div><div className="flex gap-2 mt-3 flex-wrap">{t.video_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>▶ Video</span>}{t.walkthrough_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>🥽 Tour</span>}{t.floor_plans?.length>0&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>📐 Plans</span>}</div></div></Link>)})}</div></div>)}
+      {tab==='towers'&&(<div className="max-w-6xl mx-auto px-4 py-8"><h2 className="text-2xl font-black mb-6"style={{color:'#262262'}}>Towers ({towers.length})</h2><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{towers.map((t:any)=>{const tThumb=t.thumbnail||t.images?.[0];return(<Link key={t.id}href={`/projects/${slug}/towers/${t.id}`}className="rounded-2xl overflow-hidden border hover:shadow-lg transition-all block"style={{borderColor:'#e2e8f0'}}>{tThumb?(<div className="relative"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}><img src={tThumb.split('/').map((s:string)=>encodeURIComponent(s)).join('/')}alt={t.name}className="absolute inset-0 w-full h-full object-cover"onError={(e:any)=>{e.target.style.display='none'}}/>
+	  <div className="absolute inset-0"style={{background:'linear-gradient(to bottom,rgba(0,0,0,0.2) 0%,rgba(0,0,0,0.5) 100%)'}}/>
+	  <h3 className="absolute bottom-4 left-4 font-black text-xl text-white"style={{zIndex:1}}>{t.name}</h3></div>):(<div className="relative p-5"style={{height:180,background:'linear-gradient(135deg,#2A3887,#29A9DF)'}}>
+	  <h3 className="absolute bottom-4 left-4 font-black text-xl text-white">{t.name}</h3></div>)}<div className="p-5">{t.description&&<p className="text-sm text-gray-500 mb-3">{t.description}</p>}<div className="flex gap-4 text-sm font-medium"style={{color:'#2A3887'}}><span>{t.total_floors} Floors</span><span>{t.total_units} Units</span></div><div className="flex gap-2 mt-3 flex-wrap">{t.video_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>▶ Video</span>}{t.walkthrough_url&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>🥽 Tour</span>}{t.floor_plans?.length>0&&<span className="text-xs px-2 py-1 rounded-full"style={{background:'#E2F1FC',color:'#2A3887'}}>📐 Plans</span>}</div></div></Link>)})}</div></div>)}
       <Footer />
     </div>
   );

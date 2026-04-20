@@ -71,14 +71,14 @@ export default function UnitsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
-              {['Project','Tower','Unit','Type','Floor','Facing','Area','Price','Token','EMI','Trending','Status'].map(h => (
+              {['Project','Tower','Unit','Type','Floor','Facing','Area','Price','Token','EMI','Trending','RiseUp','Status'].map(h => (
                 <th key={h} className="text-left text-gray-500 font-medium px-4 py-3 whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={12} className="text-center text-gray-500 py-10">Loading...</td></tr>}
-            {!loading && units.length === 0 && <tr><td colSpan={12} className="text-center text-gray-500 py-10">No units found</td></tr>}
+            {loading && <tr><td colSpan={13} className="text-center text-gray-500 py-10">Loading...</td></tr>}
+            {!loading && units.length === 0 && <tr><td colSpan={13} className="text-center text-gray-500 py-10">No units found</td></tr>}
             {units.map(u => (
               <tr key={u.id} className="border-b border-gray-200 hover:bg-gray-50/60 transition">
                 <td className="px-4 py-3 text-gray-700 whitespace-nowrap">{u.project_name || '—'}</td>
@@ -96,6 +96,13 @@ export default function UnitsPage() {
                     className={`text-xs px-2 py-1 rounded-full font-medium transition
                       ${u.is_trending ? 'bg-[#eef1fb] text-[#273b84]' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}>
                     {u.is_trending ? '🔥 Yes' : 'No'}
+                  </button>
+                </td>
+                <td className="px-4 py-3">
+                  <button onClick={() => updateUnit(u.id, 'is_riseup_eligible', !u.is_riseup_eligible)}
+                    className={`text-xs px-2 py-1 rounded-full font-medium transition
+                      ${u.is_riseup_eligible ? 'bg-[#d1f0ff] text-[#0b6ba6]' : 'bg-gray-100 text-gray-500 hover:text-gray-700'}`}>
+                    {u.is_riseup_eligible ? '🚀 Yes' : 'No'}
                   </button>
                 </td>
                 <td className="px-4 py-3">

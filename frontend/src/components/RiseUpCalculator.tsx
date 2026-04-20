@@ -32,7 +32,7 @@ export default function RiseUpCalculator({ unitPrice, unitName }: Props) {
     { label: "Pay now (80%)",                val: fmt(riseupPrice), note: "RiseUp amount", color: "#2A3887", bold: true },
     { label: `Down payment (${dpPercent}%)`, val: fmt(downPayment), note: `${dpPercent}% of ₹${fmt(riseupPrice)}`, color: "#2A3887" },
     { label: "Bank loan",                    val: fmt(bankLoan),    note: `${100 - dpPercent}% funded by bank`, color: "#555" },
-    { label: "At possession (20%)",          val: fmt(possession),  note: "After handover ~2 yrs", color: "#f59e0b" },
+    { label: "After final demand (20%)",      val: fmt(possession),  note: "Due once the builder raises the final demand", color: "#f59e0b" },
     { label: "Approx interest saved",        val: fmt(interestSaved), note: "vs financing full amount", color: "#22c55e" },
   ];
 
@@ -79,10 +79,10 @@ export default function RiseUpCalculator({ unitPrice, unitName }: Props) {
         ))}
       </div>
 
-      {/* Possession tip */}
+      {/* Final demand tip */}
       <div style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 12, padding: "10px 14px", marginBottom: 16 }}>
         <p style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", margin: 0, lineHeight: 1.6 }}>
-          <strong style={{ color: "#fcd34d" }}>At possession</strong> — After 2 years of construction you may receive 2 salary increments. You can fund {fmt(possession)} via a salary top-up loan, personal loan, or savings.
+          <strong style={{ color: "#fcd34d" }}>After final demand</strong> — The remaining {fmt(possession)} is due only after the builder raises the final demand (once all construction-linked demands are completed). You can fund it via a salary top-up loan, personal loan, or savings.
         </p>
       </div>
 

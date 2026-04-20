@@ -44,13 +44,13 @@ function RiseUpCard({ data }: { data: any }) {
         <span style={{ fontSize: 18 }}>🚀</span>
         <span style={{ color: "#29A9DF", fontWeight: 900, fontSize: 13 }}>RiseUp Offer</span>
       </div>
-      <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 11, marginBottom: 8 }}>Pay only 80% now. 20% at possession.</p>
+      <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 11, marginBottom: 8 }}>Pay only 80% now. 20% after the final demand is raised.</p>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
         {[
-          { label: "Unit Price",    val: fmt(data.unit_price) },
-          { label: "Pay Now (80%)", val: fmt(data.riseup_price), hi: true },
-          { label: "At Possession", val: fmt(data.possession_amount) },
-          { label: "Min Down Pmt",  val: fmt(data.down_payment_10) },
+          { label: "Unit Price",          val: fmt(data.unit_price) },
+          { label: "Pay Now (80%)",       val: fmt(data.riseup_price), hi: true },
+          { label: "On Final Demand",     val: fmt(data.possession_amount) },
+          { label: "Min Down Pmt",        val: fmt(data.down_payment_10) },
         ].map(r => (
           <div key={r.label} style={{ background: "rgba(255,255,255,0.07)", borderRadius: 8, padding: "6px 8px" }}>
             <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10 }}>{r.label}</div>
@@ -273,7 +273,7 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
   // Trigger: 45s timer
   useEffect(() => {
     if (triggered.current) return;
-    timerRef.current = setTimeout(() => { triggered.current = true; setVisible(true); }, 45_000);
+    timerRef.current = setTimeout(() => { triggered.current = true; setVisible(true); }, 10_000);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
@@ -505,10 +505,10 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
               </div>
               <div style={{ background: "#F0F4FF", borderRadius: 14, padding: 14, marginBottom: 12 }}>
                 {[
-                  ["Pay only 80% now",    "Lock in the home at 80% of total cost"],
-                  ["Bank funds up to 90%","Of the 80% — down payment is just 8–16%"],
-                  ["20% at possession",   "Fund via top-up loan or savings after ~2 yrs"],
-                  ["Save on interest",    "EMI only on 80% during construction"],
+                  ["Pay only 80% now",             "Lock in the home at 80% of total cost"],
+                  ["Bank funds up to 90%",         "Of the 80% — down payment is just 8–16%"],
+                  ["20% after final demand",       "Paid once the builder raises the final demand"],
+                  ["Save on interest",             "EMI only on 80% during construction"],
                 ].map(([t, d]) => (
                   <div key={t} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     <span style={{ color: "#29A9DF", fontWeight: 900, fontSize: 15 }}>✓</span>
@@ -526,7 +526,7 @@ export default function ProactiveAssistant({ searchCount, lastResultsCount, last
                   → Pay for ₹80L only<br />
                   → Down payment: ₹8L (10%) or ₹16L (20%)<br />
                   → Bank funds: ₹64L–₹72L<br />
-                  → At possession: ₹20L (top-up / personal loan)<br />
+                  → After final demand: ₹20L (top-up / personal loan)<br />
                   → <strong style={{ color: "#2A3887" }}>Own a ₹1Cr home at the cost of ₹80L!</strong>
                 </div>
               </div>

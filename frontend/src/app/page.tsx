@@ -488,8 +488,13 @@ function TrendingCard({ unit: u, imgUrl, statusColor, formatPrice }: { unit: any
     <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
       style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
       <div className="h-44 relative flex flex-col justify-between p-4"
-        style={{ background: imgUrl ? `url(${imgUrl}) center/cover no-repeat` : "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
-        {imgUrl && <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.55) 100%)" }} />}
+        style={{
+  background: imgUrl
+    ? `url(${imgUrl}) center/cover no-repeat`
+    : "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)",
+  height: "350px"
+}}>
+        {imgUrl && <div className="absolute inset-0"  />}
         <div className="relative z-10 flex justify-between items-center">
           <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
             ● {(u.status||"available").charAt(0).toUpperCase()+(u.status||"available").slice(1)}
@@ -502,18 +507,18 @@ function TrendingCard({ unit: u, imgUrl, statusColor, formatPrice }: { unit: any
             ].map((btn,i) => (
               <button key={i} onClick={btn.fn}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm transition-all hover:scale-110"
-                style={{ background: btn.bg }}>{btn.icon}</button>
+                style={{ background: btn.bg, color: btn.color ?? "#000" }}>{btn.icon}</button>
             ))}
           </div>
         </div>
         <div className="relative z-10">
           <div className="flex items-center gap-2">
-            <p className="text-xs uppercase tracking-wide" style={{ color: "rgba(255,255,255,0.65)" }}>
+            <p className="text-xs uppercase tracking-wide" style={{ color: "#000" }}>
               {u.unit_type?.includes("BHK") ? u.unit_type : `${u.unit_type || ""}${u.bedrooms ? (u.unit_type ? " · " : "") + u.bedrooms + " BHK" : ""}`}
             </p>
-            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"white" }}>🔥</span>
+            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"#000" }}>🔥</span>
           </div>
-          <h3 className="text-white font-black text-lg leading-tight">{u.unit_number||"Unit"}</h3>
+          <h3 className="text-white font-black text-lg leading-tight" style={{ color:"#000" }}>{u.unit_number||"Unit"}</h3>
         </div>
         {toast && (
           <div className="absolute bottom-3 left-3 right-3 z-10 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
@@ -664,7 +669,7 @@ export default function HomePage() {
   ];
 
   const TESTIMONIALS = [
-    { name: "Rajesh Kumar", role: "Software Engineer", city: "Hyderabad", text: "Excellent construction quality and transparent process. Janapriya delivered exactly what they promised. Highly recommended!", rating: 5, initial: "R" },
+    { name: "Veera Bhadram", role: "Software Engineer", city: "Hyderabad", text: "Excellent construction quality and transparent process. Janapriya delivered exactly what they promised. Highly recommended!", rating: 5, initial: "R" },
     { name: "Priya Sharma", role: "Doctor", city: "Secunderabad", text: "Bought a 3BHK in Janapriya Heights. The team was professional at every step. Best decision of my life!", rating: 5, initial: "P" },
     { name: "Venkat Reddy", role: "Business Owner", city: "Hyderabad", text: "Invested in Janapriya Meadows villa. Superb quality, premium location. Great ROI and an even better living experience.", rating: 5, initial: "V" },
   ];
@@ -909,13 +914,13 @@ export default function HomePage() {
           <div key={i} className="absolute inset-0" style={{ zIndex: 1, opacity: activeSlide === i ? 1 : 0, transition: "opacity 1.2s ease-in-out" }}>
             <div className="absolute inset-0" />
             {mounted && (
-              <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" style={{ opacity: 0.55, zIndex: 1 }}>
+              <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" style={{zIndex: 1 }}>
                 <source src={slide.src} type="video/mp4" />
               </video>
             )}
           </div>
         ))}
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(13,27,42,0.35) 0%, rgba(13,27,42,0.1) 50%, rgba(13,27,42,0.55) 100%)", zIndex: 0 }} />
+        <div className="absolute inset-0" style={{zIndex: 0 }} />
         <div className="absolute top-1/4 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.18), transparent 70%)", zIndex: 2 }} />
         <div className="absolute bottom-1/3 left-0 w-72 h-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.12), transparent 70%)", zIndex: 2 }} />
 
@@ -1216,36 +1221,112 @@ export default function HomePage() {
               Premium residential communities across Hyderabad — crafted to the highest standards.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {projects.length > 0 ? projects.slice(0, 3).map((p: any) => (
-              <Link key={p.id} href={`/projects/${p.id}`} style={{ textDecoration: "none" }}>
-                <div className="card-hover" style={{ background: "white", borderRadius: 20, overflow: "hidden", border: "1.5px solid #e8ebf8", boxShadow: "0 4px 20px rgba(39,59,132,0.08)" }}>
-                  <div style={{ height: 224, background: "linear-gradient(135deg, #273b84 0%, #1a2a6c 100%)", position: "relative", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 20, overflow: "hidden" }}>
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%)" }} />
-                    <span style={{
-                      alignSelf: "flex-start", display: "inline-block", padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 800, zIndex: 1,
-                      background: p.status === "ready" ? "#e8ebf8" : p.status === "upcoming" ? "#FEF3C7" : "#DBEAFE",
-                      color: p.status === "ready" ? "#273b84" : p.status === "upcoming" ? "#92400E" : "#1E40AF",
-                    }}>
-                      {p.status === "ready" ? "✓ Ready to Move" : p.status === "upcoming" ? "⏳ Upcoming" : "🏗 Under Construction"}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {projects.length > 0 ? projects.slice(0, 3).map((p: any) => {
+              const stageRaw = (p.construction_stage || "").toString();
+              const stageLower = stageRaw.toLowerCase();
+              const statusColor = stageLower.includes("ready") ? "#22c55e"
+                : stageLower.includes("new") ? "#29A9DF"
+                : stageRaw ? "#f59e0b"
+                : "#94a3b8";
+              const statusBg = stageLower.includes("ready") ? "#f0fdf4"
+                : stageLower.includes("new") ? "#eff6ff"
+                : stageRaw ? "#fffbeb"
+                : "#f8fafc";
+              const statusLabel = stageRaw
+                ? stageRaw.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
+                : "—";
+              const thumb = p.thumbnail || (p.images && p.images[0]);
+              return (
+                <div key={p.id}
+                  className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
+                  style={{ boxShadow: "0 4px 24px rgba(42,56,135,0.10)", border: "1.5px solid #E2F1FC" }}>
+                  {/* Top bar: status + units count */}
+                  <div className="px-4 pt-4 pb-2 flex justify-between items-center">
+                    <span className="px-3 py-1 rounded-full text-xs font-black"
+                      style={{ color: statusColor, background: statusBg }}>
+                      ● {statusLabel}
                     </span>
-                    <div style={{ zIndex: 1 }}>
-                      <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 11, marginBottom: 4 }}>{p.project_type || "Residential"}</p>
-                      <h3 style={{ color: "white", fontWeight: 900, fontSize: 20, marginBottom: 4 }}>{p.name}</h3>
-                      {p.address && <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>📍 {p.address}</p>}
-                    </div>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full"
+                      style={{ background: "#F8F9FB", color: "#2A3887" }}>
+                      🏠 {p.total_units ?? "—"} units
+                    </span>
                   </div>
-                  <div style={{ padding: "18px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 2 }}>Starting from</p>
-                      <span style={{ fontWeight: 900, fontSize: 18, color: "#0D1B2A" }}>{p.min_price ? formatPrice(p.min_price) : "Price on request"}</span>
+
+                  {/* Project image */}
+                  <div className="px-3 pb-1">
+                    <Link href={`/projects/${p.slug || p.id}`} className="block">
+                      <div className="relative rounded-xl overflow-hidden w-full cursor-pointer"
+                        style={{ height: "220px", background: "#F4F6FB" }}>
+                        {thumb ? (
+                          <img src={thumb.split("/").map((s: string) => encodeURIComponent(s)).join("/")}
+                            alt={p.name}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e: any) => { e.target.style.display = "none"; }} />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-2"
+                            style={{ background: "linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%)" }}>
+                            <span style={{ fontSize: 48, opacity: 0.2 }}>🏗️</span>
+                            <span className="text-xs font-semibold" style={{ color: "#aac" }}>
+                              Image coming soon
+                            </span>
+                          </div>
+                        )}
+                        <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
+                          style={{ background: "linear-gradient(0deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0) 100%)" }}>
+                          <p className="text-xs font-semibold" style={{ color: "#888" }}>
+                            {p.property_type || p.unit_types || "Residential"}
+                          </p>
+                          <h3 className="font-black text-base leading-tight" style={{ color: "#2A3887" }}>
+                            {p.name}
+                          </h3>
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
+
+                  {/* Card body */}
+                  <div className="p-4 flex flex-col gap-3">
+                    <p className="text-sm" style={{ color: "#555A5C" }}>
+                      📍 {p.location || p.city}{p.city && p.city !== p.location ? `, ${p.city}` : ""}
+                    </p>
+                    {p.description && (
+                      <p className="text-xs leading-relaxed" style={{ color: "#777" }}>
+                        {p.description.substring(0, 100)}
+                        {p.description.length > 100 ? "..." : ""}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid #F0F4FF" }}>
+                      <div>
+                        <div className="font-black text-lg" style={{ color: "#2A3887" }}>
+                          {p.min_price && p.max_price && p.min_price !== p.max_price
+                            ? `${formatPrice(p.min_price)} – ${formatPrice(p.max_price)}`
+                            : p.min_price ? formatPrice(p.min_price) : "On Request"}
+                        </div>
+                        {p.min_price && (
+                          <div className="text-xs" style={{ color: "#999" }}>
+                            Starting price
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <span style={{ background: "linear-gradient(135deg,#0D1B2A,#273b84)", color: "white", borderRadius: 10, padding: "9px 18px", fontSize: 13, fontWeight: 800 }}>View →</span>
+                    <div className="flex gap-2">
+                      <Link href={`/projects/${p.slug || p.id}`}
+                        className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors"
+                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                        View Details
+                      </Link>
+                      <Link href={`/projects/${p.slug || p.id}#enquire`}
+                        className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors"
+                        style={{ border: "1.5px solid #2A3887", color: "#2A3887" }}>
+                        Enquire
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </Link>
-            )) : [1, 2, 3].map(i => (
-              <div key={i} style={{ height: 290, borderRadius: 20, background: "#F3F4F6", animation: "pulse 1.5s ease-in-out infinite" }} />
+              );
+            }) : [1, 2, 3].map(i => (
+              <div key={i} style={{ height: 500, borderRadius: 20, background: "#F3F4F6", animation: "pulse 1.5s ease-in-out infinite" }} />
             ))}
           </div>
           <div style={{ textAlign: "center", marginTop: 48 }}>

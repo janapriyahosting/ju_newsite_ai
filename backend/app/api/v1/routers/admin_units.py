@@ -58,6 +58,7 @@ async def list_units(
             "status": u.status,
             "is_trending": bool(u.is_trending) if u.is_trending is not None else False,
             "is_featured": bool(u.is_featured) if u.is_featured is not None else False,
+            "is_riseup_eligible": bool(u.is_riseup_eligible) if u.is_riseup_eligible is not None else False,
             "view_count": u.view_count or 0,
             "tower_id": str(u.tower_id) if u.tower_id else None,
             "tower_name": t.name if t else None,
@@ -107,7 +108,8 @@ async def update_unit(
     json_fields = {"dimensions", "images", "floor_plans", "amenities"}
     allowed = {
         "status", "base_price", "emi_estimate", "down_payment", "price_per_sqft",
-        "is_trending", "is_featured", "facing", "floor_number", "unit_type",
+        "is_trending", "is_featured", "is_riseup_eligible",
+        "facing", "floor_number", "unit_type",
         "bedrooms", "bathrooms", "area_sqft", "carpet_area",
         "dimensions", "images", "floor_plan_img", "floor_plans",
         "video_url", "walkthrough_url", "amenities", "token_amount",

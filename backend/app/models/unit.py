@@ -41,6 +41,7 @@ class Unit(UUIDMixin, TimeStampMixin, Base):
     brochure_url:    Mapped[str]   = mapped_column(String(500), nullable=True)
     is_trending:   Mapped[bool]  = mapped_column(Boolean, default=False)
     is_featured:   Mapped[bool]  = mapped_column(Boolean, default=False)
+    is_riseup_eligible: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     view_count:    Mapped[int]   = mapped_column(Integer, default=0)
     embedding:     Mapped[list]  = mapped_column(Vector(1536), nullable=True)  # pgvector AI embedding
 
