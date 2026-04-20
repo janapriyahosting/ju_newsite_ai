@@ -1,10 +1,9 @@
 "use client";
-import AddToCartBtn from '@/components/AddToCartBtn';
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { isSaved, toggleSaved, isInCompare, toggleCompare } from "@/lib/savedProperties";
+import UnitCard from "@/components/UnitCard";
 
 const PAYMENTS = [
   {
@@ -448,127 +447,7 @@ function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButton
   );
 }
 
-function _getPrice(unit: any) {
-  const ta = unit?.custom_fields?.total_amount;
-  if (ta && parseFloat(ta) > 0) return parseFloat(ta);
-  return unit?.base_price ? parseFloat(unit.base_price) : null;
-}
-
-// ── Trending Card (matches store UnitCard) ──────────────────────────────────
-function TrendingCard({ unit: u, imgUrl, statusColor, formatPrice }: { unit: any; imgUrl: string; statusColor: string; formatPrice: (p: any) => string }) {
-  const [saved, setSaved] = useState(false);
-  const [inCompare, setInCompare] = useState(false);
-  const [toast, setToast] = useState("");
-  useEffect(() => { setSaved(isSaved(u.id)); setInCompare(isInCompare(u.id)); }, [u.id]);
-  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(""), 2000); };
-
-  function handleSave(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
-    setSaved(toggleSaved(u.id));
-    showToast(isSaved(u.id) ? "Saved ❤️" : "Removed");
-    window.dispatchEvent(new Event("jp_saved_update"));
-  }
-  function handleCompare(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
-    const r = toggleCompare(u.id);
-    if (r.error) { showToast(r.error); return; }
-    setInCompare(r.added);
-    showToast(r.added ? "Added to compare ⇄" : "Removed");
-    window.dispatchEvent(new Event("jp_compare_update"));
-  }
-  function handleShare(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
-    const url = `${window.location.origin}/units/${u.id}`;
-    const text = `${u.unit_number} — ${u.unit_type}, ${formatPrice(_getPrice(u))} | Janapriya Upscale`;
-    if (navigator.share) navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {});
-    else if (navigator.clipboard) navigator.clipboard.writeText(`${text}\n${url}`).then(() => showToast("Link copied! 📋"));
-  }
-
-  return (
-    <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
-      style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
-      <div className="h-44 relative flex flex-col justify-between p-4"
-        style={{
-  background: imgUrl
-    ? `url(${imgUrl}) center/cover no-repeat`
-    : "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)",
-  height: "350px"
-}}>
-        {imgUrl && <div className="absolute inset-0"  />}
-        <div className="relative z-10 flex justify-between items-center">
-          <span className="px-2.5 py-1 rounded-full text-xs font-black bg-white" style={{ color: statusColor }}>
-            ● {(u.status||"available").charAt(0).toUpperCase()+(u.status||"available").slice(1)}
-          </span>
-          <div className="flex gap-1.5">
-            {[
-              { fn: handleSave, icon: saved?"♥":"♡", bg: saved?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.2)" },
-              { fn: handleCompare, icon: "⇄", bg: inCompare?"rgba(245,158,11,0.85)":"rgba(255,255,255,0.2)" },
-              { fn: handleShare, icon: "↗", bg: "rgba(255,255,255,0.2)" },
-            ].map((btn,i) => (
-              <button key={i} onClick={btn.fn}
-                className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm transition-all hover:scale-110"
-                style={{ background: btn.bg, color: btn.color ?? "#000" }}>{btn.icon}</button>
-            ))}
-          </div>
-        </div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-2">
-            <p className="text-xs uppercase tracking-wide" style={{ color: "#000" }}>
-              {u.unit_type?.includes("BHK") ? u.unit_type : `${u.unit_type || ""}${u.bedrooms ? (u.unit_type ? " · " : "") + u.bedrooms + " BHK" : ""}`}
-            </p>
-            <span className="px-1.5 py-0.5 rounded-full text-xs font-bold" style={{ background:"rgba(245,158,11,0.9)",color:"#000" }}>🔥</span>
-          </div>
-          <h3 className="text-white font-black text-lg leading-tight" style={{ color:"#000" }}>{u.unit_number||"Unit"}</h3>
-        </div>
-        {toast && (
-          <div className="absolute bottom-3 left-3 right-3 z-10 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
-            style={{ color: "#2A3887" }}>{toast}</div>
-        )}
-      </div>
-      <div className="p-4 flex-1 flex flex-col">
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          {[
-            { icon: "🛏", val: u.bedrooms||"—", label: "BHK" },
-            { icon: "📐", val: u.area_sqft ? `${parseFloat(u.area_sqft).toFixed(0)}` : "—", label: "sqft" },
-            { icon: "🏢", val: u.floor_number??  "—", label: "Floor" },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl py-2 text-center" style={{ background: "#F8F9FB" }}>
-              <div className="text-base">{s.icon}</div>
-              <div className="font-black text-sm" style={{ color: "#2A3887" }}>{s.val}</div>
-              <div className="text-xs" style={{ color: "#999" }}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {u.bathrooms && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🚿 {u.bathrooms} Bath</span>}
-          {u.facing && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🧭 {u.facing}</span>}
-          {u.balconies > 0 && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🏡 {u.balconies} Balc</span>}
-        </div>
-        <div className="mt-auto flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
-          <div>
-            <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(_getPrice(u))}</div>
-            {u.area_sqft && _getPrice(u) && (
-              <div className="text-xs" style={{ color: "#999" }}>
-                ₹{Math.round(_getPrice(u)!/parseFloat(u.area_sqft)).toLocaleString()}/sqft
-              </div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <div onClick={e=>{e.preventDefault();e.stopPropagation();}}>
-              <AddToCartBtn unitId={u.id} status={u.status} size="sm" />
-            </div>
-            <Link href={`/contact?unit=${u.id}`}
-              className="px-3 py-1.5 text-xs font-bold rounded-xl"
-              style={{ border:"1.5px solid #2A3887",color:"#2A3887" }}>Enquire</Link>
-            <Link href={`/units/${u.id}`}
-              className="px-3 py-1.5 text-xs font-bold text-white rounded-xl"
-              style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>Details →</Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Trending card now uses the shared @/components/UnitCard
 
 export default function HomePage() {
   const [query, setQuery] = useState("");
@@ -1166,14 +1045,9 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trending.map((u: any) => {
-                const img3d = u.custom_fields?.series_floor_plan_3d;
-                const imgUrl = img3d || "";
-                const statusColor = u.status === "available" ? "#22c55e" : u.status === "booked" ? "#ef4444" : "#f59e0b";
-                return (
-                  <TrendingCard key={u.id} unit={u} imgUrl={imgUrl} statusColor={statusColor} formatPrice={formatPrice} />
-                );
-              })}
+              {trending.map((u: any) => (
+                <UnitCard key={u.id} unit={u} isTrending />
+              ))}
             </div>
           </div>
         </section>

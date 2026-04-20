@@ -64,7 +64,7 @@ export default function AIUsagePage() {
 
   const load = async () => {
     try {
-      const res = await adminApi('/admin/ai-usage/live');
+      const res = await adminApi('/assistant/admin/ai-usage/live');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
       setErr(null);

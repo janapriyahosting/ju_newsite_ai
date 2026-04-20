@@ -4,7 +4,7 @@ from typing import Optional, List
 from types import SimpleNamespace
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, func, case
+from sqlalchemy import select, and_, or_, func, case, text as sa_text
 from backend.app.core.database import get_db
 from backend.app.core.config import settings
 from backend.app.models.unit import Unit
@@ -368,17 +368,69 @@ async def _build_site_context(db: AsyncSession) -> str:
 
     lines = []
     for p in projects:
-        stats_res = await db.execute(
-            select(
-                func.count(Unit.id),
-                func.sum(case((Unit.status == "available", 1), else_=0)),
-                func.min(Unit.base_price),
-                func.max(Unit.base_price),
-            )
+        # Prefer custom_fields.total_amount over base_price — some units have
+        # base_price set to per-sqft rates, which gives misleading ₹X prices
+        # in the LLM context.
+        stats_sql = sa_text("""
+            SELECT
+                COUNT(u.id) AS total_units,
+                COUNT(CASE WHEN u.status = 'available' THEN 1 END) AS available_units,
+                MIN(CASE WHEN u.status = 'available' THEN effective_price END) AS min_price,
+                MAX(CASE WHEN u.status = 'available' THEN effective_price END) AS max_price,
+                MIN(CASE WHEN u.status = 'available' THEN u.floor_number END) AS min_floor,
+                MAX(CASE WHEN u.status = 'available' THEN u.floor_number END) AS max_floor
+            FROM (
+                SELECT u.id, u.status, u.floor_number,
+                    COALESCE(
+                        NULLIF((
+                            SELECT CASE
+                                WHEN jsonb_typeof(cfv.value) = 'number'
+                                    THEN CAST(cfv.value #>> '{}' AS NUMERIC)
+                                WHEN jsonb_typeof(cfv.value) = 'string'
+                                     AND (cfv.value #>> '{}') ~ '^-?[0-9]+(\\.[0-9]+)?$'
+                                    THEN CAST(cfv.value #>> '{}' AS NUMERIC)
+                                ELSE NULL
+                            END
+                            FROM custom_field_values cfv
+                            JOIN field_configs fc ON fc.id = cfv.field_config_id
+                            WHERE cfv.entity_id = u.id
+                              AND fc.field_key = 'total_amount'
+                              AND fc.entity = 'unit'
+                            LIMIT 1
+                        ), 0),
+                        u.base_price
+                    ) AS effective_price
+                FROM units u
+                JOIN towers t ON u.tower_id = t.id
+                WHERE t.project_id = :project_id
+            ) u
+        """)
+        stats_row = (await db.execute(stats_sql, {"project_id": p.id})).mappings().one()
+        total = stats_row["total_units"] or 0
+        available = stats_row["available_units"] or 0
+        min_p = stats_row["min_price"]
+        max_p = stats_row["max_price"]
+        min_floor = stats_row["min_floor"]
+        max_floor = stats_row["max_floor"]
+
+        # Breakdown of available units by facing
+        facing_rows = await db.execute(
+            select(Unit.facing, func.count())
             .join(Tower, Unit.tower_id == Tower.id)
-            .where(Tower.project_id == p.id)
+            .where(Tower.project_id == p.id, Unit.status == "available", Unit.facing.isnot(None))
+            .group_by(Unit.facing)
         )
-        total, available, min_p, max_p = stats_res.one()
+        facing_counts = {(f or "Other").strip(): int(n) for f, n in facing_rows.all() if f}
+
+        # Breakdown of available units by unit_type (e.g. 2BHK, 3BHK)
+        type_rows = await db.execute(
+            select(Unit.unit_type, func.count())
+            .join(Tower, Unit.tower_id == Tower.id)
+            .where(Tower.project_id == p.id, Unit.status == "available", Unit.unit_type.isnot(None))
+            .group_by(Unit.unit_type)
+        )
+        type_counts = {(t or "").strip(): int(n) for t, n in type_rows.all() if t}
+
         bits = [f"- {p.name}"]
         loc = ", ".join(x for x in [p.location, p.city] if x)
         if loc:
@@ -388,6 +440,17 @@ async def _build_site_context(db: AsyncSession) -> str:
         if min_p:
             price_range = _fmt(float(min_p)) if min_p == max_p else f"{_fmt(float(min_p))}–{_fmt(float(max_p))}"
             bits.append(f"price {price_range}")
+        if type_counts:
+            bhk_desc = ", ".join(f"{k}:{v}" for k, v in sorted(type_counts.items()))
+            bits.append(f"available by type [{bhk_desc}]")
+        if facing_counts:
+            facing_desc = ", ".join(f"{k}:{v}" for k, v in sorted(facing_counts.items()))
+            bits.append(f"available by facing [{facing_desc}]")
+        if min_floor is not None and max_floor is not None:
+            if min_floor == max_floor:
+                bits.append(f"floor {min_floor}")
+            else:
+                bits.append(f"floors {min_floor}–{max_floor}")
         if p.rera_number:
             bits.append(f"RERA {p.rera_number}")
         lines.append(" · ".join(bits))

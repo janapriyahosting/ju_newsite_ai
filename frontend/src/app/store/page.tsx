@@ -1,12 +1,11 @@
 "use client";
-import AddToCartBtn from '@/components/AddToCartBtn';
 import { useState, useEffect, useCallback } from "react";
 import Navbar from "@/components/Navbar";
 import BackButton from "@/components/BackButton";
 import Footer from "@/components/Footer";
 import CompareBar from "@/components/CompareBar";
 import ProactiveAssistant from "@/components/ProactiveAssistant";
-import { isSaved, toggleSaved, isInCompare, toggleCompare } from "@/lib/savedProperties";
+import UnitCard from "@/components/UnitCard";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81/api/v1";
@@ -25,147 +24,80 @@ function getPrice(unit: any) {
   return unit.base_price ? parseFloat(unit.base_price) : null;
 }
 
-// ── Unit Card ────────────────────────────────────────────────────────────────
-function UnitCard({ unit, isTrending, onCompareChange }: { unit: any; isTrending?: boolean; onCompareChange: () => void }) {
-  const [saved, setSaved] = useState(false);
-  const [inCompare, setInCompare] = useState(false);
-  const [toast, setToast] = useState("");
-  useEffect(() => { setSaved(isSaved(unit.id)); setInCompare(isInCompare(unit.id)); }, [unit.id]);
-  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(""), 2000); };
+// UnitCard is now the shared component in @/components/UnitCard
 
-  function handleSave(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
-    setSaved(toggleSaved(unit.id));
-    showToast(isSaved(unit.id) ? "Saved ❤️" : "Removed");
-    window.dispatchEvent(new Event("jp_saved_update"));
+// ── Pagination ───────────────────────────────────────────────────────────────
+// Shows "‹ 1 2 … 4 5 6 … 10 ›" with current page highlighted. Ellipses appear
+// only when there are more than 7 total pages, so small lists show every page.
+function Pagination({
+  currentPage, totalPages, onChange,
+}: { currentPage: number; totalPages: number; onChange: (p: number) => void }) {
+  function pageItems(): (number | "…")[] {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const items: (number | "…")[] = [1];
+    const start = Math.max(2, currentPage - 1);
+    const end   = Math.min(totalPages - 1, currentPage + 1);
+    if (start > 2) items.push("…");
+    for (let p = start; p <= end; p++) items.push(p);
+    if (end < totalPages - 1) items.push("…");
+    items.push(totalPages);
+    return items;
   }
-  function handleCompare(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
-    const r = toggleCompare(unit.id);
-    if (r.error) { showToast(r.error); return; }
-    setInCompare(r.added);
-    showToast(r.added ? "Added to compare ⇄" : "Removed");
-    window.dispatchEvent(new Event("jp_compare_update"));
-    onCompareChange();
-  }
-  function fallbackCopy(text: string) {
-    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(() => showToast("Link copied! 📋")).catch(() => showToast("Could not copy")); return; }
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    showToast("Link copied! 📋");
-  }
-  function handleShare(e: React.MouseEvent) {
-    e.preventDefault(); e.stopPropagation();
-    const url = `${window.location.origin}/units/${unit.id}`;
-    const text = `${unit.unit_number} — ${unit.unit_type}, ${formatPrice(getPrice(unit))} | Janapriya Upscale`;
-    if (navigator.share) navigator.share({ title: "Janapriya Upscale", text, url }).catch(() => {});
-    else { fallbackCopy(`${text}\n${url}`); }
-  }
-  const statusColor = unit.status === "available" ? "#22c55e" : unit.status === "booked" ? "#ef4444" : "#f59e0b";
-  const img3d = unit.custom_fields?.series_floor_plan_3d;
-  const imgUrl = img3d || "";
-return (
-  <div className="bg-white rounded-2xl overflow-hidden flex flex-col transition-all duration-200 hover:-translate-y-1"
-    style={{ boxShadow: "0 4px 20px rgba(42,56,135,0.08)", border: "1.5px solid #E2F1FC" }}>
-    
-    {/* Status badge on white background above image */}
-    <div className="px-4 pt-4 pb-2 flex justify-between items-center">
-      <div className="flex items-center gap-2">
-        <span className="px-2.5 py-1 rounded-full text-xs font-black" style={{ color: statusColor }}>
-          ● {(unit.status||"available").charAt(0).toUpperCase()+(unit.status||"available").slice(1)}
-        </span>
-        {unit.unit_number && (
-          <span className="px-2.5 py-1 rounded-full text-xs font-black"
-            style={{ background: "#F0F4FF", color: "#2A3887" }}>
-            #{unit.unit_number}
-          </span>
-        )}
-      </div>
-      <div className="flex gap-1.5">
-        {[
-          { fn: handleSave, icon: saved?"♥":"♡", bg: saved?"rgba(239,68,68,0.15)":"#F8F9FB", color: saved?"#ef4444":"#999" },
-          { fn: handleCompare, icon: "⇄", bg: inCompare?"rgba(245,158,11,0.15)":"#F8F9FB", color: inCompare?"#f59e0b":"#999" },
-          { fn: handleShare, icon: "↗", bg: "#F8F9FB", color: "#999" },
-        ].map((btn,i) => (
-          <button key={i} onClick={btn.fn}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all hover:scale-110"
-            style={{ background: btn.bg, color: btn.color }}>{btn.icon}</button>
-        ))}
-      </div>
-    </div>
-
-    {/* Large image area — white bg, no overlay */}
-    <div className="relative mx-3 rounded-xl overflow-hidden" style={{ height: "350px", background: "#F8F9FB" }}>
-      {imgUrl ? (
-        <img src={imgUrl} alt={unit.unit_number} className="w-full h-full object-cover" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center"
-          style={{ background: "linear-gradient(135deg,#2A3887 0%,#29A9DF 100%)" }}>
-          <span className="text-white text-4xl opacity-30">🏢</span>
-        </div>
+  const btnStyle = (active: boolean) => active
+    ? { background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", borderColor: "transparent" }
+    : { background: "white", color: "#2A3887", borderColor: "#E2F1FC" };
+  return (
+    <div className="flex items-center justify-center gap-2 mt-10 flex-wrap">
+      <button
+        onClick={() => onChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        className="px-3 py-1.5 rounded-lg text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        style={btnStyle(false)}>
+        ‹ Prev
+      </button>
+      {pageItems().map((p, i) =>
+        p === "…"
+          ? <span key={`e${i}`} className="px-2 text-sm" style={{ color: "#999" }}>…</span>
+          : (
+            <button key={p} onClick={() => onChange(p)}
+              className="w-9 h-9 rounded-lg text-sm font-bold border transition-all"
+              style={btnStyle(p === currentPage)}>
+              {p}
+            </button>
+          )
       )}
-      {isTrending && (
-        <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-xs font-bold"
-          style={{ background:"rgba(245,158,11,0.9)", color:"white" }}>🔥</span>
-      )}
-      {toast && (
-        <div className="absolute bottom-3 left-3 right-3 px-3 py-1.5 bg-white rounded-full text-xs font-bold text-center"
-          style={{ color: "#2A3887" }}>{toast}</div>
-      )}
+      <button
+        onClick={() => onChange(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1.5 rounded-lg text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        style={btnStyle(false)}>
+        Next ›
+      </button>
     </div>
-
-    {/* Card body */}
-    <div className="p-4 flex-1 flex flex-col">
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        {[
-          { icon: "🛏", val: unit.bedrooms||"—", label: "BHK" },
-          { icon: "📐", val: unit.area_sqft ? `${parseFloat(unit.area_sqft).toFixed(0)}` : "—", label: "sqft" },
-          { icon: "🏢", val: unit.floor_number?? "—", label: "Floor" },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl py-2 text-center" style={{ background: "#F8F9FB" }}>
-            <div className="text-base">{s.icon}</div>
-            <div className="font-black text-sm" style={{ color: "#2A3887" }}>{s.val}</div>
-            <div className="text-xs" style={{ color: "#999" }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-wrap gap-1.5 mb-3">
-        {unit.bathrooms && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🚿 {unit.bathrooms} Bath</span>}
-        {unit.facing && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🧭 {unit.facing}</span>}
-        {unit.balconies > 0 && <span className="px-2 py-0.5 rounded-full text-xs" style={{ background:"#F0F4FF",color:"#2A3887" }}>🏡 {unit.balconies} Balc</span>}
-      </div>
-      <div className="mt-auto flex items-center justify-between pt-3" style={{ borderTop:"1px solid #F0F4FF" }}>
-        <div>
-          <div className="font-black text-lg" style={{ color: "#2A3887" }}>{formatPrice(getPrice(unit))}</div>
-          {unit.area_sqft && getPrice(unit) && (
-            <div className="text-xs" style={{ color: "#999" }}>
-              ₹{Math.round(getPrice(unit)!/parseFloat(unit.area_sqft)).toLocaleString()}/sqft
-            </div>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <div onClick={e=>{e.preventDefault();e.stopPropagation();}}>
-            <AddToCartBtn unitId={unit.id} status={unit.status} size="sm" />
-          </div>
-          <Link href={`/contact?unit=${unit.id}`}
-            className="px-3 py-1.5 text-xs font-bold rounded-xl"
-            style={{ border:"1.5px solid #2A3887",color:"#2A3887" }}>Enquire</Link>
-          <Link href={`/units/${unit.id}`}
-            className="px-3 py-1.5 text-xs font-bold text-white rounded-xl"
-            style={{ background:"linear-gradient(135deg,#2A3887,#29A9DF)" }}>Details →</Link>
-        </div>
-      </div>
-    </div>
-  </div>
-);
+  );
 }
 
 // ── Range Slider ─────────────────────────────────────────────────────────────
+// Two overlapping <input type="range"> handles. Each input has its track made
+// non-interactive (pointer-events: none) while the thumb itself stays
+// clickable. That way the track never steals events from the other handle —
+// you can drag either thumb anywhere along the rail.
 function RangeSlider({ label, min, max, value, onChange, format }: {
   label: string; min: number; max: number; value: [number,number];
   onChange: (v:[number,number])=>void; format: (n:number)=>string;
 }) {
+  // Guard: if min===max the slider is meaningless; render a disabled label.
+  if (max <= min) {
+    return (
+      <div className="mb-5">
+        <span className="text-xs font-black" style={{ color:"#2A3887" }}>{label}</span>
+        <p className="text-xs mt-1" style={{ color:"#999" }}>—</p>
+      </div>
+    );
+  }
+
+  const step = Math.max(1, Math.floor((max - min) / 200));   // ~200 stops across the range
+
   return (
     <div className="mb-5">
       <div className="flex justify-between items-center mb-2">
@@ -173,26 +105,48 @@ function RangeSlider({ label, min, max, value, onChange, format }: {
         <span className="text-xs font-bold" style={{ color:"#29A9DF" }}>{format(value[0])} – {format(value[1])}</span>
       </div>
       <div className="relative h-5 flex items-center">
+        {/* rail */}
         <div className="absolute w-full h-1.5 rounded-full" style={{ background:"#E2F1FC" }} />
-        <div className="absolute h-1.5 rounded-full" style={{
+        {/* selected fill */}
+        <div className="absolute h-1.5 rounded-full pointer-events-none" style={{
           background:"linear-gradient(90deg,#2A3887,#29A9DF)",
           left:`${((value[0]-min)/(max-min))*100}%`,
-          right:`${100-((value[1]-min)/(max-min))*100}%`
+          right:`${100-((value[1]-min)/(max-min))*100}%`,
         }} />
         {[0,1].map(idx => (
-          <input key={idx} type="range" min={min} max={max}
+          <input key={idx} type="range" min={min} max={max} step={step}
             value={value[idx]}
             onChange={e => {
               const v = parseInt(e.target.value);
               const next:[number,number] = [...value] as [number,number];
-              if (idx===0) next[0] = Math.min(v, value[1]-1);
-              else next[1] = Math.max(v, value[0]+1);
+              if (idx === 0) next[0] = Math.min(v, value[1] - step);
+              else           next[1] = Math.max(v, value[0] + step);
               onChange(next);
             }}
-            className="absolute w-full appearance-none bg-transparent cursor-pointer"
-            style={{ zIndex: idx===1 ? 3 : 2, height:"20px" }} />
+            className="jp-range absolute w-full appearance-none bg-transparent"
+            style={{ zIndex: 3, height: 20 }} />
         ))}
       </div>
+      {/* Scoped styles: disable pointer events on the track so both handles
+          can be grabbed anywhere along the rail, keep the thumb interactive. */}
+      <style jsx>{`
+        .jp-range { pointer-events: none; }
+        .jp-range::-webkit-slider-thumb {
+          appearance: none; -webkit-appearance: none;
+          height: 18px; width: 18px; border-radius: 50%;
+          background: #2A3887; border: 2px solid white;
+          box-shadow: 0 2px 6px rgba(42,56,135,0.35);
+          pointer-events: auto; cursor: pointer;
+        }
+        .jp-range::-moz-range-thumb {
+          height: 18px; width: 18px; border-radius: 50%;
+          background: #2A3887; border: 2px solid white;
+          box-shadow: 0 2px 6px rgba(42,56,135,0.35);
+          pointer-events: auto; cursor: pointer;
+        }
+        .jp-range::-webkit-slider-runnable-track { background: transparent; }
+        .jp-range::-moz-range-track { background: transparent; }
+      `}</style>
     </div>
   );
 }
@@ -256,6 +210,10 @@ export default function StorePage() {
   const [aiActive, setAiActive] = useState(false);
   const [searchCount, setSearchCount] = useState(0);
   const [lastResultsCount, setLastResultsCount] = useState(-1);
+
+  // Pagination — 12 units per page with page-number navigation.
+  const PAGE_SIZE = 12;
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Helper to get a filter value with its default
   const getVal = useCallback((key: string) => {
@@ -518,6 +476,17 @@ export default function StorePage() {
     return new Date(b.created_at).getTime()-new Date(a.created_at).getTime();
   });
 
+  // Paginate the filtered list
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageStart  = (currentPage - 1) * PAGE_SIZE;
+  const pagedUnits = filtered.slice(pageStart, pageStart + PAGE_SIZE);
+
+  // Whenever filter/sort changes and the current page would be past the end,
+  // snap back to page 1 so the visitor doesn't land on a blank page.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1);
+  }, [filtered.length, totalPages, currentPage]);
+
   // Active filter count (advanced filters only)
   const activeCount = filterConfigs.filter(cfg => {
     if (cfg.is_quick_filter && cfg.filter_key !== 'trending') return false;
@@ -572,7 +541,21 @@ export default function StorePage() {
           </div>
         );
 
-      case 'select':
+      case 'select': {
+        // If the admin didn't configure a default "All" option, prepend a
+        // blank "All <label>" entry so the dropdown doesn't silently apply
+        // the first real option. Only do this for data filters (with a
+        // field_name) that don't already have a default value or an "All"
+        // option — don't touch sort/select pickers.
+        const opts = cfg.options || [];
+        const hasAll = opts.some(o =>
+          o.value === "" || /^all\b/i.test(o.label) || /^all\b/i.test(o.value)
+        );
+        const hasDefault = cfg.config?.default_value !== undefined && cfg.config.default_value !== "";
+        const needsAll = !!cfg.field_name && !hasAll && !hasDefault;
+        const renderedOpts = needsAll
+          ? [{ value: "", label: `All ${cfg.filter_label}` }, ...opts]
+          : opts;
         if (isQuickBar) {
           return (
             <div key={cfg.filter_key} className="flex items-center gap-1.5">
@@ -580,7 +563,7 @@ export default function StorePage() {
               <select value={val || ''} onChange={e => setVal(cfg.filter_key, e.target.value)}
                 className="px-3 py-1.5 rounded-xl text-xs font-bold border focus:outline-none"
                 style={{ borderColor:"#ddd",color:"#555" }}>
-                {(cfg.options || []).map(opt => (
+                {renderedOpts.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
@@ -593,12 +576,13 @@ export default function StorePage() {
             <select value={val || ''} onChange={e => setVal(cfg.filter_key, e.target.value)}
               className="w-full px-3 py-2 rounded-xl text-xs font-bold border focus:outline-none"
               style={{ borderColor:"#E2F1FC",color:"#555",background:"#F8F9FB" }}>
-              {(cfg.options || []).map(opt => (
+              {renderedOpts.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
         );
+      }
 
       case 'checkbox':
         return (
@@ -743,7 +727,7 @@ export default function StorePage() {
       </div>
 
       {/* ── Grid ── */}
-      <div className="max-w-7xl mx-auto px-6 py-10">
+      <div className="max-w-7xl mx-auto px-6 py-10" data-store-grid-top>
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1,2,3,4,5,6].map(i => (
@@ -762,11 +746,35 @@ export default function StorePage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map(unit => (
-              <UnitCard key={unit.id} unit={unit} isTrending={trendingIds.has(unit.id)} onCompareChange={() => {}} />
-            ))}
-          </div>
+          <>
+            <div className="flex items-baseline justify-between mb-4">
+              <p className="text-sm" style={{ color: "#666" }}>
+                Showing <strong>{pageStart + 1}</strong>–<strong>{Math.min(pageStart + PAGE_SIZE, filtered.length)}</strong> of <strong>{filtered.length}</strong> units
+              </p>
+              {totalPages > 1 && (
+                <p className="text-xs" style={{ color: "#999" }}>Page {currentPage} / {totalPages}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pagedUnits.map(unit => (
+                <UnitCard key={unit.id} unit={unit} isTrending={trendingIds.has(unit.id)} onCompareChange={() => {}} />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onChange={(p) => {
+                  setCurrentPage(p);
+                  // Scroll results back into view so the visitor sees the new cards.
+                  if (typeof window !== "undefined") {
+                    window.scrollTo({ top: (document.querySelector("[data-store-grid-top]") as HTMLElement)?.offsetTop - 120 || 0, behavior: "smooth" });
+                  }
+                }}
+              />
+            )}
+          </>
         )}
       </div>
 

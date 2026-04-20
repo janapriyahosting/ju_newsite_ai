@@ -310,7 +310,6 @@ export default function DashboardPage() {
                       <div><p className="text-xs text-gray-400">Total Price</p><p className="font-black" style={{ color: "#2A3887" }}>{fmtP(b.total_amount)}</p></div>
                       <div><p className="text-xs text-gray-400">Token Amount</p><p className="font-black" style={{ color: "#16A34A" }}>{fmtP(b.booking_amount)}</p></div>
                       {parseFloat(b.discount_amount) > 0 && <div><p className="text-xs text-gray-400">Discount</p><p className="font-black text-green-600">- {fmtP(b.discount_amount)}</p></div>}
-                      {u.price_per_sqft && <div><p className="text-xs text-gray-400">Rate/sqft</p><p className="font-black" style={{ color: "#2A3887" }}>{fmtP(u.price_per_sqft)}</p></div>}
                     </div>
                   </div>
 
