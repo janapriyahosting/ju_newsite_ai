@@ -10,6 +10,7 @@ import { UnitMediaProvider, UnitMediaThumbs, UnitMediaMain } from "@/components/
 import RiseUpCalculator from "@/components/RiseUpCalculator";
 import HomeLoanEMICalculator from "@/components/HomeLoanEMICalculator";
 import DynamicFields from "@/components/DynamicFields";
+import ProactiveAssistant from "@/components/ProactiveAssistant";
 import { customerApi } from "@/lib/customerAuth";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
@@ -651,6 +652,16 @@ export default function UnitDetailPage() {
       )}
 
       <Footer />
+      <ProactiveAssistant
+        pageContext={{
+          page: "unit",
+          unit_id: unit?.id,
+          unit_number: unit?.unit_number,
+          project_id: towerData?.project_id,
+          project_name: towerData?.project_name,
+          tower_id: unit?.tower_id,
+        }}
+      />
     </main>
   );
 }

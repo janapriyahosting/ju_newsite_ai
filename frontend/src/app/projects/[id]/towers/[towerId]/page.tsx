@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import DynamicFields from '@/components/DynamicFields';
+import ProactiveAssistant from '@/components/ProactiveAssistant';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const MEDIA = "";
@@ -260,6 +261,15 @@ export default function TowerDetailPage() {
         )}
       </section>
       <Footer />
+      <ProactiveAssistant
+        pageContext={{
+          page: "tower",
+          tower_id: tower?.id,
+          project_id: project?.id,
+          project_slug: project?.slug,
+          project_name: project?.name,
+        }}
+      />
     </div>
 );
 }
