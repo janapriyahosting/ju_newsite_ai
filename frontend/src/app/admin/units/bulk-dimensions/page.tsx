@@ -22,7 +22,7 @@ function fmtDim(val: string, unit: string): string {
 
 type ParsedRow = {
   project_name: string; tower_name: string; unit_number: string;
-  room: string; width: string; length: string; unit: string;
+  room_number: string; room: string; width: string; length: string; unit: string;
 };
 type GroupedUnit = {
   key: string; project_name: string; tower_name: string;
@@ -49,6 +49,7 @@ function parseCSVText(text: string): { rows: ParsedRow[]; error: string } {
       project_name: row.project_name,
       tower_name:   row.tower_name,
       unit_number:  row.unit_number,
+      room_number:  row.room_number || '',
       room:         row.room,
       width:        row.width  || '0',
       length:       row.length || '0',
@@ -146,7 +147,7 @@ export default function BulkDimensionsPage() {
             <p className="font-bold text-[#273b84] text-sm">Required Columns</p>
             <p className="text-gray-500 text-xs mt-0.5">
               <span className="font-mono text-red-600">project_name, tower_name, unit_number, room, width, length</span>
-              {' '}— Optional: <span className="font-mono text-[#273b84]">unit</span> (ft / m / in, defaults to ft)
+              {' '}— Optional: <span className="font-mono text-[#273b84]">room_number</span> (identifier matching the 3D image label, e.g. 1, 2, 3), <span className="font-mono text-[#273b84]">unit</span> (ft / m / in, defaults to ft)
             </p>
             <p className="text-gray-400 text-xs mt-1">
               Dimensions are entered as <span className="font-mono">feet.inches</span> — e.g. <span className="font-mono">10.6</span> displays as <strong>10'6"</strong>
@@ -157,17 +158,17 @@ export default function BulkDimensionsPage() {
           <table className="text-xs font-mono w-full text-left whitespace-nowrap">
             <thead>
               <tr className="text-[#273b84] font-bold">
-                {['project_name','tower_name','unit_number','room','width','length','unit'].map(h => (
+                {['project_name','tower_name','unit_number','room_number','room','width','length','unit'].map(h => (
                   <td key={h} className="pr-5 pb-1.5">{h}</td>
                 ))}
               </tr>
             </thead>
             <tbody className="text-gray-600">
               {[
-                ['Janapriya Heights','Tower A','A101','Master Bedroom','12.6','14.0','ft'],
-                ['Janapriya Heights','Tower A','A101','Living Room','16.0','20.3','ft'],
-                ['Janapriya Heights','Tower A','A102','Master Bedroom','12.6','14.0','ft'],
-                ['Janapriya Heights','Tower B','A101','Master Bedroom','11.6','13.0','ft'],
+                ['Janapriya Heights','Tower A','A101','1','Master Bedroom','12.6','14.0','ft'],
+                ['Janapriya Heights','Tower A','A101','2','Living Room','16.0','20.3','ft'],
+                ['Janapriya Heights','Tower A','A102','1','Master Bedroom','12.6','14.0','ft'],
+                ['Janapriya Heights','Tower B','A101','1','Master Bedroom','11.6','13.0','ft'],
               ].map((r, i) => (
                 <tr key={i}>
                   {r.map((c, j) => <td key={j} className="pr-5 py-0.5">{c}</td>)}
@@ -230,8 +231,13 @@ export default function BulkDimensionsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {g.dims.map((d, i) => (
-                    <span key={i} className="px-3 py-1 rounded-full text-xs"
+                    <span key={i} className="px-3 py-1 rounded-full text-xs inline-flex items-center gap-1.5"
                       style={{ background: '#f4f6fb', color: '#1e293b', border: '1px solid #e4e9f2' }}>
+                      {d.room_number && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black text-white" style={{ background: '#273b84' }}>
+                          {d.room_number}
+                        </span>
+                      )}
                       {d.room}: <strong>{fmtDim(d.width, d.unit)}</strong> × <strong>{fmtDim(d.length, d.unit)}</strong>
                     </span>
                   ))}

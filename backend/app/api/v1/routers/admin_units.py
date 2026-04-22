@@ -20,11 +20,24 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 async def list_units(
     page: int = 1, page_size: int = 20,
     status: str = "", unit_type: str = "",
+    project_id: str = "", tower_id: str = "",
     db: AsyncSession = Depends(get_db), admin=Depends(verify_admin_token)
 ):
     q = select(Unit)
     if status:    q = q.where(Unit.status == status)
     if unit_type: q = q.where(Unit.unit_type == unit_type)
+    if tower_id:
+        try:
+            q = q.where(Unit.tower_id == UUID(tower_id))
+        except ValueError:
+            raise HTTPException(400, "Invalid tower_id")
+    elif project_id:
+        try:
+            pid = UUID(project_id)
+        except ValueError:
+            raise HTTPException(400, "Invalid project_id")
+        tower_ids_sub = select(Tower.id).where(Tower.project_id == pid)
+        q = q.where(Unit.tower_id.in_(tower_ids_sub))
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar()
     result = await db.execute(
         q.order_by(Unit.created_at.desc())
@@ -82,7 +95,8 @@ async def list_units_all(
 ):
     """Alias for list_units — /units/all maps to the same list endpoint."""
     return await list_units(page=page, page_size=page_size, status=status,
-                            unit_type=unit_type, db=db, admin=admin)
+                            unit_type=unit_type, project_id=project_id,
+                            tower_id=tower_id, db=db, admin=admin)
 
 @router.get("/units/{unit_id}")
 async def get_unit_admin(
@@ -164,7 +178,8 @@ async def bulk_upload_dimensions(
     """
     Bulk upload room dimensions for multiple units via CSV or XLSX.
     Required columns: project_name, tower_name, unit_number, room, width, length
-    Optional column:  unit (ft/m/in — defaults to ft)
+    Optional columns: room_number (identifier matching the 3D image label — e.g. 1, 2, 3),
+                      unit (ft/m/in — defaults to ft)
     The combination of project_name + tower_name + unit_number is the unique key.
     """
     filename = (file.filename or "").lower()
@@ -224,6 +239,7 @@ async def bulk_upload_dimensions(
             continue
 
         dim_unit = row.get("unit", "ft").strip() or "ft"
+        room_number = row.get("room_number", "").strip()
         key = (project_name.lower(), tower_name.lower(), unit_num)
         if key not in grouped:
             grouped[key] = {
@@ -232,9 +248,12 @@ async def bulk_upload_dimensions(
                 "unit_number":  unit_num,
                 "dims": [],
             }
-        grouped[key]["dims"].append({
+        dim_entry = {
             "room": room, "width": width, "length": length, "unit": dim_unit,
-        })
+        }
+        if room_number:
+            dim_entry["room_number"] = room_number
+        grouped[key]["dims"].append(dim_entry)
 
     if not grouped:
         raise HTTPException(400, f"No valid rows found. Errors: {'; '.join(row_errors[:5])}")
@@ -326,14 +345,14 @@ async def bulk_upload_dimensions(
 async def download_dimensions_template(admin=Depends(verify_admin_token)):
     """Return a sample CSV template for bulk dimension upload."""
     lines = [
-        "project_name,tower_name,unit_number,room,width,length,unit",
-        "Janapriya Heights,Tower A,A101,Master Bedroom,12.6,14.0,ft",
-        "Janapriya Heights,Tower A,A101,Living Room,16.0,20.3,ft",
-        "Janapriya Heights,Tower A,A101,Kitchen,10.0,12.0,ft",
-        "Janapriya Heights,Tower A,A101,Balcony,6.0,10.0,ft",
-        "Janapriya Heights,Tower A,A102,Master Bedroom,12.6,14.0,ft",
-        "Janapriya Heights,Tower A,A102,Living Room,16.0,20.3,ft",
-        "Janapriya Heights,Tower B,A101,Master Bedroom,11.6,13.0,ft",
+        "project_name,tower_name,unit_number,room_number,room,width,length,unit",
+        "Janapriya Heights,Tower A,A101,1,Master Bedroom,12.6,14.0,ft",
+        "Janapriya Heights,Tower A,A101,2,Living Room,16.0,20.3,ft",
+        "Janapriya Heights,Tower A,A101,3,Kitchen,10.0,12.0,ft",
+        "Janapriya Heights,Tower A,A101,4,Balcony,6.0,10.0,ft",
+        "Janapriya Heights,Tower A,A102,1,Master Bedroom,12.6,14.0,ft",
+        "Janapriya Heights,Tower A,A102,2,Living Room,16.0,20.3,ft",
+        "Janapriya Heights,Tower B,A101,1,Master Bedroom,11.6,13.0,ft",
     ]
     from fastapi.responses import Response
     return Response(

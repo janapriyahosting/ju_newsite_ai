@@ -42,7 +42,7 @@ const AMENITY_PRESETS = [
   'Amphitheatre','Multipurpose Hall','Co-working Space','Rooftop Garden',
 ];
 
-type Dim = { room: string; width: string; length: string; unit: string };
+type Dim = { room_number: string; room: string; width: string; length: string; unit: string };
 type Tab = 'dimensions' | 'amenities';
 
 export default function UnitEditorPage() {
@@ -68,7 +68,8 @@ export default function UnitEditorPage() {
     adminFetch('/admin/units/' + unitId).then(r => r.json()).then(d => {
       setUnit(d);
       const existing = Array.isArray(d.dimensions) ? d.dimensions : [];
-      setDims(existing.map((x: any) => ({
+      setDims(existing.map((x: any, idx: number) => ({
+        room_number: x.room_number != null ? String(x.room_number) : String(idx + 1),
         room: x.room || '', width: String(x.width || ''),
         length: String(x.length || ''), unit: x.unit || 'ft',
       })));
@@ -78,7 +79,8 @@ export default function UnitEditorPage() {
   }, [unitId]);
 
   // Dimensions handlers
-  const addRoom = (room = '') => setDims(p => [...p, { room, width: '', length: '', unit: 'ft' }]);
+  const addRoom = (room = '') =>
+    setDims(p => [...p, { room_number: String(p.length + 1), room, width: '', length: '', unit: 'ft' }]);
   const updateDim = (i: number, f: keyof Dim, v: string) =>
     setDims(p => p.map((d, idx) => idx === i ? { ...d, [f]: v } : d));
   const removeDim = (i: number) => setDims(p => p.filter((_, idx) => idx !== i));
@@ -101,6 +103,7 @@ export default function UnitEditorPage() {
     try {
       // Save dimensions
       const dimPayload = dims.filter(d => d.room.trim()).map(d => ({
+        room_number: d.room_number?.trim() || '',
         room: d.room.trim(), width: parseFloat(d.width) || 0,
         length: parseFloat(d.length) || 0, unit: d.unit || 'ft',
       }));
@@ -170,13 +173,18 @@ export default function UnitEditorPage() {
         <>
           <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid #e4e9f2' }}>
             <div className="grid gap-3 px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-widest border-b"
-              style={{ background: '#f4f6fb', borderColor: '#e4e9f2', gridTemplateColumns: '1fr 90px 90px 80px 70px' }}>
+              style={{ background: '#f4f6fb', borderColor: '#e4e9f2', gridTemplateColumns: '70px 1fr 90px 90px 80px 70px' }}>
+              <div className="text-center">Room #</div>
               <div>Room / Space</div><div className="text-center">Width</div>
               <div className="text-center">Length</div><div className="text-center">Unit</div><div></div>
             </div>
             {dims.map((d, i) => (
               <div key={i} className="grid gap-3 px-5 py-3 items-center border-b hover:bg-[#f8f9fd]"
-                style={{ borderColor: '#e4e9f2', gridTemplateColumns: '1fr 90px 90px 80px 70px' }}>
+                style={{ borderColor: '#e4e9f2', gridTemplateColumns: '70px 1fr 90px 90px 80px 70px' }}>
+                <input value={d.room_number} onChange={e => updateDim(i, 'room_number', e.target.value)}
+                  placeholder="#" title="Room number — matches the label on the 3D image"
+                  className="w-full px-2 py-2 rounded-lg text-sm text-[#1e293b] text-center bg-white focus:outline-none focus:border-[#273b84]"
+                  style={{ border: '1px solid #d1d9f0' }} />
                 <input list="room-list" value={d.room} onChange={e => updateDim(i, 'room', e.target.value)}
                   placeholder="e.g. Master Bedroom"
                   className="w-full px-3 py-2 rounded-lg text-sm text-[#1e293b] bg-white focus:outline-none focus:border-[#273b84]"
@@ -247,7 +255,14 @@ export default function UnitEditorPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {filledDims.map((d, i) => (
                   <div key={i} className="rounded-xl px-4 py-3 bg-[#f4f6fb]" style={{ border: '1px solid #e4e9f2' }}>
-                    <p className="text-xs text-gray-400 mb-1">{d.room}</p>
+                    <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
+                      {d.room_number && (
+                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black text-white" style={{ background: '#273b84' }}>
+                          {d.room_number}
+                        </span>
+                      )}
+                      {d.room}
+                    </p>
                     <p className="font-black text-[#273b84]">
                       {fmtDim(d.width, d.unit)} × {fmtDim(d.length, d.unit)}
                     </p>
