@@ -18,14 +18,20 @@ export default function UnitsPage() {
   const [page, setPage] = useState(1);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [filterProject, setFilterProject] = useState('');
+  const [filterTower, setFilterTower] = useState('');
+  const [projects, setProjects] = useState<any[]>([]);
+  const [towers, setTowers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string|null>(null);
 
   const fetchUnits = async () => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), page_size: '15' });
-    if (filterStatus) params.set('status', filterStatus);
-    if (filterType) params.set('unit_type', filterType);
+    if (filterStatus)  params.set('status', filterStatus);
+    if (filterType)    params.set('unit_type', filterType);
+    if (filterProject) params.set('project_id', filterProject);
+    if (filterTower)   params.set('tower_id', filterTower);
     const res = await adminApi(`/admin/units?${params}`);
     const data = await res.json();
     setUnits(data.items || []);
@@ -33,7 +39,22 @@ export default function UnitsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchUnits(); }, [page, filterStatus, filterType]);
+  useEffect(() => {
+    adminApi('/admin/projects').then(r => r.json()).then(d => setProjects(d.items || []));
+  }, []);
+
+  useEffect(() => {
+    const path = filterProject ? `/admin/towers?project_id=${filterProject}` : '/admin/towers';
+    adminApi(path).then(r => r.json()).then(d => setTowers(d.items || []));
+  }, [filterProject]);
+
+  useEffect(() => {
+    if (filterTower && towers.length > 0 && !towers.some(t => t.id === filterTower)) {
+      setFilterTower('');
+    }
+  }, [towers, filterTower]);
+
+  useEffect(() => { fetchUnits(); }, [page, filterStatus, filterType, filterProject, filterTower]);
 
   const updateUnit = async (id: string, field: string, value: any) => {
     setUpdating(id);
@@ -55,6 +76,19 @@ export default function UnitsPage() {
             style={{ background: '#273b84' }}>
             📐 Bulk Dimensions
           </Link>
+          <select value={filterProject}
+            onChange={e => { setFilterProject(e.target.value); setFilterTower(''); setPage(1); }}
+            className="bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
+            <option value="">All Projects</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select value={filterTower}
+            onChange={e => { setFilterTower(e.target.value); setPage(1); }}
+            className="bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm disabled:opacity-50"
+            disabled={towers.length === 0}>
+            <option value="">All Towers</option>
+            {towers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
           <select value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1); }}
             className="bg-white border border-gray-300 text-gray-900 rounded-lg px-3 py-2 text-sm">
             <option value="">All Types</option>
@@ -65,6 +99,13 @@ export default function UnitsPage() {
             <option value="">All Status</option>
             {STATUSES.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>)}
           </select>
+          {(filterProject || filterTower || filterType || filterStatus) && (
+            <button
+              onClick={() => { setFilterProject(''); setFilterTower(''); setFilterType(''); setFilterStatus(''); setPage(1); }}
+              className="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-[#273b84] hover:bg-gray-100">
+              ✕ Clear
+            </button>
+          )}
         </div>
       </div>
       <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">

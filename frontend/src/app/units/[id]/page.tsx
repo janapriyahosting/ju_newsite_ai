@@ -605,13 +605,20 @@ export default function UnitDetailPage() {
                   <h3 className="text-sm font-black mb-3 flex items-center gap-2" style={{color:"#262262"}}>
                     📐 Room Dimensions
                   </h3>
+                  <p className="text-[11px] mb-2" style={{color:"#94a3b8"}}>Numbers match the labels on the 3D floor-plan image above.</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {unit.dimensions.map((d: any, idx: number) => (
-                      <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
-                        <p className="text-xs font-bold uppercase tracking-wide mb-1" style={{color:"#94a3b8"}}>{d.room}</p>
-                        <p className="text-sm font-black" style={{color:"#2A3887", whiteSpace:"nowrap"}}>{toFtIn(d.width, d.unit)} <span style={{color:"#94a3b8", fontWeight:400}}>×</span> {toFtIn(d.length, d.unit)}</p>
-                      </div>
-                    ))}
+                    {unit.dimensions.map((d: any, idx: number) => {
+                      const roomNo = d.room_number != null && String(d.room_number).trim() !== "" ? String(d.room_number) : String(idx + 1);
+                      return (
+                        <div key={idx} className="rounded-xl px-3 py-2.5" style={{background:"white", border:"1px solid #E2F1FC"}}>
+                          <p className="text-xs font-bold uppercase tracking-wide mb-1 flex items-center gap-1.5" style={{color:"#94a3b8"}}>
+                            <span className="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1 rounded-full text-[11px] font-black text-white" style={{background:"#2A3887"}}>{roomNo}</span>
+                            <span>{d.room}</span>
+                          </p>
+                          <p className="text-sm font-black" style={{color:"#2A3887", whiteSpace:"nowrap"}}>{toFtIn(d.width, d.unit)} <span style={{color:"#94a3b8", fontWeight:400}}>×</span> {toFtIn(d.length, d.unit)}</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
