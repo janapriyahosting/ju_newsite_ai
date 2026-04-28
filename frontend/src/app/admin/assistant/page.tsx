@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { adminApi } from '@/lib/adminAuth';
+import AssistantFlowCanvas from '@/components/admin/AssistantFlowCanvas';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
@@ -189,6 +190,7 @@ export default function AssistantAdminPage() {
   const [saving, setSaving]       = useState(false);
   const [preview, setPreview]     = useState(false);
   const [previewStepId, setPreviewStepId] = useState('');
+  const [view, setView]           = useState<'list' | 'canvas'>('list');
 
   async function loadFlows() {
     setLoading(true);
@@ -369,33 +371,57 @@ export default function AssistantAdminPage() {
 
             {/* Steps */}
             <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <h3 className="text-gray-900 font-bold">Steps ({editing.steps.length})</h3>
-                <div className="flex gap-2">
-                  <button onClick={() => setPreview(!preview)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${preview ? 'bg-[#273b84]/20 border-[#273b84] text-[#273b84]' : 'border-gray-300 text-gray-600'}`}>
-                    {preview ? '✓ Preview on' : '👁 Preview'}
-                  </button>
-                  <button onClick={addStep}
-                    className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold border border-gray-300">
-                    + Add Step
-                  </button>
+                <div className="flex gap-2 items-center">
+                  <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
+                    <button onClick={() => setView('list')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold ${view === 'list' ? 'bg-white text-[#273b84] shadow-sm' : 'text-gray-500'}`}>
+                      📋 List
+                    </button>
+                    <button onClick={() => setView('canvas')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold ${view === 'canvas' ? 'bg-white text-[#273b84] shadow-sm' : 'text-gray-500'}`}>
+                      🎨 Canvas
+                    </button>
+                  </div>
+                  {view === 'list' && (
+                    <>
+                      <button onClick={() => setPreview(!preview)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${preview ? 'bg-[#273b84]/20 border-[#273b84] text-[#273b84]' : 'border-gray-300 text-gray-600'}`}>
+                        {preview ? '✓ Preview on' : '👁 Preview'}
+                      </button>
+                      <button onClick={addStep}
+                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold border border-gray-300">
+                        + Add Step
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {editing.steps.map((step: any, i: number) => (
-                <StepEditor key={step.id + i} step={step} steps={editing.steps}
-                  onChange={updated => updateStep(i, updated)}
-                  onDelete={() => deleteStep(i)}
-                  onMoveUp={() => moveStep(i, -1)}
-                  onMoveDown={() => moveStep(i, 1)}
-                  isFirst={i === 0} isLast={i === editing.steps.length - 1} />
-              ))}
+              {view === 'list' ? (
+                <>
+                  {editing.steps.map((step: any, i: number) => (
+                    <StepEditor key={step.id + i} step={step} steps={editing.steps}
+                      onChange={updated => updateStep(i, updated)}
+                      onDelete={() => deleteStep(i)}
+                      onMoveUp={() => moveStep(i, -1)}
+                      onMoveDown={() => moveStep(i, 1)}
+                      isFirst={i === 0} isLast={i === editing.steps.length - 1} />
+                  ))}
 
-              {editing.steps.length === 0 && (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  No steps yet. Click "+ Add Step" to start building.
-                </div>
+                  {editing.steps.length === 0 && (
+                    <div className="text-center py-8 text-gray-500 text-sm">
+                      No steps yet. Click "+ Add Step" to start building.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <AssistantFlowCanvas
+                  flowId={editing.id}
+                  steps={editing.steps}
+                  onStepsChange={steps => setEditing({ ...editing, steps })}
+                />
               )}
             </div>
 

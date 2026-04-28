@@ -84,17 +84,37 @@ Return only the JSON object, nothing else."""
                 text = text[4:]
         result = json.loads(text.strip())
 
+        # Drop generic unit_type values like "Flats", "Apartment", "Home" — the
+        # DB stores specific types only ("1 BHK", "3BHK", "Villa", "Plot"), so
+        # an `ilike '%Flats%'` filter would match nothing and zero out the
+        # entire result set. Groq emits these for queries like "flats in 1cr".
+        ut = result.get("unit_type")
+        if isinstance(ut, str) and re.fullmatch(
+            r'\s*(?:flats?|apartments?|apts?|homes?|houses?|properties|property|units?|residences?|dwellings?)\s*',
+            ut, flags=re.IGNORECASE,
+        ):
+            print(f"[Groq] ⚠️ Dropping generic unit_type={ut!r}")
+            result.pop("unit_type", None)
+
         # Safety check: if query has "under/below/upto" → ensure no min_price only
         # But skip if "above/over/minimum" is also present (user explicitly wants min)
         q = query.lower()
         under_words = ["under","below","upto","up to","within","not more","less than"]
-        above_words_check = ["above","over","minimum","min","atleast","starting"]
+        above_words_check = ["above","over","minimum","min","atleast","starting","more than","at least"]
         has_under = any(w in q for w in under_words)
         has_above = any(w in q for w in above_words_check)
         if has_under and not has_above and "min_price" in result and "max_price" not in result:
             # Groq confused min/max — swap it
             result["max_price"] = result.pop("min_price")
             print(f"[Groq] ⚠️ Auto-corrected min_price → max_price")
+        elif (not has_under and not has_above
+              and "min_price" in result and "max_price" not in result):
+            # No direction word — queries like "flats in 1cr", "homes around 80L",
+            # "1 crore budget". Treat the figure as a budget ceiling, which is
+            # how visitors usually mean it. Without this, Groq's min_price
+            # interpretation excludes everything below the stated price.
+            result["max_price"] = result.pop("min_price")
+            print(f"[Groq] ⚠️ No direction word — treating price as max_price (budget)")
 
         # Safety check: if query mentions price but Groq extracted no price fields, supplement with regex
         price_keywords = ["lakh","lakhs","lac","crore","crores"," l "," cr ","budget"]
@@ -106,6 +126,25 @@ Return only the JSON object, nothing else."""
                 if field in regex_filters:
                     result[field] = regex_filters[field]
                     print(f"[Groq] ⚠️ Groq missed price — supplemented {field}={regex_filters[field]} via regex")
+
+        # Groq (llama 3.1 8B) sometimes describes a facing / unit_type / bedrooms
+        # in the message but forgets to emit the actual JSON field. Backfill
+        # those from regex when they're clearly in the query.
+        regex_backfill = None
+        for field, hints in [
+            ("facing",    ["east", "west", "north", "south"]),
+            ("unit_type", ["bhk", "villa", "plot", "studio"]),
+            ("bedrooms",  ["bhk"]),
+        ]:
+            if field in result:
+                continue
+            if not any(h in q for h in hints):
+                continue
+            if regex_backfill is None:
+                regex_backfill, _ = parse_with_regex(query)
+            if field in regex_backfill:
+                result[field] = regex_backfill[field]
+                print(f"[Groq] ⚠️ Groq missed {field} — supplemented {field}={regex_backfill[field]} via regex")
 
         print(f"[Search] Using Groq ✅ | {result.get('message','')}")
         return result
@@ -353,13 +392,25 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
         ta_field_id = ta_res.scalar_one_or_none()
 
     conditions = [Unit.status == "available"]
-    if filters_dict.get("unit_type"):    conditions.append(Unit.unit_type.ilike(f"%{filters_dict['unit_type']}%"))
+    if filters_dict.get("unit_type"):
+        # The DB stores both "3 BHK" and "3BHK" forms (legacy data drift), so a
+        # plain `ilike '%3BHK%'` against "3 BHK" misses the row entirely. Strip
+        # spaces on both sides so either spelling matches.
+        ut_norm = re.sub(r'\s+', '', filters_dict["unit_type"]).lower()
+        conditions.append(
+            func.replace(func.lower(Unit.unit_type), ' ', '').ilike(f"%{ut_norm}%")
+        )
     if filters_dict.get("bedrooms"):     conditions.append(Unit.bedrooms == filters_dict["bedrooms"])
     if filters_dict.get("min_area"):     conditions.append(Unit.area_sqft >= filters_dict["min_area"])
     if filters_dict.get("max_area"):     conditions.append(Unit.area_sqft <= filters_dict["max_area"])
     if filters_dict.get("max_down_payment"): conditions.append(Unit.down_payment <= filters_dict["max_down_payment"])
     if filters_dict.get("max_emi"):      conditions.append(Unit.emi_estimate <= filters_dict["max_emi"])
-    if filters_dict.get("facing"):       conditions.append(Unit.facing.ilike(f"%{filters_dict['facing']}%"))
+    if filters_dict.get("facing"):
+        # Same space/punctuation tolerance for "North-East" vs "North East".
+        f_norm = re.sub(r'[^a-z0-9]+', '', filters_dict["facing"].lower())
+        conditions.append(
+            func.regexp_replace(func.lower(Unit.facing), r'[^a-z0-9]+', '', 'g').ilike(f"%{f_norm}%")
+        )
     if filters_dict.get("floor_min"):    conditions.append(Unit.floor_number >= filters_dict["floor_min"])
     if filters_dict.get("floor_max"):    conditions.append(Unit.floor_number <= filters_dict["floor_max"])
 
@@ -392,7 +443,11 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
     if total == 0 and (filters_dict.get("max_price") or filters_dict.get("bedrooms")):
         relaxed = [Unit.status == "available"]
         if filters_dict.get("bedrooms"):  relaxed.append(Unit.bedrooms == filters_dict["bedrooms"])
-        elif filters_dict.get("unit_type"): relaxed.append(Unit.unit_type.ilike(f"%{filters_dict['unit_type']}%"))
+        elif filters_dict.get("unit_type"):
+            ut_norm = re.sub(r'\s+', '', filters_dict["unit_type"]).lower()
+            relaxed.append(
+                func.replace(func.lower(Unit.unit_type), ' ', '').ilike(f"%{ut_norm}%")
+            )
         rq = select(Unit).where(and_(*relaxed)).order_by(Unit.base_price.asc()).limit(5)
         rresult = await db.execute(rq)
         nearby = rresult.scalars().all()
@@ -420,7 +475,11 @@ async def nlp_search(data: NLPSearchRequest, db: AsyncSession = Depends(get_db))
 @router.post("/filter", response_model=SearchResponse)
 async def filter_search(data: FilterSearchRequest, db: AsyncSession = Depends(get_db)):
     conditions = [Unit.status == "available"]
-    if data.unit_type: conditions.append(Unit.unit_type.ilike(f"%{data.unit_type}%"))
+    if data.unit_type:
+        ut_norm = re.sub(r'\s+', '', data.unit_type).lower()
+        conditions.append(
+            func.replace(func.lower(Unit.unit_type), ' ', '').ilike(f"%{ut_norm}%")
+        )
     if data.bedrooms:  conditions.append(Unit.bedrooms == data.bedrooms)
     if data.min_price: conditions.append(Unit.base_price >= data.min_price)
     if data.max_price: conditions.append(Unit.base_price <= data.max_price)
@@ -428,7 +487,11 @@ async def filter_search(data: FilterSearchRequest, db: AsyncSession = Depends(ge
     if data.max_area:  conditions.append(Unit.area_sqft <= data.max_area)
     if data.max_down_payment: conditions.append(Unit.down_payment <= data.max_down_payment)
     if data.max_emi:   conditions.append(Unit.emi_estimate <= data.max_emi)
-    if data.facing:    conditions.append(Unit.facing.ilike(f"%{data.facing}%"))
+    if data.facing:
+        f_norm = re.sub(r'[^a-z0-9]+', '', data.facing.lower())
+        conditions.append(
+            func.regexp_replace(func.lower(Unit.facing), r'[^a-z0-9]+', '', 'g').ilike(f"%{f_norm}%")
+        )
     if data.floor_min: conditions.append(Unit.floor_number >= data.floor_min)
     if data.floor_max: conditions.append(Unit.floor_number <= data.floor_max)
 

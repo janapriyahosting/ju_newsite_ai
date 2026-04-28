@@ -1,15 +1,16 @@
 """
 CMS Admin Router — Pages SEO, Sections, Site Settings
 """
-import uuid
+import os, uuid
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from pydantic import BaseModel
 from backend.app.core.database import get_db
 from backend.app.api.v1.routers.admin_auth import verify_admin_token
-from backend.app.models.cms import CmsPage, CmsSection, SiteSetting, StoreFilter
+from backend.app.models.cms import CmsPage, CmsSection, SiteSetting, StoreFilter, AssistantFact
+from backend.app.models.project import Project
 
 router = APIRouter(tags=["CMS"])
 
@@ -279,6 +280,97 @@ async def reorder_store_filters(data: StoreFilterReorder, db: AsyncSession = Dep
     return {"detail": "Reordered"}
 
 
+# ── Assistant Facts (free-form rules injected into the chat LLM context) ─────
+
+class AssistantFactCreate(BaseModel):
+    project_id: Optional[uuid.UUID] = None  # null → site-wide rule
+    topic: str = "general"                  # pricing, gst, amenities, possession, legal, ...
+    content: str
+    is_active: bool = True
+    sort_order: int = 0
+
+class AssistantFactUpdate(BaseModel):
+    project_id: Optional[uuid.UUID] = None
+    topic: Optional[str] = None
+    content: Optional[str] = None
+    is_active: Optional[bool] = None
+    sort_order: Optional[int] = None
+
+
+def _fact_to_dict(f: AssistantFact, project_name: Optional[str] = None) -> dict:
+    d = row_to_dict(f)
+    d["project_name"] = project_name
+    return d
+
+
+async def _project_name_lookup(db: AsyncSession) -> dict:
+    r = await db.execute(select(Project.id, Project.name))
+    return {pid: name for pid, name in r.all()}
+
+
+@router.get("/cms/assistant-facts")
+async def list_assistant_facts(
+    project_id: Optional[uuid.UUID] = None,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_admin_token),
+):
+    q = select(AssistantFact).order_by(AssistantFact.sort_order, AssistantFact.created_at)
+    if project_id is not None:
+        q = q.where(AssistantFact.project_id == project_id)
+    rows = (await db.execute(q)).scalars().all()
+    name_by_id = await _project_name_lookup(db)
+    return [_fact_to_dict(f, name_by_id.get(f.project_id)) for f in rows]
+
+
+@router.post("/cms/assistant-facts", status_code=201)
+async def create_assistant_fact(
+    data: AssistantFactCreate,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_admin_token),
+):
+    if not data.content.strip():
+        raise HTTPException(400, "Content cannot be empty")
+    f = AssistantFact(**data.model_dump())
+    db.add(f)
+    await db.commit()
+    await db.refresh(f)
+    name_by_id = await _project_name_lookup(db)
+    return _fact_to_dict(f, name_by_id.get(f.project_id))
+
+
+@router.patch("/cms/assistant-facts/{fact_id}")
+async def update_assistant_fact(
+    fact_id: uuid.UUID,
+    data: AssistantFactUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_admin_token),
+):
+    r = await db.execute(select(AssistantFact).where(AssistantFact.id == fact_id))
+    f = r.scalar_one_or_none()
+    if not f:
+        raise HTTPException(404, "Fact not found")
+    for k, v in data.model_dump(exclude_unset=True).items():
+        setattr(f, k, v)
+    await db.commit()
+    await db.refresh(f)
+    name_by_id = await _project_name_lookup(db)
+    return _fact_to_dict(f, name_by_id.get(f.project_id))
+
+
+@router.delete("/cms/assistant-facts/{fact_id}", status_code=204)
+async def delete_assistant_fact(
+    fact_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_admin_token),
+):
+    r = await db.execute(select(AssistantFact).where(AssistantFact.id == fact_id))
+    f = r.scalar_one_or_none()
+    if not f:
+        raise HTTPException(404, "Fact not found")
+    await db.delete(f)
+    await db.commit()
+
+
 # ── Unit field introspection (for building filters from data) ────────────────
 
 # Built-in unit columns that make sense as filters
@@ -456,3 +548,37 @@ async def get_field_values(
         # Add predefined options that don't already exist in values
         all_values = list(dict.fromkeys(str_values + [str(o) for o in predefined]))
         return {"field": field, "values": all_values, "predefined_options": predefined}
+
+
+# ── Site Asset Upload (favicon, icons, logos) ────────────────────────────────
+_SITE_MEDIA_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../media"))
+_SITE_ASSET_ALLOWED = {"image/png", "image/x-icon", "image/vnd.microsoft.icon", "image/ico", "image/jpeg", "image/webp", "image/svg+xml"}
+
+@router.post("/cms/upload-site-asset")
+async def upload_site_asset(
+    file: UploadFile = File(...),
+    setting_key: str = Query(..., description="Setting key to update, e.g. favicon_url"),
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(verify_admin_token),
+):
+    import mimetypes as _mt
+    ct = file.content_type or _mt.guess_type(file.filename or "")[0] or ""
+    if ct not in _SITE_ASSET_ALLOWED:
+        raise HTTPException(400, f"File type not allowed: {ct}. Use PNG, ICO, JPEG, WebP, or SVG.")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 5MB)")
+    ext = os.path.splitext(file.filename or "file")[1].lower() or ".png"
+    filename = f"{setting_key}{ext}"
+    folder = os.path.join(_SITE_MEDIA_ROOT, "site")
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, filename), "wb") as f:
+        f.write(content)
+    url = f"/media/site/{filename}"
+    # Update the site setting
+    r = await db.execute(select(SiteSetting).where(SiteSetting.setting_key == setting_key))
+    s = r.scalar_one_or_none()
+    if s:
+        s.setting_value = url
+    await db.commit()
+    return {"url": url, "setting_key": setting_key}

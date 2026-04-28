@@ -24,6 +24,8 @@ const navItems = [
 { href: '/admin/sections',        label: 'Sections',         icon: '🧩' },
   { href: '/admin/notifications', label: 'Notifications', icon: '🔔' },
   { href: '/admin/assistant',   label: 'AI Assistant', icon: '🤖' },
+  { href: '/admin/assistant-content', label: 'Widget Content', icon: '🎨' },
+  { href: '/admin/assistant-knowledge', label: 'Assistant Knowledge', icon: '📚' },
   { href: '/admin/ai-usage',    label: 'AI Usage',     icon: '📡' },
   { href: '/admin/assistant-chats', label: 'Chat Logs', icon: '💬' },
   { href: '/admin/nlp-training', label: 'NLP Training', icon: '🧠' },

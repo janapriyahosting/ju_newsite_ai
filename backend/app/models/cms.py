@@ -1,9 +1,10 @@
 """
-CMS Models: cms_pages, cms_sections, site_settings, store_filters
+CMS Models: cms_pages, cms_sections, site_settings, store_filters,
+            assistant_facts
 """
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Text, Boolean, DateTime, JSON, Integer
+from sqlalchemy import Column, String, Text, Boolean, DateTime, JSON, Integer, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from backend.app.core.database import Base
 
@@ -51,6 +52,25 @@ class SiteSetting(Base):
     sort_order    = Column(String(10), default="0")
     created_at    = Column(DateTime, default=datetime.utcnow)
     updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AssistantFact(Base):
+    """Free-form fact injected into the chat assistant's site context.
+    `project_id` scopes the fact to a specific project (e.g. "Bahiti has no
+    GST"); leave it NULL for site-wide rules ("Listed price includes GST and
+    amenities unless noted otherwise"). Active rows are loaded on every
+    chat call, so admins can update without redeploying."""
+    __tablename__ = "assistant_facts"
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id  = Column(UUID(as_uuid=True),
+                         ForeignKey("projects.id", ondelete="CASCADE"),
+                         nullable=True, index=True)
+    topic       = Column(String(100), nullable=False, default="general")  # pricing, gst, amenities, possession, legal, ...
+    content     = Column(Text, nullable=False)
+    is_active   = Column(Boolean, default=True, nullable=False)
+    sort_order  = Column(Integer, default=0, nullable=False)
+    created_at  = Column(DateTime, default=datetime.utcnow)
+    updated_at  = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class StoreFilter(Base):

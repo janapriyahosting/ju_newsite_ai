@@ -175,6 +175,23 @@ function getUnitFieldValue(unit: any, fieldName: string): any {
   return undefined;
 }
 
+// Normalize a string for loose comparison: lowercase + strip non-alphanumeric.
+// Lets the filter match "3BHK" against DB values like "3 BHK", and
+// "North-East" against "North East" or "NorthEast".
+function normalizeMatch(s: any): string {
+  return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+// True for select/pills values that act as "no filter" placeholders even
+// when they aren't the configured default — e.g. an admin-defined option
+// like "Select Project" or "Any". Without this, picking such an option
+// would silently filter out every unit.
+function isPlaceholderValue(val: any): boolean {
+  if (val === "" || val === null || val === undefined) return true;
+  const s = String(val).trim();
+  return /^(all|any|select|choose|none)(\b|$)/i.test(s);
+}
+
 // ── Fallback defaults (used only if API fails) ──────────────────────────────
 const FALLBACK_FILTERS: FilterConfig[] = [
   { id:'1', filter_key:'unit_type', filter_label:'Unit Type', filter_type:'pills', field_name:'unit_type', options:[{value:"All",label:"All"},{value:"2BHK",label:"2BHK"},{value:"3BHK",label:"3BHK"},{value:"4BHK",label:"4BHK"},{value:"Villa",label:"Villa"},{value:"Plot",label:"Plot"},{value:"Studio",label:"Studio"}], config:{default_value:"All"}, is_quick_filter:true, sort_order:1 },
@@ -214,6 +231,10 @@ export default function StorePage() {
   // Pagination — 12 units per page with page-number navigation.
   const PAGE_SIZE = 12;
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Project filter — not in the admin filter configs yet, driven by the
+  // ?project= URL param (e.g. set by the assistant's store navigation).
+  const [projectFilter, setProjectFilter] = useState<string>("");
 
   // Helper to get a filter value with its default
   const getVal = useCallback((key: string) => {
@@ -320,6 +341,8 @@ export default function StorePage() {
     // Check for ?q= param (from home page search) and auto-trigger AI search
     const sp = new URLSearchParams(window.location.search);
     const qParam = sp.get("q");
+    const projectParam = sp.get("project");
+    if (projectParam) setProjectFilter(projectParam);
     if (qParam) {
       setAiQuery(qParam);
       triggerAISearch(qParam);
@@ -327,6 +350,18 @@ export default function StorePage() {
       loadAll();
     }
   }, []);
+
+  // Fetches the trending-id set used by the trending checkbox filter. Kept
+  // separate from loadAll so the AI-search code path can also populate it —
+  // otherwise landing on /store?q=… leaves the trending filter inert.
+  async function loadTrendingIds() {
+    try {
+      const r = await fetch(`${API}/units/trending?limit=200`);
+      const d = await r.json() as any;
+      const items = Array.isArray(d) ? d : (d.items || []);
+      setTrendingIds(new Set(items.map((u: any) => u.id)));
+    } catch {}
+  }
 
   async function triggerAISearch(q: string) {
     setSearching(true);
@@ -342,6 +377,8 @@ export default function StorePage() {
       setSearchCount(c => c + 1);
       setLastResultsCount(items.length);
     } catch {}
+    // Load trending IDs alongside AI results so the trending checkbox works.
+    loadTrendingIds();
     setSearching(false);
     setLoading(false);
   }
@@ -349,9 +386,12 @@ export default function StorePage() {
   async function loadAll() {
     setLoading(true);
     try {
+      // Pass status= explicitly to override the API's default of
+      // status="available". Without this, booked/reserved units never reach
+      // the client and the Status filter can't surface them.
       const [allRes, trendRes] = await Promise.all([
-        fetch(`${API}/units?page_size=200`),
-        fetch(`${API}/units/trending?limit=50`),
+        fetch(`${API}/units?page_size=200&status=`),
+        fetch(`${API}/units/trending?limit=200`),
       ]);
       const allData = await allRes.json() as any;
       const trendData = await trendRes.json() as any;
@@ -401,6 +441,12 @@ export default function StorePage() {
 
   // ── Client-side filtering ──────────────────────────────────────────────────
   const filtered = units.filter(u => {
+    // Project filter driven by ?project= URL param (case-insensitive match
+    // against the unit's project_name — which we now enrich on the API side).
+    if (projectFilter) {
+      const pn = String(u.project_name || "").toLowerCase();
+      if (pn !== projectFilter.toLowerCase()) return false;
+    }
     for (const cfg of filterConfigs) {
       const val = getVal(cfg.filter_key);
       const defaultVal = cfg.config?.default_value;
@@ -412,9 +458,14 @@ export default function StorePage() {
       // ── Checkbox (boolean fields like is_trending) ──
       if (cfg.filter_type === 'checkbox') {
         if (val === true) {
-          // Special: trending uses trendingIds set for performance
+          // For trending, prefer the unit's own is_trending flag and fall
+          // back to the trendingIds set (populated by /units/trending).
+          // Earlier, this only consulted trendingIds, which is empty when
+          // the page lands via ?q= AI search and the trending fetch never
+          // ran — making the checkbox silently match nothing.
           if (fieldName === 'is_trending') {
-            if (!trendingIds.has(u.id)) return false;
+            const flag = getUnitFieldValue(u, 'is_trending');
+            if (!flag && !trendingIds.has(u.id)) return false;
           } else {
             if (!getUnitFieldValue(u, fieldName)) return false;
           }
@@ -438,8 +489,11 @@ export default function StorePage() {
         continue;
       }
 
-      // ── At default value → skip (no filtering) ──
-      if (!val || val === defaultVal) continue;
+      // ── At default value or placeholder ("All", "Any", "Select X") → skip ──
+      // Without the placeholder check, an admin-defined option like
+      // "Select Project" (no min/max, doesn't match any unit) would reject
+      // every unit in the list.
+      if (!val || val === defaultVal || isPlaceholderValue(val)) continue;
 
       // ── Button group with numeric "min" semantics (e.g. bedrooms: "2+" means >=2) ──
       if (cfg.filter_type === 'button_group') {
@@ -459,10 +513,13 @@ export default function StorePage() {
         continue;
       }
 
-      // ── Generic exact match: compare selected value against unit field ──
+      // ── Generic match: normalize both sides so "3BHK" matches "3 BHK"
+      // and "North-East" matches "North East"/"NorthEast". Direct
+      // case-insensitive equality previously rejected every unit whose
+      // stored value differed only by spacing or punctuation. ──
       const unitVal = getUnitFieldValue(u, fieldName);
       if (unitVal !== undefined && unitVal !== null) {
-        if (String(unitVal).toLowerCase() !== String(val).toLowerCase()) return false;
+        if (normalizeMatch(unitVal) !== normalizeMatch(val)) return false;
       }
     }
     return true;
@@ -496,7 +553,10 @@ export default function StorePage() {
       if (!Array.isArray(val)) return false;
       return val[0] > getRangeMin(cfg.filter_key) || val[1] < getRangeMax(cfg.filter_key);
     }
-    return val && val !== cfg.config?.default_value;
+    // Treat placeholder values ("All", "Any", "Select X") the same as the
+    // configured default — selecting them is a no-op, so the badge should
+    // not light up.
+    return val && val !== cfg.config?.default_value && !isPlaceholderValue(val);
   }).length;
 
   const formatPriceShort = (n:number) => n>=10000000?`₹${(n/10000000).toFixed(1)}Cr`:n>=100000?`₹${(n/100000).toFixed(0)}L`:`₹${n.toLocaleString()}`;
@@ -681,6 +741,14 @@ export default function StorePage() {
                 ✦ AI results for "{aiQuery}" — {filtered.length} found
               </span>
               <button onClick={clearAI} className="text-xs text-white/50 hover:text-white underline">Clear</button>
+            </div>
+          )}
+          {projectFilter && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold" style={{ background:"rgba(255,255,255,0.15)", color:"white", border:"1px solid rgba(255,255,255,0.25)" }}>
+                🏢 Showing units in <strong>{projectFilter}</strong> only
+              </span>
+              <button onClick={() => setProjectFilter("")} className="text-xs text-white/60 hover:text-white underline">Clear</button>
             </div>
           )}
         </div>

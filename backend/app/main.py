@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     print(f"📦 Environment: {settings.APP_ENV}")
     print(f"🗄️  Database: {settings.DATABASE_HOST}:{settings.DATABASE_PORT}")
 
-    # Ensure unit_series_media table exists
+    # Ensure unit_series_media table exists + seed branding settings
     from backend.app.core.database import engine
     from sqlalchemy import text
     async with engine.begin() as conn:
@@ -37,6 +37,23 @@ async def lifespan(app: FastAPI):
             CREATE INDEX IF NOT EXISTS idx_usm_tower_series
             ON unit_series_media (tower_id, series_code)
         """))
+
+        # Seed default branding settings if missing
+        result = await conn.execute(text("SELECT setting_key FROM site_settings WHERE setting_key = 'site_title'"))
+        if not result.scalar():
+            defaults = [
+                ("site_title",       "Janapriya Upscale — Ask More of Life", "Site Title",       "text",  "general", 1),
+                ("site_tagline",     "Ask More of Life",                     "Site Tagline",     "text",  "general", 2),
+                ("site_description", "Premium residential projects in Hyderabad. RERA registered.", "Site Description", "textarea", "general", 3),
+                ("favicon_url",      "",                                     "Favicon (ICO/PNG)", "image", "general", 4),
+                ("apple_icon_url",   "",                                     "Apple Touch Icon",  "image", "general", 5),
+            ]
+            for key, val, label, stype, group, order in defaults:
+                await conn.execute(text(
+                    "INSERT INTO site_settings (id, setting_key, setting_value, setting_label, setting_type, group_key, sort_order) "
+                    "VALUES (gen_random_uuid(), :key, :val, :label, :stype, :group, :order) ON CONFLICT (setting_key) DO NOTHING"
+                ), {"key": key, "val": val, "label": label, "stype": stype, "group": group, "order": str(order)})
+            print("  ✅ Seeded default branding settings")
 
     yield
     # Shutdown

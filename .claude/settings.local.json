@@ -22,7 +22,11 @@
       "Bash(python3 -c ':*)",
       "Bash(curl -sv http://localhost:8000/api/v1/bookings -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4ODQ1NzU5ZS05MTEyLTRkZDQtYmM5YS1iOTJkZTIyYzMwYzkiLCJleHAiOjE3NzUzMDE0MDB9.hkjLSv87jAEd_WdaEi_RfEx-xicSrqxmUwssh_7nevo')",
       "Bash(curl -s \"http://localhost:8000/api/v1/projects\")",
-      "Bash(grep -E \"\\\\.py$\")"
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(pip install *)",
+      "Bash(npx next *)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('backend/app/main.py'\\).read\\(\\)\\); print\\('main.py OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('backend/app/api/v1/routers/admin_cms.py'\\).read\\(\\)\\); print\\('admin_cms.py OK'\\)\")"
     ]
   }
 }

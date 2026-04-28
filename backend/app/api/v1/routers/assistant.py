@@ -12,6 +12,8 @@ from backend.app.models.project import Project
 from backend.app.models.tower import Tower
 from backend.app.models.assistant_flow import AssistantFlow
 from backend.app.models.assistant_chat_log import AssistantChatLog
+from backend.app.models.assistant_content import AssistantContent
+from backend.app.models.cms import AssistantFact, SiteSetting
 import re
 import time
 
@@ -88,12 +90,30 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 MEDIA_BASE = "http://173.168.0.81:8000"
 
 RISEUP_CONTEXT = """
-RiseUp by Janapriya Upscale:
-- Customer pays only 80% of unit cost upfront; remaining 20% is paid after the builder's final demand is raised (i.e. once all construction-linked demands are completed)
-- On the 80%: 10% or 20% down payment depending on loan profile; bank funds the rest
-- Example: ₹1 Cr unit → pay for ₹80L → DP ₹8L (10%) → Bank ₹72L → ₹20L due after the final demand is raised
-- Benefit: buy a bigger home on a smaller budget; interest only on 80% during construction
-- Learn more: riseup.house
+RiseUp by Janapriya Upscale — how the payment plan works (TOTAL UNIT COST IS UNCHANGED; the customer still pays the full sticker price over time):
+
+Payment schedule on a unit of price P:
+  • 80% of P is paid upfront during booking / construction.
+     - Of that 80%, the customer puts down 10% or 20% (depending on loan profile); the bank home-loan funds the rest.
+  • Remaining 20% of P is paid LATER — only after the builder raises the final demand (near possession, ~2 years).
+
+What the customer saves (this is the ONLY saving — they do NOT save on the unit price itself):
+  • Home-loan interest during construction is charged on the 80% amount only, not the full 100%.
+  • Formula for interest saved ≈ 20% of P × typical home-loan rate (~9% p.a.) × construction period (~2 yrs) ≈ **3.6% of P**.
+
+Worked example on a ₹1 Cr unit:
+  • Pay 80% = ₹80L upfront. DP 10% = ₹8L, bank loan = ₹72L.
+  • Remaining ₹20L due after final demand (~2 yrs later, funded via top-up loan / savings / salary increments).
+  • Interest saved ≈ ₹20L × 9% × 2 yrs ≈ ₹3.6L. (Customer still pays the full ₹1 Cr total over time.)
+
+Additional benefit: the smaller upfront outlay lets the customer afford a bigger home than they otherwise could.
+
+Rule for answering "how much can I save on ₹X project":
+  • ALWAYS use the formula savings ≈ X × 0.036 (i.e. ~3.6% of the unit price).
+  • ALWAYS state explicitly that the customer still pays the full unit price; only construction-period interest is saved.
+  • NEVER claim the 20% deferred portion is a "saving" — it is still owed, just later.
+
+Learn more: riseup.house
 """
 
 BROCHURE_KEYWORDS = ["brochure", "pdf", "catalogue", "catalog", "floor plan", "floorplan",
@@ -295,9 +315,18 @@ def _extract_salary_budget(user_msg: str) -> Optional[float]:
     return monthly * 60
 
 
-def _build_store_url(user_msg: str) -> tuple[str, dict]:
+async def _known_project_names(db: AsyncSession) -> list[str]:
+    """List of active project names in their canonical DB casing, used for
+    name-in-query detection."""
+    res = await db.execute(
+        select(Project.name).where(Project.is_active == True)
+    )
+    return [n for (n,) in res.all() if n]
+
+
+def _build_store_url(user_msg: str, project_names: Optional[list[str]] = None) -> tuple[str, dict]:
     """Build a /store URL that pre-applies filters extracted from the user's
-    query. If we can parse structured filters (budget / BHK / facing),
+    query. If we can parse structured filters (budget / BHK / facing / project),
     we skip `q=` so the store doesn't fall into its NLP path (which only
     returns the top-20 trending units). If we can't parse anything, we
     pass `q=` as a best-effort hint to the store's NLP endpoint.
@@ -306,6 +335,15 @@ def _build_store_url(user_msg: str) -> tuple[str, dict]:
     params: dict = {}
 
     m = user_msg.lower()
+
+    # Project-name detection — look for any active project name appearing in
+    # the message (case-insensitive word-boundary match). Canonical DB casing
+    # is kept so the store's string-equality-ignoring-case filter matches.
+    if project_names:
+        for pname in project_names:
+            if re.search(rf'\b{re.escape(pname.lower())}\b', m):
+                params["project"] = pname
+                break
 
     # Salary → budget
     budget = _extract_salary_budget(user_msg)
@@ -355,6 +393,44 @@ def _build_store_url(user_msg: str) -> tuple[str, dict]:
     return "/store?" + urlencode(params), params
 
 
+async def _load_assistant_facts(db: AsyncSession) -> tuple[dict, list[str]]:
+    """Pull admin-curated facts and group them. Returns:
+    - per_project: {project_id: ["topic: content", ...]} for active rows tied
+      to a project (e.g. "Bahiti has no GST")
+    - site_wide: ["topic: content", ...] for active rows with project_id NULL,
+      plus any rows in `site_settings` with group_key='assistant_knowledge'
+      so admins can drop quick rules in via the existing settings page."""
+    per_project: dict = {}
+    site_wide: list[str] = []
+    try:
+        rows = (await db.execute(
+            select(AssistantFact)
+            .where(AssistantFact.is_active == True)
+            .order_by(AssistantFact.sort_order, AssistantFact.created_at)
+        )).scalars().all()
+        for f in rows:
+            entry = f"{(f.topic or 'note').strip()}: {f.content.strip()}"
+            if f.project_id is None:
+                site_wide.append(entry)
+            else:
+                per_project.setdefault(f.project_id, []).append(entry)
+    except Exception as e:
+        # Table may not exist yet on a freshly-pulled branch — degrade gracefully.
+        print(f"[Assistant] assistant_facts unavailable: {type(e).__name__}: {e}")
+
+    try:
+        srows = (await db.execute(
+            select(SiteSetting).where(SiteSetting.group_key == "assistant_knowledge")
+        )).scalars().all()
+        for s in srows:
+            if s.setting_value and s.setting_value.strip():
+                site_wide.append(f"{(s.setting_label or s.setting_key).strip()}: {s.setting_value.strip()}")
+    except Exception as e:
+        print(f"[Assistant] site_settings (assistant_knowledge) unavailable: {type(e).__name__}: {e}")
+
+    return per_project, site_wide
+
+
 async def _build_site_context(db: AsyncSession) -> str:
     """Snapshot of the site's projects + unit availability.
     Passed to the LLM as the sole source of truth — it must not answer from
@@ -365,6 +441,8 @@ async def _build_site_context(db: AsyncSession) -> str:
     projects = res.scalars().all()
     if not projects:
         return "SITE DATA: No projects are currently listed."
+
+    facts_per_project, facts_site_wide = await _load_assistant_facts(db)
 
     lines = []
     for p in projects:
@@ -454,8 +532,18 @@ async def _build_site_context(db: AsyncSession) -> str:
         if p.rera_number:
             bits.append(f"RERA {p.rera_number}")
         lines.append(" · ".join(bits))
+        # Admin-curated facts scoped to this project (e.g. GST/amenity rules).
+        for fact in facts_per_project.get(p.id, []):
+            lines.append(f"    rule — {fact}")
 
-    return "SITE DATA (the only facts you may use):\n" + "\n".join(lines)
+    body = "SITE DATA (the only facts you may use):\n" + "\n".join(lines)
+    if facts_site_wide:
+        body += (
+            "\n\nGLOBAL RULES (apply to every project unless a project-specific "
+            "rule above contradicts them):\n"
+            + "\n".join(f"- {f}" for f in facts_site_wide)
+        )
+    return body
 
 
 async def _find_brochure(query: str, db: AsyncSession) -> Optional[dict]:
@@ -661,7 +749,8 @@ async def assistant_chat(data: AssistantRequest, request: Request, db: AsyncSess
     store_url = None
     store_params: dict = {}
     if intent == "find_units":
-        store_url, store_params = _build_store_url(last_user_msg)
+        known_projects = await _known_project_names(db)
+        store_url, store_params = _build_store_url(last_user_msg, project_names=known_projects)
         action = AssistantAction(
             type="navigate_store",
             url=store_url,
@@ -713,7 +802,8 @@ STRICT RULES — these override everything else:
 4. Do not guess. Do not use your general training knowledge about Hyderabad, real estate, or developers.
 5. Answer in 2-3 short sentences. No markdown, no bullet points, no lists.
 6. If budget is a concern or 0 results, you may mention RiseUp naturally.
-7. If they ask for a brochure and one is available, say you're sharing it below. If none is available, apologise and offer a callback."""
+7. If they ask for a brochure and one is available, say you're sharing it below. If none is available, apologise and offer a callback.
+8. The `available by type` and `available by facing` breakdowns in SITE DATA are INDEPENDENT counts. Never multiply, intersect, or combine them to claim a specific count for a combination (e.g. "east-facing 3BHK"). Instead, acknowledge the individual totals you know (e.g. "NileValley has 29 3BHK units and 23 east-facing units overall") and say the exact matching set will open on the Store page."""
 
     recent_msgs = data.messages[-6:]
 
@@ -1100,3 +1190,43 @@ async def admin_delete_flow(flow_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Flow not found")
     await db.delete(flow)
     await db.commit()
+
+
+# ── Widget content (RiseUp / Callback) ────────────────────────────────────────
+# Single source of truth for the copy and config rendered inside the in-app
+# ProactiveAssistant widget. Public read; admin write.
+
+@router.get("/content")
+async def list_content(db: AsyncSession = Depends(get_db)):
+    """Return all content entries as a {key: data} map for one-shot fetch."""
+    res = await db.execute(select(AssistantContent))
+    rows = res.scalars().all()
+    return {r.key: r.data for r in rows}
+
+
+@router.get("/content/{key}")
+async def get_content(key: str, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(AssistantContent).where(AssistantContent.key == key))
+    row = res.scalar_one_or_none()
+    if not row:
+        raise HTTPException(404, "Content key not found")
+    return {"key": row.key, "data": row.data}
+
+
+class ContentUpdate(BaseModel):
+    data: dict
+
+
+@router.put("/admin/content/{key}")
+async def admin_update_content(key: str, body: ContentUpdate, db: AsyncSession = Depends(get_db)):
+    """Upsert a content entry. Creates if missing so admin can add new sections later."""
+    res = await db.execute(select(AssistantContent).where(AssistantContent.key == key))
+    row = res.scalar_one_or_none()
+    if row is None:
+        row = AssistantContent(key=key, data=body.data)
+        db.add(row)
+    else:
+        row.data = body.data
+    await db.commit()
+    await db.refresh(row)
+    return {"key": row.key, "data": row.data}

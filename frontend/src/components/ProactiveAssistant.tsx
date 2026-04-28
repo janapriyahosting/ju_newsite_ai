@@ -184,12 +184,28 @@ function SuggestedUnit({ unit }: { unit: any }) {
 
 interface FlowStep {
   id: string;
-  type: "message" | "options" | "input" | "show_units" | "show_brochure" | "collect_lead" | "end";
+  type:
+    | "message" | "options" | "input" | "show_units" | "show_brochure" | "collect_lead" | "end"
+    // Display-only types — render as media bubbles, then auto-advance via `next`.
+    | "image" | "video" | "document" | "carousel"
+    // Authoring-only types — runtime treats them as a "Continue" message bubble.
+    | "start" | "form" | "schedule" | "condition" | "otp" | "api" | "ai" | "handoff";
   text: string;
   options?: { label: string; value: string; next: string }[];
   field?: string;        // for input steps: budget | name | phone | bhk
   next?: string;         // for non-branching steps
   placeholder?: string;
+  // Free-form config used by canvas-authored types (image url, carousel cards,
+  // condition rules, etc.). Unknown to the live runtime except for media types
+  // which read url/caption/title/cards.
+  config?: {
+    url?: string;
+    caption?: string;
+    title?: string;
+    description?: string;
+    cards?: { title?: string; subtitle?: string; image?: string }[];
+    [k: string]: any;
+  };
 }
 
 interface FlowState {
@@ -285,8 +301,46 @@ function FlowRenderer({ steps, onComplete, onSearchUnits }: {
       {/* Current step */}
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <div style={{ width: 24, height: 24, borderRadius: "50%", background: "linear-gradient(135deg,#2A3887,#29A9DF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "white", flexShrink: 0 }}>✦</div>
-        <div style={{ background: "#F0F4FF", borderRadius: "0 10px 10px 10px", padding: "8px 12px", fontSize: 13, color: "#333", maxWidth: "85%", lineHeight: 1.5 }}>{step.text}</div>
+        <div style={{ background: "#F0F4FF", borderRadius: "0 10px 10px 10px", padding: "8px 12px", fontSize: 13, color: "#333", maxWidth: "85%", lineHeight: 1.5 }}>
+          {step.text || (step.type === "image" ? "" : "…")}
+        </div>
       </div>
+
+      {/* Media bubbles (display-only types) */}
+      {step.type === "image" && step.config?.url && (
+        <div style={{ paddingLeft: 32, marginBottom: 10 }}>
+          <img src={step.config.url} alt={step.config.caption || ""} style={{ maxWidth: "100%", borderRadius: 10 }} />
+          {step.config.caption && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>{step.config.caption}</div>}
+        </div>
+      )}
+      {step.type === "video" && step.config?.url && (
+        <div style={{ paddingLeft: 32, marginBottom: 10 }}>
+          <video src={step.config.url} controls style={{ maxWidth: "100%", borderRadius: 10 }} />
+          {step.config.caption && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>{step.config.caption}</div>}
+        </div>
+      )}
+      {step.type === "document" && step.config?.url && (
+        <div style={{ paddingLeft: 32, marginBottom: 10 }}>
+          <a href={step.config.url} target="_blank" rel="noopener noreferrer"
+            style={{ display: "flex", alignItems: "center", gap: 8, background: "#F0F4FF", border: "1px solid #c7d4f8", borderRadius: 10, padding: "8px 12px", textDecoration: "none", color: "#2A3887", fontSize: 12, fontWeight: 700 }}>
+            📎 {step.config.title || step.config.url.split("/").pop() || "Document"}
+          </a>
+          {step.config.description && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>{step.config.description}</div>}
+        </div>
+      )}
+      {step.type === "carousel" && step.config?.cards && step.config.cards.length > 0 && (
+        <div style={{ paddingLeft: 32, marginBottom: 10, display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+          {step.config.cards.map((card, i) => (
+            <div key={i} style={{ minWidth: 140, background: "white", border: "1px solid #E2F1FC", borderRadius: 10, overflow: "hidden", flexShrink: 0 }}>
+              {card.image && <img src={card.image} alt="" style={{ width: "100%", height: 80, objectFit: "cover" }} />}
+              <div style={{ padding: 8 }}>
+                {card.title && <div style={{ fontSize: 12, fontWeight: 700, color: "#2A3887" }}>{card.title}</div>}
+                {card.subtitle && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{card.subtitle}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Options */}
       {step.type === "options" && step.options && (
@@ -312,8 +366,11 @@ function FlowRenderer({ steps, onComplete, onSearchUnits }: {
         </div>
       )}
 
-      {/* Message-only: auto-advance button */}
-      {step.type === "message" && step.next && (
+      {/* Continue → for any non-interactive type with a `next` pointer.
+          Covers `message`, the display-only media types, and the authoring-only
+          types (start/form/schedule/condition/otp/api/ai/handoff) which the
+          runtime can't yet *execute* but should not freeze on. */}
+      {step.next && step.type !== "options" && step.type !== "input" && step.type !== "collect_lead" && step.type !== "end" && (
         <div style={{ paddingLeft: 32 }}>
           <button onClick={() => advance(step.next!)}
             style={{ background: "#F0F4FF", border: "1.5px solid #c7d4f8", borderRadius: 20, padding: "6px 16px", fontSize: 12, fontWeight: 700, color: "#2A3887", cursor: "pointer" }}>
@@ -369,8 +426,16 @@ export default function ProactiveAssistant({
   const [loading, setLoading]           = useState(false);
   const [riseupData, setRiseupData]     = useState<any>(null);
   const [suggestedUnits, setSuggestedUnits] = useState<any[]>([]);
-  const [callbackForm, setCallbackForm] = useState({ name: "", phone: "" });
+  const [callbackForm, setCallbackForm] = useState({ name: "", phone: "", email: "" });
   const [callbackSent, setCallbackSent] = useState(false);
+  const [callbackStep, setCallbackStep] = useState<"form" | "otp" | "verifying" | "submitting">("form");
+  const [callbackOtp, setCallbackOtp] = useState(["", "", "", "", "", ""]);
+  const [callbackError, setCallbackError] = useState("");
+  const [callbackCountdown, setCallbackCountdown] = useState(0);
+  const [callbackDevOtp, setCallbackDevOtp] = useState<string | null>(null);
+  const callbackOtpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  // Admin-editable widget content fetched once per widget mount.
+  const [widgetContent, setWidgetContent] = useState<{ riseup?: any; callback?: any }>({});
   const [activeFlow, setActiveFlow]     = useState<{ name: string; steps: FlowStep[] } | null>(null);
   const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const endRef     = useRef<HTMLDivElement>(null);
@@ -401,6 +466,14 @@ export default function ProactiveAssistant({
       .then((flows: any[]) => { if (flows.length) setActiveFlow(flows[0]); })
       .catch(() => {});
   }, [open]);  // eslint-disable-line
+
+  // Load admin-editable widget content (RiseUp / Callback) once.
+  useEffect(() => {
+    fetch(`${API}/assistant/content`)
+      .then(r => r.json())
+      .then(data => { if (data && typeof data === "object") setWidgetContent(data); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -499,34 +572,167 @@ export default function ProactiveAssistant({
     setLoading(false);
   }
 
-  async function handleCallback(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      await fetch(`${API}/leads`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: callbackForm.name, phone: callbackForm.phone, message: `Callback from assistant. Searched: "${lastQuery}"`, source: "proactive_assistant" }),
-      });
-      setCallbackSent(true);
-    } catch {}
+  // ── Callback flow: form → OTP → submit lead ─────────────────────────────────
+  function cleanPhone(v: string) {
+    return v.replace(/\D/g, "").replace(/^91/, "");
   }
 
-  function handleFlowSearchUnits(query: string) {
+  async function handleCallbackFormSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setCallbackError("");
+    const phone = cleanPhone(callbackForm.phone);
+    if (!callbackForm.name.trim()) { setCallbackError("Please enter your name"); return; }
+    if (phone.length !== 10 || !/^[6-9]/.test(phone)) { setCallbackError("Enter a valid 10-digit Indian mobile"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(callbackForm.email.trim())) { setCallbackError("Enter a valid email"); return; }
+    setCallbackStep("verifying");
+    try {
+      const r = await fetch(`${API}/auth/send-otp`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, purpose: "callback" }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || "Failed to send OTP");
+      setCallbackForm(f => ({ ...f, phone }));
+      if (data.dev_otp) setCallbackDevOtp(data.dev_otp);
+      setCallbackOtp(["", "", "", "", "", ""]);
+      setCallbackStep("otp");
+      setCallbackCountdown(30);
+      setTimeout(() => callbackOtpRefs.current[0]?.focus(), 50);
+    } catch (err: any) {
+      setCallbackError(err.message || "Couldn't send OTP. Try again.");
+      setCallbackStep("form");
+    }
+  }
+
+  async function verifyCallbackOtp(digits: string[]) {
+    const code = digits.join("");
+    if (code.length !== 6) return;
+    setCallbackError(""); setCallbackStep("submitting");
+    try {
+      const r = await fetch(`${API}/auth/verify-phone`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: callbackForm.phone, otp: code }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || "Invalid OTP");
+      // Phone verified — submit the lead.
+      await fetch(`${API}/leads`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: callbackForm.name,
+          phone: callbackForm.phone,
+          email: callbackForm.email,
+          message: `Callback from assistant (phone verified). Searched: "${lastQuery}"`,
+          source: "proactive_assistant",
+        }),
+      });
+      setCallbackSent(true);
+      setCallbackStep("form");
+      setCallbackDevOtp(null);
+    } catch (err: any) {
+      setCallbackError(err.message || "Verification failed. Try again.");
+      setCallbackStep("otp");
+    }
+  }
+
+  function handleCallbackOtpChange(idx: number, value: string) {
+    if (value && !/^\d$/.test(value)) return;
+    const next = [...callbackOtp]; next[idx] = value; setCallbackOtp(next);
+    if (value && idx < 5) callbackOtpRefs.current[idx + 1]?.focus();
+    if (value && idx === 5 && next.join("").length === 6) {
+      setTimeout(() => verifyCallbackOtp(next), 80);
+    }
+  }
+  function handleCallbackOtpKeyDown(idx: number, e: React.KeyboardEvent) {
+    if (e.key === "Backspace" && !callbackOtp[idx] && idx > 0) callbackOtpRefs.current[idx - 1]?.focus();
+  }
+  function handleCallbackOtpPaste(e: React.ClipboardEvent) {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted.length === 6) {
+      const digits = pasted.split("");
+      setCallbackOtp(digits);
+      callbackOtpRefs.current[5]?.focus();
+      setTimeout(() => verifyCallbackOtp(digits), 80);
+    }
+  }
+  async function resendCallbackOtp() {
+    if (callbackCountdown > 0) return;
+    setCallbackError("");
+    try {
+      const r = await fetch(`${API}/auth/send-otp`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: callbackForm.phone, purpose: "callback" }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || "Failed to resend");
+      if (data.dev_otp) setCallbackDevOtp(data.dev_otp);
+      setCallbackCountdown(30);
+    } catch (err: any) { setCallbackError(err.message || "Resend failed"); }
+  }
+
+  // OTP resend countdown
+  useEffect(() => {
+    if (callbackCountdown <= 0) return;
+    const t = setTimeout(() => setCallbackCountdown(c => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [callbackCountdown]);
+
+  // Called when the guided flow reaches a `show_units` step. The flow has
+  // already collected fields like budget/bhk and folded them into a query
+  // string ("1BHK under ₹50L"). Previously this routed through /assistant/chat,
+  // which only returns units for a narrow `results_count == 0` fallback path —
+  // so the user finished the budget questionnaire and saw a generic reply
+  // with no matches and no link. Hit /search/nlp directly so the budget is
+  // actually parsed into max_price and applied as a filter.
+  async function handleFlowSearchUnits(query: string) {
     setTab("chat");
     const userMsg = { role: "user", content: `Show me ${query}` };
     setMessages(m => [...m, userMsg]);
     setLoading(true);
-    callAssistant([{ role: "user", content: query }]).then(res => {
-      if (res) {
-        setMessages(m => [...m, { role: "assistant", content: res.reply, units: res.suggested_units }]);
-        if (res.suggested_units?.length) setSuggestedUnits(res.suggested_units);
-      }
-      setLoading(false);
-    });
+    try {
+      const session_id = getOrCreateLocalId("jp_session_id");
+      const r = await fetch(`${API}/search/nlp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, session_id }),
+      });
+      const d = await r.json();
+      const items: any[] = Array.isArray(d?.items) ? d.items : [];
+      // Build a /store deep link from the filters the parser extracted, so the
+      // user can keep browsing with the same budget/BHK pre-applied.
+      const f = (d?.interpreted_as || {}) as Record<string, any>;
+      const params = new URLSearchParams();
+      if (f.max_price) params.set("max_price", String(f.max_price));
+      if (f.min_price) params.set("min_price", String(f.min_price));
+      if (f.unit_type) params.set("unit_type", String(f.unit_type));
+      if (f.facing)    params.set("facing", String(f.facing));
+      const storeHref = "/store" + (params.toString() ? `?${params}` : "");
+
+      const reply = items.length
+        ? d.message || `Found ${d.total ?? items.length} match${(d.total ?? items.length) === 1 ? "" : "es"} for "${query}".`
+        : (d.suggestions && d.suggestions[0]) || `I couldn't find an exact match for "${query}". Want to broaden the search?`;
+      const action: AssistantAction = {
+        type: "navigate_store",
+        url: storeHref,
+        label: items.length ? "Browse all on Store →" : "Open Store with these filters →",
+      };
+      setMessages(m => [...m, {
+        role: "assistant",
+        content: reply,
+        units: items.slice(0, 6),
+        action,
+      }]);
+      if (items.length) setSuggestedUnits(items.slice(0, 6));
+    } catch {
+      setMessages(m => [...m, { role: "assistant", content: "Couldn't load results — please try again." }]);
+    }
+    setLoading(false);
   }
 
   function handleFlowComplete(data: Record<string, string>) {
     if (data.phone) {
-      setCallbackForm({ name: data.name || "", phone: data.phone });
+      setCallbackForm({ name: data.name || "", phone: data.phone, email: data.email || "" });
       setTab("callback");
     } else {
       setTab("chat");
@@ -547,7 +753,7 @@ export default function ProactiveAssistant({
     <>
       {!open && (
         <button onClick={() => { setOpen(true); if (messages.length === 0) fireGreeting(); }}
-          style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: "none", borderRadius: 50, padding: "13px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "0 8px 30px rgba(42,56,135,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
+          style={{ position: "fixed", bottom: 100, right: 24, zIndex: 1000, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: "none", borderRadius: 50, padding: "13px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "0 8px 30px rgba(42,56,135,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 18 }}>✦</span>
           <span>Need help finding<br /><strong>your home?</strong></span>
         </button>
@@ -701,78 +907,146 @@ export default function ProactiveAssistant({
           )}
 
           {/* ── RISEUP TAB ── */}
-          {tab === "riseup" && (
-            <div style={{ flex: 1, overflowY: "auto", padding: 16, background: "white" }}>
-              <div style={{ textAlign: "center", marginBottom: 14 }}>
-                <div style={{ fontSize: 32 }}>🚀</div>
-                <h3 style={{ fontWeight: 900, color: "#2A3887", fontSize: 17, margin: "6px 0 4px" }}>RiseUp Offer</h3>
-                <p style={{ color: "#666", fontSize: 13 }}>Buy a bigger home with a smaller budget</p>
-              </div>
-              <div style={{ background: "#F0F4FF", borderRadius: 14, padding: 14, marginBottom: 12 }}>
-                {[
-                  ["Pay only 80% now",             "Lock in the home at 80% of total cost"],
-                  ["Bank funds up to 90%",         "Of the 80% — down payment is just 8–16%"],
-                  ["20% after final demand",       "Paid once the builder raises the final demand"],
-                  ["Save on interest",             "EMI only on 80% during construction"],
-                ].map(([t, d]) => (
-                  <div key={t} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                    <span style={{ color: "#29A9DF", fontWeight: 900, fontSize: 15 }}>✓</span>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: 12, color: "#2A3887" }}>{t}</div>
-                      <div style={{ fontSize: 11, color: "#666" }}>{d}</div>
+          {tab === "riseup" && (() => {
+            const r = widgetContent.riseup || {};
+            const bullets: { heading: string; description: string }[] = Array.isArray(r.bullets) ? r.bullets : [];
+            const exampleLines: string[] = Array.isArray(r.example_lines) ? r.example_lines : [];
+            return (
+              <div style={{ flex: 1, overflowY: "auto", padding: 16, background: "white" }}>
+                <div style={{ textAlign: "center", marginBottom: 14 }}>
+                  <div style={{ fontSize: 32 }}>🚀</div>
+                  <h3 style={{ fontWeight: 900, color: "#2A3887", fontSize: 17, margin: "6px 0 4px" }}>{r.title || "RiseUp Offer"}</h3>
+                  <p style={{ color: "#666", fontSize: 13 }}>{r.subtitle || ""}</p>
+                </div>
+                {bullets.length > 0 && (
+                  <div style={{ background: "#F0F4FF", borderRadius: 14, padding: 14, marginBottom: 12 }}>
+                    {bullets.map((b, i) => (
+                      <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                        <span style={{ color: "#29A9DF", fontWeight: 900, fontSize: 15 }}>✓</span>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: 12, color: "#2A3887" }}>{b.heading}</div>
+                          <div style={{ fontSize: 11, color: "#666" }}>{b.description}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {riseupData && <RiseUpCard data={riseupData} />}
+                {(r.example_title || exampleLines.length > 0) && (
+                  <div style={{ background: "#FFF8E1", borderRadius: 12, padding: 12, marginTop: 12 }}>
+                    {r.example_title && <p style={{ fontWeight: 800, fontSize: 12, color: "#92400E", marginBottom: 4 }}>{r.example_title}</p>}
+                    <div style={{ fontSize: 11, color: "#666", lineHeight: 1.7 }}>
+                      {exampleLines.map((line, i) => (
+                        <div key={i}>{line}</div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+                {r.cta_url && (
+                  <a href={r.cta_url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: "block", textAlign: "center", marginTop: 14, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", borderRadius: 12, padding: "12px 0", fontSize: 13, fontWeight: 900, textDecoration: "none" }}>
+                    {r.cta_label || "Learn more →"}
+                  </a>
+                )}
               </div>
-              {riseupData && <RiseUpCard data={riseupData} />}
-              <div style={{ background: "#FFF8E1", borderRadius: 12, padding: 12, marginTop: 12 }}>
-                <p style={{ fontWeight: 800, fontSize: 12, color: "#92400E", marginBottom: 4 }}>Example: ₹1 Crore unit</p>
-                <div style={{ fontSize: 11, color: "#666", lineHeight: 1.7 }}>
-                  → Pay for ₹80L only<br />
-                  → Down payment: ₹8L (10%) or ₹16L (20%)<br />
-                  → Bank funds: ₹64L–₹72L<br />
-                  → After final demand: ₹20L (top-up / personal loan)<br />
-                  → <strong style={{ color: "#2A3887" }}>Own a ₹1Cr home at the cost of ₹80L!</strong>
-                </div>
-              </div>
-              <a href="https://riseup.house" target="_blank" rel="noopener noreferrer"
-                style={{ display: "block", textAlign: "center", marginTop: 14, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", borderRadius: 12, padding: "12px 0", fontSize: 13, fontWeight: 900, textDecoration: "none" }}>
-                Explore at riseup.house →
-              </a>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── CALLBACK TAB ── */}
-          {tab === "callback" && (
-            <div style={{ flex: 1, padding: 16, background: "white" }}>
+          {tab === "callback" && (() => {
+            const c = widgetContent.callback || {};
+            const heading       = c.heading        || "Request a Callback";
+            const subheading    = c.subheading     || "Our advisor will call within 30 minutes after a quick OTP check.";
+            const successHead   = c.success_heading|| "We'll call you soon!";
+            const successBody   = c.success_body   || "Our advisor will reach out within 30 minutes during business hours.";
+            const directLabel   = c.direct_call_label || "Or call us directly";
+            const phoneDisplay  = c.phone_display  || "+91 40 1234 5678";
+            const phoneTel      = c.phone_tel      || "+914012345678";
+            return (
+            <div style={{ flex: 1, padding: 16, background: "white", overflowY: "auto" }}>
               {callbackSent ? (
                 <div style={{ textAlign: "center", padding: "20px 0" }}>
                   <div style={{ fontSize: 40 }}>✅</div>
-                  <h3 style={{ fontWeight: 900, color: "#2A3887", marginTop: 10 }}>We'll call you soon!</h3>
-                  <p style={{ color: "#666", fontSize: 13, marginTop: 6 }}>Our advisor will reach out within 30 minutes during business hours.</p>
+                  <h3 style={{ fontWeight: 900, color: "#2A3887", marginTop: 10 }}>{successHead}</h3>
+                  <p style={{ color: "#666", fontSize: 13, marginTop: 6 }}>{successBody}</p>
                   <button onClick={() => setTab("chat")} style={{ marginTop: 14, background: "#F0F4FF", border: "none", borderRadius: 10, padding: "10px 20px", color: "#2A3887", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>Continue Chat</button>
                 </div>
+              ) : callbackStep === "otp" || callbackStep === "submitting" ? (
+                <>
+                  <h3 style={{ fontWeight: 900, color: "#2A3887", marginBottom: 4 }}>Verify your phone</h3>
+                  <p style={{ color: "#666", fontSize: 13, marginBottom: 14 }}>
+                    We sent a 6-digit code to <strong>+91 {callbackForm.phone}</strong>.{" "}
+                    <button onClick={() => { setCallbackStep("form"); setCallbackError(""); setCallbackDevOtp(null); }}
+                      style={{ background: "transparent", border: "none", color: "#2A3887", fontWeight: 700, fontSize: 12, cursor: "pointer", padding: 0 }}>
+                      Edit
+                    </button>
+                  </p>
+                  {callbackError && (
+                    <div style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: 10, padding: "8px 12px", fontSize: 12, marginBottom: 10 }}>
+                      {callbackError}
+                    </div>
+                  )}
+                  {callbackDevOtp && (
+                    <div style={{ background: "#FEF9C3", color: "#92400E", border: "1px solid #FDE68A", borderRadius: 10, padding: "6px 10px", fontSize: 11, marginBottom: 10 }}>
+                      Dev OTP: <strong>{callbackDevOtp}</strong>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 6, justifyContent: "space-between", marginBottom: 10 }}>
+                    {callbackOtp.map((d, i) => (
+                      <input
+                        key={i}
+                        ref={el => { callbackOtpRefs.current[i] = el; }}
+                        value={d}
+                        onChange={e => handleCallbackOtpChange(i, e.target.value)}
+                        onKeyDown={e => handleCallbackOtpKeyDown(i, e)}
+                        onPaste={i === 0 ? handleCallbackOtpPaste : undefined}
+                        inputMode="numeric"
+                        maxLength={1}
+                        disabled={callbackStep === "submitting"}
+                        style={{ flex: 1, textAlign: "center", border: "1.5px solid #E2F1FC", borderRadius: 10, padding: "10px 0", fontSize: 18, fontWeight: 800, color: "#2A3887", outline: "none", fontFamily: "inherit", minWidth: 0 }}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, color: "#666" }}>
+                    <span>{callbackStep === "submitting" ? "Verifying…" : ""}</span>
+                    <button onClick={resendCallbackOtp} disabled={callbackCountdown > 0}
+                      style={{ background: "transparent", border: "none", color: callbackCountdown > 0 ? "#aaa" : "#2A3887", fontWeight: 700, fontSize: 12, cursor: callbackCountdown > 0 ? "default" : "pointer", padding: 0 }}>
+                      {callbackCountdown > 0 ? `Resend in ${callbackCountdown}s` : "Resend OTP"}
+                    </button>
+                  </div>
+                </>
               ) : (
                 <>
-                  <h3 style={{ fontWeight: 900, color: "#2A3887", marginBottom: 4 }}>Request a Callback</h3>
-                  <p style={{ color: "#666", fontSize: 13, marginBottom: 14 }}>Our advisor will call within 30 minutes.</p>
-                  <form onSubmit={handleCallback} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <h3 style={{ fontWeight: 900, color: "#2A3887", marginBottom: 4 }}>{heading}</h3>
+                  <p style={{ color: "#666", fontSize: 13, marginBottom: 14 }}>{subheading}</p>
+                  {callbackError && (
+                    <div style={{ background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", borderRadius: 10, padding: "8px 12px", fontSize: 12, marginBottom: 10 }}>
+                      {callbackError}
+                    </div>
+                  )}
+                  <form onSubmit={handleCallbackFormSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     <input required value={callbackForm.name} onChange={e => setCallbackForm(f => ({ ...f, name: e.target.value }))}
                       placeholder="Your name" style={{ border: "1.5px solid #E2F1FC", borderRadius: 10, padding: "10px 14px", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
                     <input required value={callbackForm.phone} onChange={e => setCallbackForm(f => ({ ...f, phone: e.target.value }))}
-                      placeholder="Phone number" type="tel" style={{ border: "1.5px solid #E2F1FC", borderRadius: 10, padding: "10px 14px", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
-                    <button type="submit" style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: "none", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 900, cursor: "pointer" }}>
-                      Request Callback →
+                      placeholder="Phone number (10-digit)" type="tel" inputMode="numeric"
+                      style={{ border: "1.5px solid #E2F1FC", borderRadius: 10, padding: "10px 14px", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+                    <input required value={callbackForm.email} onChange={e => setCallbackForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder="Email address" type="email"
+                      style={{ border: "1.5px solid #E2F1FC", borderRadius: 10, padding: "10px 14px", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
+                    <button type="submit" disabled={callbackStep === "verifying"}
+                      style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: "none", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 900, cursor: callbackStep === "verifying" ? "default" : "pointer", opacity: callbackStep === "verifying" ? 0.7 : 1 }}>
+                      {callbackStep === "verifying" ? "Sending OTP…" : "Send OTP →"}
                     </button>
                   </form>
                   <div style={{ marginTop: 14, textAlign: "center" }}>
-                    <p style={{ fontSize: 11, color: "#aaa" }}>Or call us directly</p>
-                    <a href="tel:+914012345678" style={{ fontWeight: 800, color: "#2A3887", fontSize: 14, textDecoration: "none" }}>+91 40 1234 5678</a>
+                    <p style={{ fontSize: 11, color: "#aaa" }}>{directLabel}</p>
+                    <a href={`tel:${phoneTel}`} style={{ fontWeight: 800, color: "#2A3887", fontSize: 14, textDecoration: "none" }}>{phoneDisplay}</a>
                   </div>
                 </>
               )}
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
     </>

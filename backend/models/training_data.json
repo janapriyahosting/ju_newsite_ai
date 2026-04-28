@@ -818,5 +818,345 @@
         "BUDGET"
       ]
     ]
+  },
+  {
+    "text": "i can pay 15l downpayment",
+    "entities": [
+      [
+        10,
+        13,
+        "PRICE"
+      ],
+      [
+        14,
+        25,
+        "DOWN_PAYMENT"
+      ]
+    ]
+  },
+  {
+    "text": "looking for 3bhk carpet area above 1000 sft",
+    "entities": [
+      [
+        12,
+        16,
+        "BHK_TYPE"
+      ],
+      [
+        17,
+        28,
+        "CARPET_AREA"
+      ],
+      [
+        35,
+        43,
+        "AREA"
+      ]
+    ]
+  },
+  {
+    "text": "my salary is 1l, which flat fits ?",
+    "entities": [
+      [
+        13,
+        15,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "my salary is 1L, which flat fits ?",
+    "entities": [
+      [
+        13,
+        15,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "West  facing",
+    "entities": [
+      [
+        0,
+        12,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "Looking for 3BHK on the 10th Floor",
+    "entities": [
+      [
+        12,
+        16,
+        "BHK_TYPE"
+      ],
+      [
+        24,
+        34,
+        "FLOOR"
+      ]
+    ]
+  },
+  {
+    "text": "LOOKING FOR EAST FACING",
+    "entities": [
+      [
+        12,
+        23,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "east facing",
+    "entities": [
+      [
+        0,
+        11,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "Ready To move Flats",
+    "entities": [
+      [
+        0,
+        13,
+        "STATUS"
+      ]
+    ]
+  },
+  {
+    "text": "3 BHK under 1cr",
+    "entities": [
+      [
+        0,
+        5,
+        "BHK_TYPE"
+      ],
+      [
+        12,
+        15,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "1.5 cr",
+    "entities": [
+      [
+        0,
+        6,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "1.56 cr buget",
+    "entities": [
+      [
+        0,
+        7,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "looking for east facing",
+    "entities": [
+      [
+        12,
+        23,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "2 BHK under 1cr",
+    "entities": [
+      [
+        0,
+        5,
+        "BHK_TYPE"
+      ],
+      [
+        12,
+        15,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "3 BHK",
+    "entities": [
+      [
+        0,
+        5,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "East facing",
+    "entities": [
+      [
+        0,
+        11,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "my salay is 1l, which flat fits ?",
+    "entities": [
+      [
+        12,
+        14,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "looking for 3BHK",
+    "entities": [
+      [
+        12,
+        16,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "Ready to move",
+    "entities": [
+      [
+        0,
+        13,
+        "STATUS"
+      ]
+    ]
+  },
+  {
+    "text": "Looking for East Facing",
+    "entities": [
+      [
+        12,
+        23,
+        "FACING"
+      ]
+    ]
+  },
+  {
+    "text": "Looking for 3BHK",
+    "entities": [
+      [
+        12,
+        16,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "l am looking for 3 bhk in 90 L budget",
+    "entities": [
+      [
+        17,
+        22,
+        "BHK_TYPE"
+      ],
+      [
+        26,
+        30,
+        "PRICE"
+      ],
+      [
+        31,
+        37,
+        "BUDGET"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk properties",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "3bhk under 2 crore",
+    "entities": [
+      [
+        0,
+        4,
+        "BHK_TYPE"
+      ],
+      [
+        11,
+        18,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "looking for 3bhk",
+    "entities": [
+      [
+        12,
+        16,
+        "BHK_TYPE"
+      ]
+    ]
+  },
+  {
+    "text": "looking for 3bhk under 1cr",
+    "entities": [
+      [
+        12,
+        16,
+        "BHK_TYPE"
+      ],
+      [
+        23,
+        26,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "house in 50l",
+    "entities": [
+      [
+        9,
+        12,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "flats in 1cr",
+    "entities": [
+      [
+        9,
+        12,
+        "PRICE"
+      ]
+    ]
+  },
+  {
+    "text": "show available unites",
+    "entities": [
+      [
+        5,
+        14,
+        "STATUS"
+      ]
+    ]
   }
 ]

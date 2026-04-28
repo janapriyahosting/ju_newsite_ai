@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, createContext, useContext, useMemo } from 'react';
+import { useState, useRef, createContext, useContext, useMemo, useEffect } from 'react';
 
 const API_BASE = '';
 
@@ -185,9 +185,126 @@ export function UnitMediaThumbs() {
   );
 }
 
+/* ── Lightbox modal (opens when user clicks a photo / floor plan) ── */
+function Lightbox({ onClose }: { onClose: () => void }) {
+  const { items, active, setActive, prev, next } = useMedia();
+  const cur = items[active];
+
+  // Keyboard: esc closes, arrow keys navigate, scroll locked while open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowLeft')  prev();
+      else if (e.key === 'ArrowRight') next();
+    };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [prev, next, onClose]);
+
+  // Click-outside-image closes the lightbox. Navigation within walks the
+  // whole items list, not just images — videos/iframes render inline inside
+  // the lightbox too so you can flip through everything in fullscreen.
+  const renderInside = () => {
+    if (cur.type === 'youtube') {
+      const ytId = getYouTubeId(cur.url);
+      return <iframe src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
+        className="rounded-xl" style={{ width: 'min(90vw, 1200px)', aspectRatio: '16/9', border: 'none' }} allowFullScreen />;
+    }
+    if (cur.type === 'walkthrough') {
+      return <iframe src={cur.url} className="rounded-xl"
+        style={{ width: 'min(95vw, 1400px)', height: '85vh', border: 'none' }} allowFullScreen />;
+    }
+    if (cur.type === 'video') {
+      return <video src={mediaUrl(cur.url)} controls autoPlay
+        className="rounded-xl" style={{ maxWidth: '95vw', maxHeight: '90vh' }} />;
+    }
+    return <img src={mediaUrl(cur.url)} alt={cur.label}
+      className="rounded-xl select-none"
+      style={{ maxWidth: '95vw', maxHeight: '90vh', objectFit: 'contain', background: '#fff' }} />;
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center"
+      style={{ background: 'rgba(10, 13, 28, 0.92)' }}
+      onClick={onClose}
+    >
+      {/* Content — stop propagation so clicks on the media don't close */}
+      <div onClick={e => e.stopPropagation()} className="relative">
+        {renderInside()}
+
+        {/* Label pill */}
+        <div className="absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-bold"
+          style={{ background: 'rgba(0,0,0,0.55)', color: 'white' }}>{cur.label}</div>
+
+        {/* Counter */}
+        {items.length > 1 && (
+          <div className="absolute bottom-3 right-3 px-3 py-1 rounded-full text-xs font-bold"
+            style={{ background: 'rgba(0,0,0,0.55)', color: 'white' }}>
+            {active + 1} / {items.length}
+          </div>
+        )}
+      </div>
+
+      {/* Close button */}
+      <button onClick={onClose} aria-label="Close"
+        className="absolute top-5 right-5 w-11 h-11 rounded-full flex items-center justify-center text-xl transition-all hover:scale-105"
+        style={{ background: 'rgba(255,255,255,0.15)', color: 'white', backdropFilter: 'blur(10px)' }}>✕</button>
+
+      {/* Prev / Next */}
+      {items.length > 1 && (
+        <>
+          <button onClick={e => { e.stopPropagation(); prev(); }} aria-label="Previous"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all hover:scale-105"
+            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', backdropFilter: 'blur(10px)' }}>‹</button>
+          <button onClick={e => { e.stopPropagation(); next(); }} aria-label="Next"
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full flex items-center justify-center text-xl transition-all hover:scale-105"
+            style={{ background: 'rgba(255,255,255,0.15)', color: 'white', backdropFilter: 'blur(10px)' }}>›</button>
+        </>
+      )}
+
+      {/* Thumbnail strip at the bottom */}
+      {items.length > 1 && (
+        <div onClick={e => e.stopPropagation()}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 max-w-[90vw] overflow-x-auto pb-2"
+          style={{ scrollbarWidth: 'none' }}>
+          {items.map((it, i) => {
+            const isImgLike = it.type === 'image' || it.type === 'floorplan';
+            return (
+              <button key={i} onClick={() => setActive(i)}
+                className="rounded-lg overflow-hidden flex-shrink-0"
+                style={{
+                  width: 64, height: 48,
+                  border: active === i ? '2px solid #29A9DF' : '2px solid rgba(255,255,255,0.2)',
+                  opacity: active === i ? 1 : 0.6,
+                }}>
+                {isImgLike ? (
+                  <img src={mediaUrl(it.url)} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs font-bold"
+                    style={{ background: '#1a1a2e', color: 'white' }}>
+                    {it.type === 'video' || it.type === 'youtube' ? '▶' : '🔭'}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 /* ── Main viewer (renders inside the box) ── */
 export function UnitMediaMain() {
   const { items, active, prev, next, unit } = useMedia();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   if (items.length === 0) {
     return (
@@ -227,8 +344,10 @@ export function UnitMediaMain() {
     }
     return (
       <img src={mediaUrl(cur.url)} alt={cur.label}
-        className="w-full h-full object-contain"
-        style={{ background: '#f8fafc' }} />
+        className="w-full h-full object-contain cursor-zoom-in"
+        style={{ background: '#f8fafc' }}
+        onClick={() => setLightboxOpen(true)}
+        title="Click to zoom" />
     );
   };
 
@@ -237,6 +356,17 @@ export function UnitMediaMain() {
       style={{ aspectRatio: '16/9', minHeight: '300px' }}>
 
       {renderMain()}
+
+      {/* Zoom hint (images only) — tap/click to open the lightbox */}
+      {(cur.type === 'image' || cur.type === 'floorplan') && (
+        <button
+          onClick={() => setLightboxOpen(true)}
+          aria-label="Expand image"
+          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-sm transition-all hover:scale-105"
+          style={{ background: 'rgba(0,0,0,0.55)', color: 'white', backdropFilter: 'blur(6px)' }}>
+          ⤢
+        </button>
+      )}
 
       {/* Status badge */}
       <div className="absolute top-4 left-4">
@@ -268,6 +398,9 @@ export function UnitMediaMain() {
           {active + 1} / {items.length}
         </div>
       )}
+
+      {/* Fullscreen lightbox */}
+      {lightboxOpen && <Lightbox onClose={() => setLightboxOpen(false)} />}
     </div>
   );
 }

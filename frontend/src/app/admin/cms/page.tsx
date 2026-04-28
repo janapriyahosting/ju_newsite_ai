@@ -59,6 +59,7 @@ function SettingsPanel({ onSuccess, onError }: { onSuccess: (m: string) => void;
   const [values, setValues] = useState<Record<string, string>>({});
   const [activeGroup, setActiveGroup] = useState<SettingsGroup>("general");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
   const groups: SettingsGroup[] = ["general", "contact", "social", "seo", "filters"];
 
   useEffect(() => { load(); }, []);
@@ -84,6 +85,24 @@ function SettingsPanel({ onSuccess, onError }: { onSuccess: (m: string) => void;
     finally { setSaving(false); }
   }
 
+  async function handleImageUpload(settingKey: string, file: File) {
+    setUploading(settingKey);
+    try {
+      const token = localStorage.getItem("admin_token");
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/admin/cms/upload-site-asset?setting_key=${encodeURIComponent(settingKey)}`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd }
+      );
+      if (!res.ok) { const e = await res.json(); throw new Error(e.detail || "Upload failed"); }
+      const data = await res.json();
+      setValues(v => ({ ...v, [settingKey]: data.url }));
+      onSuccess(`Uploaded ${file.name}`);
+    } catch (e: any) { onError(e.message); }
+    finally { setUploading(null); }
+  }
+
   const grouped = settings.filter(s => s.group_key === activeGroup);
 
   return (
@@ -104,7 +123,31 @@ function SettingsPanel({ onSuccess, onError }: { onSuccess: (m: string) => void;
           {grouped.map(s => (
             <div key={s.setting_key}>
               <label className="block text-sm font-medium text-gray-700 mb-1">{s.setting_label}</label>
-              {s.setting_type === "textarea" ? (
+              {s.setting_type === "image" ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    {values[s.setting_key] && (
+                      <img src={values[s.setting_key]} alt={s.setting_label}
+                        className="w-12 h-12 rounded border border-gray-200 object-contain bg-gray-50"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                    )}
+                    <label className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 cursor-pointer hover:bg-gray-100 transition">
+                      {uploading === s.setting_key ? "Uploading…" : "Upload Image"}
+                      <input type="file" accept="image/png,image/x-icon,image/jpeg,image/webp,image/svg+xml,.ico"
+                        className="hidden"
+                        disabled={uploading === s.setting_key}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(s.setting_key, f); e.target.value = ""; }} />
+                    </label>
+                    {values[s.setting_key] && (
+                      <button onClick={() => setValues(v => ({ ...v, [s.setting_key]: "" }))}
+                        className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    )}
+                  </div>
+                  {values[s.setting_key] && (
+                    <p className="text-xs text-gray-400 truncate">{values[s.setting_key]}</p>
+                  )}
+                </div>
+              ) : s.setting_type === "textarea" ? (
                 <textarea rows={3} value={values[s.setting_key] || ""} onChange={e => setValues(v => ({ ...v, [s.setting_key]: e.target.value }))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#273b84]" />
               ) : s.setting_type === "color" ? (

@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/", label: "Home" },
   { href: "/store", label: "Store" },
   { href: "/projects", label: "Projects" },
+  { href: "/property-search", label: "Property Search" },
   { href: "/technology", label: "Technology" },
   { href: "/about", label: "About Us" },
   { href: "/contact", label: "Contact" },
@@ -51,21 +52,42 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        transparent ? "bg-transparent py-5" : "bg-white py-3 shadow-lg"
-      }`}>
+        transparent ? "py-5" : "bg-white py-3 shadow-lg"
+      }`}
+      style={
+        transparent
+          ? {
+              backgroundImage:
+                "linear-gradient(black, rgb(0 0 0 / 8%))",
+            }
+          : {}
+      }
+    >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
-          <img src={transparent ? "/logo-dark.png" : "/logo-light.png"}
-            alt="Janapriya Upscale" className="h-10 w-auto transition-all duration-300" />
+          <img
+            src={transparent ? "/logo-dark.png" : "/logo-light.png"}
+            alt="Janapriya Upscale"
+            className="h-10 w-auto transition-all duration-300"
+          />
         </Link>
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-7">
           {NAV_LINKS.map(link => (
-            <Link key={link.href} href={link.href}
-              style={{ color: pathname === link.href ? '#29A9DF' : transparent ? 'rgba(255,255,255,0.9)' : '#333333' }}
-              className="text-sm font-semibold tracking-wide transition-colors hover:text-[#29A9DF] relative">
+            <Link
+              key={link.href}
+              href={link.href}
+              style={{
+                color: pathname === link.href
+                  ? '#29A9DF'
+                  : transparent
+                  ? "#ffffff"
+                  : "#1a1a2e",
+              }}
+              className="text-sm font-semibold tracking-wide transition-colors hover:text-[#29A9DF] relative"
+            >
               {link.label}
               {pathname === link.href && (
                 <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-[#29A9DF] rounded-full" />
@@ -77,68 +99,119 @@ export default function Navbar() {
         {/* CTA / User */}
         <div className="hidden md:flex items-center gap-3">
           {/* Cart icon - always visible */}
-          <Link href="/cart" className="relative flex items-center justify-center w-9 h-9 rounded-full transition-all hover:bg-blue-50" title="My Cart"
-            style={{ color: transparent ? "white" : "#2A3887" }}>
+          <Link
+            href="/cart"
+            className="relative flex items-center justify-center w-9 h-9 rounded-full transition-all hover:bg-blue-50"
+            title="My Cart"
+            style={{ color: transparent ? "white" : "#2A3887" }}
+          >
             🛒
           </Link>
+
           {loggedIn && customer ? (
             <div className="relative user-menu-wrapper">
-              <button onClick={() => setUserMenuOpen(!userMenuOpen)}
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center gap-2 px-4 py-2 rounded-full transition-all"
-                style={{ background: transparent ? "rgba(255,255,255,0.15)" : "#F0F4FF", color: transparent ? "white" : "#2A3887" }}>
+                style={{
+                  background: transparent ? "rgba(255,255,255,0.15)" : "#F0F4FF",
+                  color: transparent ? "white" : "#2A3887",
+                }}
+              >
                 {customer.profile_pic ? (
-                  <img src={customer.profile_pic} alt="" className="w-7 h-7 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
+                  <img
+                    src={customer.profile_pic}
+                    alt=""
+                    className="w-7 h-7 rounded-full object-cover border"
+                    style={{ borderColor: "#29A9DF" }}
+                  />
                 ) : (
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white"
-                    style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white"
+                    style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}
+                  >
                     {customer.name?.[0]?.toUpperCase()}
                   </div>
                 )}
                 <span className="text-sm font-bold">{customer.name.split(" ")[0]}</span>
                 <span className="text-xs">▾</span>
               </button>
+
               {userMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border py-2 z-50"
-                  style={{ border: "1px solid #E2F1FC" }}>
+                <div
+                  className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border py-2 z-50"
+                  style={{ border: "1px solid #E2F1FC" }}
+                >
                   {/* Profile header */}
-                  <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: "1px solid #E2F1FC" }}>
+                  <div
+                    className="px-4 py-3 flex items-center gap-3"
+                    style={{ borderBottom: "1px solid #E2F1FC" }}
+                  >
                     {customer.profile_pic ? (
-                      <img src={customer.profile_pic} alt="" className="w-10 h-10 rounded-full object-cover border" style={{ borderColor: "#29A9DF" }} />
+                      <img
+                        src={customer.profile_pic}
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover border"
+                        style={{ borderColor: "#29A9DF" }}
+                      />
                     ) : (
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white"
-                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white"
+                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}
+                      >
                         {customer.name?.[0]?.toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-sm font-bold truncate" style={{ color: "#2A3887" }}>{customer.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{customer.email || customer.phone}</p>
+                      <p className="text-sm font-bold truncate" style={{ color: "#2A3887" }}>
+                        {customer.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {customer.email || customer.phone}
+                      </p>
                     </div>
                   </div>
-                  <Link href="/dashboard?tab=profile" onClick={() => setUserMenuOpen(false)}
+
+                  <Link
+                    href="/dashboard?tab=profile"
+                    onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
-                    style={{ color: "#2A3887" }}>
+                    style={{ color: "#2A3887" }}
+                  >
                     👤 My Profile
                   </Link>
-                  <Link href="/dashboard" onClick={() => setUserMenuOpen(false)}
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
-                    style={{ color: "#2A3887" }}>
+                    style={{ color: "#2A3887" }}
+                  >
                     🏠 Dashboard
                   </Link>
-                  <Link href="/dashboard?tab=bookings" onClick={() => setUserMenuOpen(false)}
+                  <Link
+                    href="/dashboard?tab=bookings"
+                    onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
-                    style={{ color: "#2A3887" }}>
+                    style={{ color: "#2A3887" }}
+                  >
                     📋 My Bookings
                   </Link>
-                  <Link href="/dashboard?tab=saved" onClick={() => setUserMenuOpen(false)}
+                  <Link
+                    href="/dashboard?tab=saved"
+                    onClick={() => setUserMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors"
-                    style={{ color: "#2A3887" }}>
+                    style={{ color: "#2A3887" }}
+                  >
                     ❤️ Saved Properties
                   </Link>
+
                   <div style={{ borderTop: "1px solid #E2F1FC" }} className="my-1" />
-                  <button onClick={handleLogout}
+
+                  <button
+                    onClick={handleLogout}
                     className="flex items-center gap-3 px-4 py-2.5 text-sm w-full text-left hover:bg-red-50 transition-colors"
-                    style={{ color: "#DC2626" }}>
+                    style={{ color: "#DC2626" }}
+                  >
                     🚪 Sign Out
                   </button>
                 </div>
@@ -146,14 +219,18 @@ export default function Navbar() {
             </div>
           ) : (
             <>
-              <Link href="/login"
+              <Link
+                href="/login"
                 className="px-4 py-2 text-sm font-bold rounded-full transition-all"
-                style={{ color: transparent ? "white" : "#2A3887" }}>
+                style={{ color: transparent ? "white" : "#2A3887" }}
+              >
                 Sign In
               </Link>
-              <Link href="/contact"
+              <Link
+                href="/contact"
                 className="px-5 py-2.5 text-white text-sm font-bold rounded-full transition-all hover:scale-105 hover:shadow-lg"
-                style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}>
+                style={{ background: "linear-gradient(135deg, #2A3887, #29A9DF)" }}
+              >
                 Enquire Now
               </Link>
             </>
@@ -161,9 +238,17 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Hamburger */}
-        <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden flex flex-col gap-1.5 p-2">
-          {[0,1,2].map(i => (
-            <span key={i} className={`block h-0.5 transition-all ${transparent ? "bg-white" : "bg-gray-800"} ${i===2?"w-4":"w-6"}`} />
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="md:hidden flex flex-col gap-1.5 p-2"
+        >
+          {[0, 1, 2].map(i => (
+            <span
+              key={i}
+              className={`block h-0.5 transition-all ${
+                transparent ? "bg-white" : "bg-gray-800"
+              } ${i === 2 ? "w-4" : "w-6"}`}
+            />
           ))}
         </button>
       </div>
@@ -172,30 +257,50 @@ export default function Navbar() {
       {menuOpen && (
         <div className="md:hidden bg-white border-t shadow-xl px-6 py-4 space-y-2">
           {NAV_LINKS.map(link => (
-            <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)}
-              className={`block text-sm font-semibold py-2.5 border-b transition-colors ${pathname === link.href ? "text-[#29A9DF]" : "text-gray-700"}`}
-              style={{ borderColor: "#f0f0f0" }}>
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuOpen(false)}
+              className={`block text-sm font-semibold py-2.5 border-b transition-colors ${
+                pathname === link.href ? "text-[#29A9DF]" : "text-gray-700"
+              }`}
+              style={{ borderColor: "#f0f0f0" }}
+            >
               {link.label}
             </Link>
           ))}
+
           {loggedIn ? (
             <>
-              <Link href="/dashboard" onClick={() => setMenuOpen(false)}
-                className="block text-sm font-semibold py-2.5 text-[#2A3887]">
+              <Link
+                href="/dashboard"
+                onClick={() => setMenuOpen(false)}
+                className="block text-sm font-semibold py-2.5 text-[#2A3887]"
+              >
                 My Dashboard
               </Link>
-              <button onClick={handleLogout}
-                className="block w-full text-left text-sm font-semibold py-2.5 text-red-500">
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left text-sm font-semibold py-2.5 text-red-500"
+              >
                 Sign Out
               </button>
             </>
           ) : (
             <>
-              <Link href="/login" onClick={() => setMenuOpen(false)}
-                className="block text-sm font-semibold py-2.5 text-[#2A3887]">Sign In</Link>
-              <Link href="/register" onClick={() => setMenuOpen(false)}
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="block text-sm font-semibold py-2.5 text-[#2A3887]"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMenuOpen(false)}
                 className="block w-full text-center px-5 py-3 text-white text-sm font-bold rounded-full mt-2"
-                style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
+                style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}
+              >
                 Create Account
               </Link>
             </>

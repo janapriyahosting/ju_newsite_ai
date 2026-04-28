@@ -11,9 +11,10 @@ from backend.app.models.search_log import SearchLog
 from backend.app.models.session_log import SessionLog
 from backend.app.models.home_loan_request import HomeLoanRequest
 from backend.app.models.assistant_chat_log import AssistantChatLog
+from backend.app.models.assistant_content import AssistantContent
 
 __all__ = [
     "Project", "Tower", "Unit", "Customer", "Lead",
     "SiteVisit", "CartItem", "Booking", "Coupon", "SearchLog", "SessionLog",
-    "HomeLoanRequest", "AssistantChatLog",
+    "HomeLoanRequest", "AssistantChatLog", "AssistantContent",
 ]
