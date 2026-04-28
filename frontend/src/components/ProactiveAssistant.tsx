@@ -447,6 +447,15 @@ export default function ProactiveAssistant({
   const endRef     = useRef<HTMLDivElement>(null);
   const triggered  = useRef(false);
 
+  // Periodic launcher "buzz" + a one-time chime to draw the visitor's eye.
+  // Browsers block AudioContext until the page has had a user gesture, so
+  // we lazy-create + resume one on the first click/keydown/touch/scroll.
+  // Until that gesture, the buzz still fires but the chime is queued.
+  const [buzzing, setBuzzing] = useState(false);
+  const chimedRef = useRef(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const visibleRef = useRef(false);
+
   // Trigger: 0 results
   useEffect(() => {
     if (triggered.current) return;
@@ -464,6 +473,87 @@ export default function ProactiveAssistant({
     timerRef.current = setTimeout(() => { triggered.current = true; setVisible(true); }, 10_000);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [immediate]);
+
+  // Two-tone notification chime via Web Audio API — no asset file. Returns
+  // true if the chime actually got scheduled, false if the audio context
+  // isn't ready yet (browser hasn't seen a user gesture).
+  function playChime(): boolean {
+    const ctx = audioCtxRef.current;
+    if (!ctx || ctx.state !== "running") return false;
+    try {
+      const tone = (freq: number, startAt: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        osc.connect(gain).connect(ctx.destination);
+        const t0 = ctx.currentTime + startAt;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.20, t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        osc.start(t0);
+        osc.stop(t0 + dur);
+      };
+      tone(880,    0,    0.20); // A5
+      tone(1318.5, 0.12, 0.24); // E6
+      return true;
+    } catch { return false; }
+  }
+
+  // Lazy-create + resume the AudioContext on the first user gesture, then
+  // play the queued first-chime if the launcher is already visible. Modern
+  // browsers (Chrome/Safari/Firefox) block audio until this happens.
+  useEffect(() => {
+    function unlock() {
+      if (audioCtxRef.current) return;
+      try {
+        const W = window as any;
+        const Ctor = W.AudioContext || W.webkitAudioContext;
+        if (!Ctor) return;
+        const ctx: AudioContext = new Ctor();
+        audioCtxRef.current = ctx;
+        // resume() returns a promise we can ignore; on success state→running
+        const after = () => {
+          if (visibleRef.current && !chimedRef.current && playChime()) {
+            chimedRef.current = true;
+          }
+        };
+        if (ctx.state === "suspended") ctx.resume().then(after, after);
+        else after();
+      } catch {}
+    }
+    const opts = { once: true, passive: true } as AddEventListenerOptions;
+    window.addEventListener("click",      unlock, opts);
+    window.addEventListener("keydown",    unlock, opts);
+    window.addEventListener("touchstart", unlock, opts);
+    window.addEventListener("scroll",     unlock, opts);
+    return () => {
+      window.removeEventListener("click",      unlock);
+      window.removeEventListener("keydown",    unlock);
+      window.removeEventListener("touchstart", unlock);
+      window.removeEventListener("scroll",     unlock);
+    };
+  }, []);
+
+  // Buzz + chime to grab attention while the launcher is sitting idle.
+  useEffect(() => {
+    visibleRef.current = visible && !open;
+    if (!visible || open) return;
+
+    // Toggle off → next frame on, so the CSS animation restarts cleanly.
+    function fireBuzz() {
+      setBuzzing(false);
+      requestAnimationFrame(() => requestAnimationFrame(() => setBuzzing(true)));
+    }
+
+    fireBuzz();
+    if (!chimedRef.current && playChime()) {
+      chimedRef.current = true;
+    }
+
+    const interval = setInterval(fireBuzz, 5_000);
+    return () => clearInterval(interval);
+  }, [visible, open]);
 
   // Load active flow on open
   useEffect(() => {
@@ -758,8 +848,29 @@ export default function ProactiveAssistant({
 
   return (
     <>
+      {/* Keyframes for the launcher's periodic buzz. transform-origin keeps
+          the rotation pivoting on the bottom-right corner so the fixed
+          position stays anchored in place. */}
+      <style>{`
+        @keyframes jpLauncherBuzz {
+          0%, 100% { transform: rotate(0deg) scale(1); }
+          10%      { transform: rotate(-6deg) scale(1.06); }
+          20%      { transform: rotate(5deg)  scale(1.06); }
+          30%      { transform: rotate(-4deg) scale(1.05); }
+          40%      { transform: rotate(3deg)  scale(1.04); }
+          55%      { transform: rotate(-2deg) scale(1.02); }
+          70%      { transform: rotate(1deg)  scale(1.01); }
+        }
+        .jp-launcher-buzz {
+          animation: jpLauncherBuzz 0.65s ease-in-out;
+          transform-origin: 90% 90%;
+        }
+      `}</style>
+
       {!open && (
         <button onClick={() => { setOpen(true); if (messages.length === 0) fireGreeting(); }}
+          className={buzzing ? "jp-launcher-buzz" : undefined}
+          onAnimationEnd={() => setBuzzing(false)}
           style={{ position: "fixed", bottom: 100, right: 24, zIndex: 1000, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: "none", borderRadius: 50, padding: "13px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "0 8px 30px rgba(42,56,135,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
           <AiIcon size={22} style={{ background: "white", borderRadius: 6, padding: 2 }} />
           <span>Need help finding<br /><strong>your home?</strong></span>

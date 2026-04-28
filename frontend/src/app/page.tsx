@@ -461,6 +461,8 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("Buy");
   const [activeSlide, setActiveSlide] = useState(0);
+  // Tracks which News card is currently playing its embedded YouTube video.
+  const [playing, setPlaying] = useState<string | null>(null);
 
   const HERO_SLIDES = [
     { src: "/jp_final.mp4" },
@@ -562,7 +564,7 @@ export default function HomePage() {
     { name: "Neha Gupta", role: "Sales Manager", exp: "6 yrs", deals: "160+" },
   ];
 
-  const NEWS = [
+  const NEWS: { tag: string; title: string; date: string; videoId?: string }[] = [
     { tag: "Market", title: "Podcast With 𝐉𝐀𝐍𝐀𝐏𝐑𝐈𝐘𝐀 𝐔𝐏𝐒𝐂𝐀𝐋𝐄 Managing Director 𝐊𝐫𝐚𝐧𝐭𝐢 𝐊𝐢𝐫𝐚𝐧 𝐑𝐞𝐝𝐝𝐲", date: "Dec 12, 2024" },
     { tag: "Tips", title: "Sakshi Property Plus: Janapriya Upscale MD – Mr. Kranti Kiran Reddy Exclusive Interview | Real Estate |", date: "Nov 28, 2024" },
     { tag: "Legal", title: "Janapriya Upscale to invest Rs 1,250 cr in 4 projects", date: "Nov 15, 2024" },
