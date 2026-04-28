@@ -315,7 +315,7 @@ const STYLES = `
 .jl-footer-right{font-size:10px;color:rgba(138,125,96,0.45);letter-spacing:0.04em;text-align:right;line-height:1.6}
 
 /* ══════════════════════════
-   RESPONSIVE
+   RESPONSIVE — original, untouched
 ══════════════════════════ */
 @media(max-width:960px){
   .jl-hero{grid-template-columns:1fr}
@@ -332,6 +332,56 @@ const STYLES = `
   .jl-hero-left h1{font-size:36px}
   .jl-nav{padding:0 1.2rem}
   .jl-nav-links{gap:1rem}
+}
+
+/* ══════════════════════════
+   MOBILE-ONLY ADDITIONS
+   (desktop/tablet untouched above)
+══════════════════════════ */
+@media(max-width:960px){
+  /* Fix: 22rem side margins collapse layout on mobile */
+  .jl-root{margin-left:0;margin-right:0}
+  .jl-nav{margin-left:0;margin-right:0}
+  /* Ticker: swipeable instead of clipped */
+  .jl-ticker{padding:9px 1.2rem;gap:1.2rem;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  /* Footer links: centre-align */
+  .jl-footer-mid{justify-content:center}
+}
+@media(max-width:560px){
+  /* Nav: logo only, no crowding */
+  .jl-nav{height:52px;padding:0 1rem}
+  .jl-nav-links{display:none}
+  /* Hero text scale */
+  .jl-hero-left{padding:2rem 1.2rem}
+  .jl-hero-left h1{font-size:clamp(28px,8vw,38px)}
+  .jl-hero-body{font-size:13px}
+  /* Counters 2×2: correct borders */
+  .jl-hero-counters{gap:0;padding-top:1.2rem}
+  .jl-counter{padding:1rem;border-right:none!important;border-bottom:1px solid var(--border-gold)}
+  .jl-counter:nth-child(odd){border-right:1px solid var(--border-gold)!important}
+  .jl-counter:nth-child(3),.jl-counter:nth-child(4){border-bottom:none}
+  .jl-counter+.jl-counter{padding-left:1rem}
+  .jl-counter-num{font-size:26px}
+  /* Metrics: single col */
+  .jl-metrics{grid-template-columns:1fr}
+  .jl-metric{border-right:none!important;border-bottom:1px solid var(--border-gold);padding:1.4rem 1.2rem}
+  .jl-metric:last-child{border-bottom:none}
+  .jl-metric-val{font-size:30px}
+  /* Sections: tighter padding */
+  .jl-projects{padding:1.8rem 1.2rem}
+  .jl-avail{padding:1.8rem 1.2rem}
+  .jl-avail-title{font-size:20px}
+  .jl-avail-head{flex-direction:column;align-items:flex-start;gap:8px}
+  .jl-filters select{font-size:14px;padding:12px 16px}
+  /* Table: reduce cell size */
+  .jl-table th,.jl-table td{padding:10px 8px;font-size:11px}
+  .jl-unit-id{font-size:12px}
+  /* Ticker */
+  .jl-ticker{padding:8px 1rem;gap:1rem}
+  .jl-ticker-item{font-size:10px}
+  /* Footer */
+  .jl-footer{padding:1.4rem 1.2rem}
+  .jl-footer-mid{gap:1.2rem}
 }
 `;
 
@@ -711,6 +761,8 @@ function AvailSection({ units, projects }: { units: any[]; projects: any[] }) {
         </select>
       </div>
 
+      {/* Scroll wrapper so the 8-col table doesn't break on mobile */}
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" as any }}>
       <table className="jl-table">
         <thead>
           <tr>
@@ -768,6 +820,7 @@ function AvailSection({ units, projects }: { units: any[]; projects: any[] }) {
           }
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import AiIcon from "@/components/AiIcon";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const MEDIA_BASE = "";
@@ -287,7 +288,7 @@ function FlowRenderer({ steps, onComplete, onSearchUnits }: {
       {history.map((h, i) => (
         <div key={i} style={{ marginBottom: 6 }}>
           <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ width: 24, height: 24, borderRadius: "50%", background: "linear-gradient(135deg,#2A3887,#29A9DF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "white", flexShrink: 0 }}>✦</div>
+            <AiIcon size={24} />
             <div style={{ background: "#F0F4FF", borderRadius: "0 10px 10px 10px", padding: "7px 10px", fontSize: 12, color: "#444", maxWidth: "80%" }}>{h.step.text}</div>
           </div>
           {h.chosen && (
@@ -300,7 +301,7 @@ function FlowRenderer({ steps, onComplete, onSearchUnits }: {
 
       {/* Current step */}
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <div style={{ width: 24, height: 24, borderRadius: "50%", background: "linear-gradient(135deg,#2A3887,#29A9DF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "white", flexShrink: 0 }}>✦</div>
+        <AiIcon size={24} />
         <div style={{ background: "#F0F4FF", borderRadius: "0 10px 10px 10px", padding: "8px 12px", fontSize: 13, color: "#333", maxWidth: "85%", lineHeight: 1.5 }}>
           {step.text || (step.type === "image" ? "" : "…")}
         </div>
@@ -409,6 +410,10 @@ interface Props {
   lastQuery?: string;
   budget?: number;
   pageContext?: AssistantPageContext;
+  // When true, the launcher button shows on mount instead of waiting for the
+  // dwell timer or a zero-results signal. Use on landing pages where we want
+  // the assistant available right away.
+  immediate?: boolean;
 }
 
 export default function ProactiveAssistant({
@@ -417,8 +422,9 @@ export default function ProactiveAssistant({
   lastQuery = "",
   budget = 0,
   pageContext,
+  immediate = false,
 }: Props) {
-  const [visible, setVisible]           = useState(false);
+  const [visible, setVisible]           = useState(immediate);
   const [open, setOpen]                 = useState(false);
   const [tab, setTab]                   = useState<"chat" | "flow" | "riseup" | "callback">("chat");
   const [messages, setMessages]         = useState<{ role: string; content: string; brochure?: any; riseup?: any; units?: any[]; action?: AssistantAction }[]>([]);
@@ -451,12 +457,13 @@ export default function ProactiveAssistant({
     }
   }, [searchCount, lastResultsCount]);  // eslint-disable-line
 
-  // Trigger: 45s timer
+  // Trigger: 45s timer (skipped when `immediate` — launcher already visible)
   useEffect(() => {
     if (triggered.current) return;
+    if (immediate) { triggered.current = true; return; }
     timerRef.current = setTimeout(() => { triggered.current = true; setVisible(true); }, 10_000);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, []);
+  }, [immediate]);
 
   // Load active flow on open
   useEffect(() => {
@@ -754,7 +761,7 @@ export default function ProactiveAssistant({
       {!open && (
         <button onClick={() => { setOpen(true); if (messages.length === 0) fireGreeting(); }}
           style={{ position: "fixed", bottom: 100, right: 24, zIndex: 1000, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: "none", borderRadius: 50, padding: "13px 20px", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "0 8px 30px rgba(42,56,135,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 18 }}>✦</span>
+          <AiIcon size={22} style={{ background: "white", borderRadius: 6, padding: 2 }} />
           <span>Need help finding<br /><strong>your home?</strong></span>
         </button>
       )}
@@ -765,7 +772,7 @@ export default function ProactiveAssistant({
           {/* Header */}
           <div style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)", padding: "13px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✦</div>
+              <AiIcon size={32} style={{ background: "white", borderRadius: 8, padding: 3 }} />
               <div>
                 <div style={{ color: "white", fontWeight: 900, fontSize: 14 }}>Janapriya AI</div>
                 <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>Online · Here to help</div>
@@ -790,7 +797,7 @@ export default function ProactiveAssistant({
               <div style={{ flex: 1, overflowY: "auto", padding: 14, background: "white", display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
                 {messages.length === 0 && loading && (
                   <div style={{ display: "flex", gap: 8 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#2A3887,#29A9DF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "white", flexShrink: 0 }}>✦</div>
+                    <AiIcon size={26} />
                     <div style={{ background: "#F0F4FF", borderRadius: "0 12px 12px 12px", padding: "10px 12px", fontSize: 13, color: "#888" }}>typing…</div>
                   </div>
                 )}
@@ -799,7 +806,7 @@ export default function ProactiveAssistant({
                   <div key={i}>
                     <div style={{ display: "flex", gap: 8, flexDirection: m.role === "user" ? "row-reverse" : "row" }}>
                       {m.role === "assistant" && (
-                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#2A3887,#29A9DF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "white", flexShrink: 0 }}>✦</div>
+                        <AiIcon size={26} />
                       )}
                       <div style={{
                         background: m.role === "user" ? "linear-gradient(135deg,#2A3887,#29A9DF)" : "#F0F4FF",
@@ -822,7 +829,7 @@ export default function ProactiveAssistant({
 
                 {loading && messages.length > 0 && (
                   <div style={{ display: "flex", gap: 8 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg,#2A3887,#29A9DF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "white" }}>✦</div>
+                    <AiIcon size={26} />
                     <div style={{ background: "#F0F4FF", borderRadius: "0 12px 12px 12px", padding: "9px 12px", fontSize: 13, color: "#888" }}>typing…</div>
                   </div>
                 )}

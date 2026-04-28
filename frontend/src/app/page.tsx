@@ -3,9 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ProactiveAssistant from "@/components/ProactiveAssistant";
-
 import UnitCard from "@/components/UnitCard";
+import AiIcon from "@/components/AiIcon";
+import ProactiveAssistant from "@/components/ProactiveAssistant";
 
 const PAYMENTS = [
   {
@@ -461,7 +461,6 @@ export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("Buy");
   const [activeSlide, setActiveSlide] = useState(0);
-const [playing, setPlaying] = useState<string | null>(null); // ✅ ADD THIS
 
   const HERO_SLIDES = [
     { src: "/jp_final.mp4" },
@@ -552,7 +551,7 @@ const [playing, setPlaying] = useState<string | null>(null); // ✅ ADD THIS
 
   const TESTIMONIALS = [
     { name: "Veera Bhadram", role: "Software Engineer", city: "Hyderabad", text: "Excellent construction quality and transparent process. Janapriya delivered exactly what they promised. Highly recommended!", rating: 5, initial: "R" },
-    { name: "Mr. Suresh Karri", project: "#2915  Nilevalley", city: "#2915  Nilevalley", text: "Heartfelt congratulations on completing 40 successful years! Building over 40,000 homes in four decades is a truly amazing achievement", rating: 5, initial: "P" },
+    { name: "Priya Sharma", role: "Doctor", city: "Secunderabad", text: "Bought a 3BHK in Janapriya Heights. The team was professional at every step. Best decision of my life!", rating: 5, initial: "P" },
     { name: "Venkat Reddy", role: "Business Owner", city: "Hyderabad", text: "Invested in Janapriya Meadows villa. Superb quality, premium location. Great ROI and an even better living experience.", rating: 5, initial: "V" },
   ];
 
@@ -564,25 +563,10 @@ const [playing, setPlaying] = useState<string | null>(null); // ✅ ADD THIS
   ];
 
   const NEWS = [
-  {
-    tag: "Podcast",
-    title: "Podcast With 𝐉𝐀𝐍𝐀𝐏𝐑𝐈𝐘𝐀 𝐔𝐏𝐒𝐂𝐀𝐋𝐄 Managing Director 𝐊𝐫𝐚𝐧𝐭𝐢 𝐊𝐢𝐫𝐚𝐧 𝐑𝐞𝐝𝐝𝐲",
-    date: "Dec 12, 2024",
-    videoId: "WsEVKn7uQFU", 
-  },
-  {
-    tag: "Sakshi property Plus",
-    title: "Sakshi Property Plus: Janapriya Upscale MD – Mr. Kranti Kiran Reddy Exclusive Interview | Real Estate |",
-    date: "Nov 28, 2024",
-    videoId: "hmR4J7nbEII", 
-  },
-  {
-    tag: "TDR GO Explained",
-    title: "TDR GO Explained: Controls on Redemption & Pricing | HMTV Panel Discussion",
-    date: "Apr 01, 2026",
-    videoId: "mhdoj1VQGzs", 
-  },
-];
+    { tag: "Market", title: "Podcast With 𝐉𝐀𝐍𝐀𝐏𝐑𝐈𝐘𝐀 𝐔𝐏𝐒𝐂𝐀𝐋𝐄 Managing Director 𝐊𝐫𝐚𝐧𝐭𝐢 𝐊𝐢𝐫𝐚𝐧 𝐑𝐞𝐝𝐝𝐲", date: "Dec 12, 2024" },
+    { tag: "Tips", title: "Sakshi Property Plus: Janapriya Upscale MD – Mr. Kranti Kiran Reddy Exclusive Interview | Real Estate |", date: "Nov 28, 2024" },
+    { tag: "Legal", title: "Janapriya Upscale to invest Rs 1,250 cr in 4 projects", date: "Nov 15, 2024" },
+  ];
 
   const STATS = [
     {
@@ -851,16 +835,15 @@ const [playing, setPlaying] = useState<string | null>(null); // ✅ ADD THIS
                     width: 36,
                     height: 36,
                     borderRadius: 10,
-                    background: "linear-gradient(135deg, #e8ebf8, #b8c0e8)",
+                    background: "white",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 16,
                     flexShrink: 0,
                     marginRight: 10,
                   }}
                 >
-                  ✦
+                  <AiIcon size={28} />
                 </div>
 
                 {/* Input */}
@@ -1255,11 +1238,36 @@ const [playing, setPlaying] = useState<string | null>(null); // ✅ ADD THIS
               </div>
             ))}
           </div>
-          
+          <div style={{ display: "flex", gap: 24, justifyContent: "center", marginTop: 48, flexWrap: "wrap" }}>
+            {["RERA", "IGBC", "ISO 9001", "CRISIL AA", "CREDAI"].map(logo => (
+              <div key={logo} style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 10, padding: "10px 20px", fontWeight: 800, fontSize: 12, color: "#6B7280", letterSpacing: 1 }}>{logo}</div>
+            ))}
+          </div>
         </div>
       </section>
 
-    
+      {/* ── MEET AGENTS ────────────────────────────────────────────────── */}
+      <section style={{ background: "white", padding: "80px 0" }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div style={{ textAlign: "center", marginBottom: 40 }}>
+            <p className="section-label">Our Team</p>
+            <h2 className="section-title">Meet With Agents</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {AGENTS.map(a => (
+              <div key={a.name} className="card-hover" style={{ background: "#F8FAFB", borderRadius: 18, padding: "24px 16px", textAlign: "center", border: "1px solid #F0F0F0" }}>
+                <div className="agent-avatar">{a.name[0]}</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "#0D1B2A" }}>{a.name}</div>
+                <div style={{ color: "#273b84", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{a.role}</div>
+                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                  <span style={{ background: "#e8ebf8", color: "#273b84", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{a.exp}</span>
+                  <span style={{ background: "#DBEAFE", color: "#1E40AF", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{a.deals} deals</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ── MILESTONES VIDEO ───────────────────────────────────────────── */}
       {mounted && (
@@ -1275,62 +1283,38 @@ const [playing, setPlaying] = useState<string | null>(null); // ✅ ADD THIS
         </section>
       )}
 
-    {/* ── NEWS & ARTICLES ────────────────────────────────────────────── */}
-<section style={{ background: "#F8FAFB", padding: "80px 0" }}>
-  <div className="max-w-6xl mx-auto px-6">
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
-      <div>
-        <p className="section-label">Insights</p>
-        <h2 className="section-title">Our Latest Article And<br />News For You</h2>
-      </div>
-      <Link href="/blog" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>
-        All Articles →
-      </Link>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {NEWS.map(n => (
-        <div key={n.title} className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.05)" }}>
-          <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000", overflow: "hidden" }}>
-            {playing === n.tag ? (
-              <iframe
-                src={`https://www.youtube.com/embed/${n.videoId}?autoplay=1&rel=0`}
-                allow="autoplay; encrypted-media"
-                allowFullScreen
-                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
-              />
-            ) : (
-              <>
-                <img
-                  src={`https://img.youtube.com/vi/${n.videoId}/hqdefault.jpg`}
-                  alt={n.title}
-                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                />
-                <div
-                  onClick={() => setPlaying(n.tag)}
-                  style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.18)", cursor: "pointer" }}
-                >
-                  <div style={{ width: 52, height: 52, background: "rgba(255,255,255,0.92)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
-                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                      <polygon points="5,2 16,9 5,16" fill="#273b84" />
-                    </svg>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-          <div style={{ padding: "18px 20px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <span className="badge badge-brand">{n.tag}</span>
-              <span style={{ color: "#9CA3AF", fontSize: 11 }}>{n.date}</span>
+      {/* ── NEWS & ARTICLES ────────────────────────────────────────────── */}
+      <section style={{ background: "#F8FAFB", padding: "80px 0" }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
+            <div>
+              <p className="section-label">Insights</p>
+              <h2 className="section-title">Our Latest Article And<br />News For You</h2>
             </div>
-            <h3 style={{ fontWeight: 800, fontSize: 14, color: "#0D1B2A", lineHeight: 1.5, marginBottom: 12 }}>{n.title}</h3>
-            <span onClick={() => setPlaying(n.tag)} style={{ color: "#273b84", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Watch now →</span>
+            <Link href="/blog" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>
+              All Articles →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {NEWS.map(n => (
+              <div key={n.title} className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.05)" }}>
+                <div className="news-img" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 40 }}>🏙️</span>
+                </div>
+                <div style={{ padding: "18px 20px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                    <span className="badge badge-brand">{n.tag}</span>
+                    <span style={{ color: "#9CA3AF", fontSize: 11 }}>{n.date}</span>
+                  </div>
+                  <h3 style={{ fontWeight: 800, fontSize: 14, color: "#0D1B2A", lineHeight: 1.5, marginBottom: 12 }}>{n.title}</h3>
+                  <span style={{ color: "#273b84", fontSize: 12, fontWeight: 800 }}>Read more →</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      ))}
-    </div>
-  </div>
-</section>
+      </section>
+
       {/* ── CTA FOOTER BANNER ──────────────────────────────────────────── */}
       <section style={{ background: "linear-gradient(135deg, #273b84, #1a2a6c)", padding: "72px 24px", textAlign: "center" }}>
         <div className="max-w-2xl mx-auto">
@@ -1350,7 +1334,7 @@ const [playing, setPlaying] = useState<string | null>(null); // ✅ ADD THIS
       </section>
 
       <Footer />
-      <ProactiveAssistant pageContext={{ page: "home" }} />
+      <ProactiveAssistant immediate />
     </main>
   );
 }

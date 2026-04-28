@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import CompareBar from "@/components/CompareBar";
 import ProactiveAssistant from "@/components/ProactiveAssistant";
 import UnitCard from "@/components/UnitCard";
+import AiIcon from "@/components/AiIcon";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://173.168.0.81/api/v1";
@@ -723,22 +724,22 @@ export default function StorePage() {
           <form onSubmit={handleAISearch} className="flex gap-2 max-w-2xl">
             <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-xl"
               style={{ background:"rgba(255,255,255,0.1)", border:"1px solid rgba(255,255,255,0.2)" }}>
-              <span style={{ color:"#29A9DF" }}>✦</span>
+              <AiIcon size={22} style={{ background: "white", borderRadius: 6, padding: 2 }} />
               <input value={aiQuery} onChange={e => setAiQuery(e.target.value)}
                 placeholder="AI Search: 3BHK under ₹80L facing East..."
                 className="flex-1 bg-transparent text-white placeholder-white/40 text-sm focus:outline-none" />
               {aiQuery && <button type="button" onClick={clearAI} className="text-white/40 hover:text-white">✕</button>}
             </div>
             <button type="submit" disabled={searching}
-              className="px-5 py-3 text-white font-bold rounded-xl text-sm disabled:opacity-60 whitespace-nowrap"
+              className="px-5 py-3 text-white font-bold rounded-xl text-sm disabled:opacity-60 whitespace-nowrap inline-flex items-center gap-2"
               style={{ background:"linear-gradient(135deg,#29A9DF,#00C2FF)" }}>
-              {searching ? "⟳" : "✦ AI Search"}
+              {searching ? "⟳" : <><AiIcon size={16} style={{ background: "white", borderRadius: 4, padding: 1 }} /> AI Search</>}
             </button>
           </form>
           {aiActive && (
             <div className="mt-2 flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold" style={{ background:"rgba(41,169,223,0.2)", color:"#29A9DF", border:"1px solid rgba(41,169,223,0.3)" }}>
-                ✦ AI results for "{aiQuery}" — {filtered.length} found
+              <span className="px-3 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5" style={{ background:"rgba(41,169,223,0.2)", color:"#29A9DF", border:"1px solid rgba(41,169,223,0.3)" }}>
+                <AiIcon size={14} style={{ background: "white", borderRadius: 3, padding: 1 }} /> AI results for "{aiQuery}" — {filtered.length} found
               </span>
               <button onClick={clearAI} className="text-xs text-white/50 hover:text-white underline">Clear</button>
             </div>
