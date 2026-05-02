@@ -23,17 +23,22 @@ export default function RiseUpCalculator({ unitPrice, unitName }: Props) {
   const downPayment   = riseupPrice * (dpPercent / 100);
   const bankLoan      = riseupPrice - downPayment;
 
-  // Approx interest saved: possession amount never financed during construction
-  // Assume 9% p.a. over 2 years construction
-  const interestSaved = possession * 0.09 * 2;
+  // Approx interest saved during construction. Without RiseUp the customer's
+  // bank loan during construction is sized to ~90% of P; with RiseUp it's
+  // ~90% × 80% = ~72% of P. The 18%-of-P delta accrues less interest at
+  // ~9% p.a. over a typical 2-year construction window.
+  const LOAN_RATE = 0.09;
+  const CONSTRUCTION_YEARS = 2;
+  const interestSaved = unitPrice * 0.18 * LOAN_RATE * CONSTRUCTION_YEARS;
+  const savedPct = (interestSaved / unitPrice) * 100;
 
   const rows = [
-    { label: "Total unit price",             val: fmt(unitPrice),   note: "Actual price", color: "#555" },
-    { label: "Pay now (80%)",                val: fmt(riseupPrice), note: "RiseUp amount", color: "#2A3887", bold: true },
-    { label: `Down payment (${dpPercent}%)`, val: fmt(downPayment), note: `${dpPercent}% of ₹${fmt(riseupPrice)}`, color: "#2A3887" },
-    { label: "Bank loan",                    val: fmt(bankLoan),    note: `${100 - dpPercent}% funded by bank`, color: "#555" },
-    { label: "After final demand (20%)",      val: fmt(possession),  note: "Due once the builder raises the final demand", color: "#f59e0b" },
-    { label: "Approx interest saved",        val: fmt(interestSaved), note: "vs financing full amount", color: "#22c55e" },
+    { label: "Total unit price",                     val: fmt(unitPrice),   note: "You still pay this in full, just spread out", color: "#555" },
+    { label: "80% during construction",              val: fmt(riseupPrice), note: "Paid in milestones over ~24 months", color: "#2A3887", bold: true },
+    { label: `Down payment at booking (${dpPercent}%)`, val: fmt(downPayment), note: `${dpPercent}% of ${fmt(riseupPrice)}`, color: "#2A3887" },
+    { label: "Bank loan",                            val: fmt(bankLoan),    note: "Disbursed per construction milestones", color: "#555" },
+    { label: "Final 20% (6 months after handover)", val: fmt(possession),  note: "The finishing demand means the flat is ready; the 20% follows 6 months later", color: "#f59e0b" },
+    { label: "Est. interest saved",                  val: fmt(interestSaved), note: `~${savedPct.toFixed(1)}% of price · construction-period interest`, color: "#22c55e" },
   ];
 
   return (
@@ -42,9 +47,10 @@ export default function RiseUpCalculator({ unitPrice, unitName }: Props) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
         <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(41,169,223,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🚀</div>
         <div>
-          <h3 style={{ fontWeight: 900, fontSize: 18, margin: 0 }}>RiseUp Offer</h3>
-          <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, margin: 0 }}>
-            {unitName ? `Own ${unitName} for` : "Own this home for"} <strong style={{ color: "#29A9DF" }}>{fmt(riseupPrice)}</strong> instead of {fmt(unitPrice)}
+          <h3 style={{ fontWeight: 900, fontSize: 18, margin: 0 }}>RiseUp Plan</h3>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, margin: 0, lineHeight: 1.45 }}>
+            {unitName ? `Pay just ${fmt(riseupPrice)} for ${unitName} during construction; ` : `Pay just ${fmt(riseupPrice)} during construction; `}
+            the remaining {fmt(possession)} is due 6 months after handover.
           </p>
         </div>
       </div>
@@ -79,10 +85,10 @@ export default function RiseUpCalculator({ unitPrice, unitName }: Props) {
         ))}
       </div>
 
-      {/* Final demand tip */}
+      {/* Timing tip */}
       <div style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 12, padding: "10px 14px", marginBottom: 16 }}>
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", margin: 0, lineHeight: 1.6 }}>
-          <strong style={{ color: "#fcd34d" }}>After final demand</strong> — The remaining {fmt(possession)} is due only after the builder raises the final demand (once all construction-linked demands are completed). You can fund it via a salary top-up loan, personal loan, or savings.
+        <p style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", margin: 0, lineHeight: 1.6 }}>
+          <strong style={{ color: "#fcd34d" }}>The final 20%</strong> — Of {fmt(unitPrice)}, only the {fmt(riseupPrice)} portion is paid milestone-by-milestone during the ~24-month construction. The remaining {fmt(possession)} is due 6 months after handover (i.e. 6 months after the finishing demand, when the flat is ready to move in). You can fund it through a salary top-up loan, personal loan, or savings.
         </p>
       </div>
 

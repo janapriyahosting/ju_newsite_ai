@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import AiIcon from "@/components/AiIcon";
+import { isLoggedIn, saveSession } from "@/lib/customerAuth";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const MEDIA_BASE = "";
@@ -59,19 +60,169 @@ function fmt(p: number) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+/**
+ * Gates downloadable assets (brochure, floor plans) behind a quick phone+OTP
+ * register/login flow. The customer never leaves the chat: when not logged in,
+ * clicking "Download" expands phone → OTP → done. We default to mode="register"
+ * with auto-fallback to login (the verify-otp endpoint handles both: existing
+ * customers are logged in, new ones are created).
+ */
+function DownloadAuthGate({
+  url, label, kind,
+}: { url: string; label: string; kind: "brochure" | "floor_plan" }) {
+  const [authed, setAuthed]   = useState(false);
+  const [open, setOpen]       = useState(false);
+  const [step, setStep]       = useState<"phone" | "otp">("phone");
+  const [phone, setPhone]     = useState("");
+  const [name, setName]       = useState("");
+  const [consent, setConsent] = useState(true);
+  const [otp, setOtp]         = useState("");
+  const [busy, setBusy]       = useState(false);
+  const [err, setErr]         = useState("");
+  const [devOtp, setDevOtp]   = useState<string | null>(null);
+
+  useEffect(() => {
+    setAuthed(isLoggedIn());
+    // When any other DownloadAuthGate (or the rest of the app) signs the
+    // visitor in, every gate on screen should unlock at once.
+    const onAuth = () => setAuthed(isLoggedIn());
+    window.addEventListener("jp-auth-changed", onAuth);
+    window.addEventListener("storage", onAuth);
+    return () => {
+      window.removeEventListener("jp-auth-changed", onAuth);
+      window.removeEventListener("storage", onAuth);
+    };
+  }, []);
+
+  const cleanPhone = (v: string) => v.replace(/\D/g, "").replace(/^91/, "");
+
+  async function sendOtp() {
+    setErr("");
+    const ph = cleanPhone(phone);
+    if (!/^[6-9]\d{9}$/.test(ph)) { setErr("Enter a valid 10-digit mobile number."); return; }
+    if (!name.trim() || name.trim().length < 2) { setErr("Please enter your full name."); return; }
+    if (!consent) { setErr("Please agree to be contacted."); return; }
+    setBusy(true);
+    try {
+      const r = await fetch(`${API}/auth/send-otp`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: ph, purpose: "auth" }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || "Could not send OTP");
+      if (data.dev_otp) setDevOtp(data.dev_otp);
+      setStep("otp");
+    } catch (e: any) {
+      setErr(e.message || "Could not send OTP");
+    } finally { setBusy(false); }
+  }
+
+  async function verifyOtp() {
+    setErr("");
+    if (!/^\d{6}$/.test(otp)) { setErr("Enter the 6-digit OTP."); return; }
+    setBusy(true);
+    try {
+      const r = await fetch(`${API}/auth/verify-otp`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: cleanPhone(phone), otp, mode: "register",
+          name: name.trim(), consent,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.detail || "Invalid OTP");
+      saveSession(data.access_token, data.customer);
+      setAuthed(true);
+      setOpen(false);
+      // Tell every other DownloadAuthGate on screen to unlock too.
+      window.dispatchEvent(new Event("jp-auth-changed"));
+      // Auto-trigger the download once verified.
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      setErr(e.message || "Invalid OTP");
+    } finally { setBusy(false); }
+  }
+
+  if (authed) {
+    return (
+      <a href={url} target="_blank" rel="noopener noreferrer" download
+        style={{ display: "inline-block", marginTop: 4, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", borderRadius: 8, padding: "5px 14px", fontSize: 12, fontWeight: 800, textDecoration: "none" }}>
+        ⬇ {label}
+      </a>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)}
+        style={{ marginTop: 4, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: 0, borderRadius: 8, padding: "5px 14px", fontSize: 12, fontWeight: 800, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+        🔒 Sign in to download
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 6, background: "white", borderRadius: 8, padding: 10, border: "1px solid #c7d4f8" }}>
+      <div style={{ fontSize: 11, fontWeight: 800, color: "#2A3887", marginBottom: 6 }}>
+        {kind === "brochure" ? "Get the brochure" : "Get the floor plans"} — quick verification
+      </div>
+      {step === "phone" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
+            style={{ border: "1px solid #E2F1FC", borderRadius: 6, padding: "6px 8px", fontSize: 12 }} />
+          <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile number"
+            inputMode="numeric" maxLength={10}
+            style={{ border: "1px solid #E2F1FC", borderRadius: 6, padding: "6px 8px", fontSize: 12 }} />
+          <label style={{ fontSize: 10, color: "#666", display: "flex", gap: 6, alignItems: "flex-start" }}>
+            <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} style={{ marginTop: 2 }} />
+            <span>I agree to be contacted by Janapriya Upscale about properties.</span>
+          </label>
+          {err && <div style={{ fontSize: 10, color: "#C0392B" }}>{err}</div>}
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={sendOtp} disabled={busy}
+              style={{ flex: 1, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: 0, borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
+              {busy ? "Sending…" : "Send OTP"}
+            </button>
+            <button onClick={() => { setOpen(false); setErr(""); }}
+              style={{ background: "white", border: "1px solid #E2F1FC", color: "#666", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ fontSize: 11, color: "#555" }}>OTP sent to +91 {cleanPhone(phone)}</div>
+          <input type="tel" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="6-digit OTP" inputMode="numeric" maxLength={6} autoFocus
+            style={{ border: "1px solid #E2F1FC", borderRadius: 6, padding: "6px 8px", fontSize: 14, letterSpacing: 4, textAlign: "center", fontWeight: 700 }} />
+          {devOtp && <div style={{ fontSize: 10, color: "#888" }}>Dev OTP: {devOtp}</div>}
+          {err && <div style={{ fontSize: 10, color: "#C0392B" }}>{err}</div>}
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={verifyOtp} disabled={busy}
+              style={{ flex: 1, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", border: 0, borderRadius: 6, padding: "6px 10px", fontSize: 12, fontWeight: 800, cursor: busy ? "wait" : "pointer", opacity: busy ? 0.7 : 1 }}>
+              {busy ? "Verifying…" : "Verify & Download"}
+            </button>
+            <button onClick={() => { setStep("phone"); setOtp(""); setErr(""); }}
+              style={{ background: "white", border: "1px solid #E2F1FC", color: "#666", borderRadius: 6, padding: "6px 10px", fontSize: 11, cursor: "pointer" }}>
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BrochureCard({ brochure }: { brochure: any }) {
   if (!brochure) return null;
   return (
     <div style={{ background: "#F0F4FF", border: "1.5px solid #c7d4f8", borderRadius: 12, padding: 12, marginTop: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <span style={{ fontSize: 22 }}>📄</span>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontWeight: 800, fontSize: 12, color: "#2A3887" }}>{brochure.name} — Brochure</div>
           {brochure.url ? (
-            <a href={brochure.url} target="_blank" rel="noopener noreferrer" download
-              style={{ display: "inline-block", marginTop: 4, background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", borderRadius: 8, padding: "5px 14px", fontSize: 12, fontWeight: 800, textDecoration: "none" }}>
-              ⬇ Download Brochure
-            </a>
+            <DownloadAuthGate url={brochure.url} label="Download Brochure" kind="brochure" />
           ) : (
             <p style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Brochure not uploaded yet — request via callback.</p>
           )}
@@ -81,32 +232,150 @@ function BrochureCard({ brochure }: { brochure: any }) {
   );
 }
 
-function RiseUpCard({ data }: { data: any }) {
-  if (!data) return null;
+function FloorPlansCard({ plans }: { plans: any }) {
+  const items: { label: string; url: string }[] =
+    plans?.plans && Array.isArray(plans.plans) ? plans.plans
+    : plans?.urls?.length ? plans.urls.map((u: string) => ({ label: "Floor Plan", url: u }))
+    : [];
+  if (!items.length) return null;
+  const iconFor = (url: string) => /\.pdf(\?|$)/i.test(url) ? "📄" : "📐";
   return (
-    <div style={{ background: "linear-gradient(135deg,#1a1060,#2A3887)", borderRadius: 14, padding: 14, marginTop: 10 }}>
+    <div style={{ background: "#F0F4FF", border: "1.5px solid #c7d4f8", borderRadius: 12, padding: 12, marginTop: 8 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ fontSize: 18 }}>🚀</span>
-        <span style={{ color: "#29A9DF", fontWeight: 900, fontSize: 13 }}>RiseUp Offer</span>
+        <span style={{ fontSize: 22 }}>📐</span>
+        <div style={{ fontWeight: 800, fontSize: 12, color: "#2A3887" }}>{plans.name} — Floor Plans</div>
       </div>
-      <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 11, marginBottom: 8 }}>Pay only 80% now. 20% after the final demand is raised.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-        {[
-          { label: "Unit Price",          val: fmt(data.unit_price) },
-          { label: "Pay Now (80%)",       val: fmt(data.riseup_price), hi: true },
-          { label: "On Final Demand",     val: fmt(data.possession_amount) },
-          { label: "Min Down Pmt",        val: fmt(data.down_payment_10) },
-        ].map(r => (
-          <div key={r.label} style={{ background: "rgba(255,255,255,0.07)", borderRadius: 8, padding: "6px 8px" }}>
-            <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10 }}>{r.label}</div>
-            <div style={{ color: r.hi ? "#29A9DF" : "white", fontWeight: 800, fontSize: 13 }}>{r.val}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.map((p, i) => (
+          <div key={`${p.url}-${i}`} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: "#555", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {iconFor(p.url)} {p.label}
+            </span>
+            <DownloadAuthGate url={p.url} label={p.label} kind="floor_plan" />
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function MediaCard({ media }: { media: any }) {
+  const items: { label: string; url: string; kind?: string }[] =
+    media?.items && Array.isArray(media.items) ? media.items : [];
+  if (!items.length) return null;
+  return (
+    <div style={{ background: "#F0F4FF", border: "1.5px solid #c7d4f8", borderRadius: 12, padding: 12, marginTop: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ fontSize: 22 }}>🎬</span>
+        <div style={{ fontWeight: 800, fontSize: 12, color: "#2A3887" }}>{media.name} — Media</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.map((it, i) => (
+          <div key={`${it.url}-${i}`} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: "#555", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {it.kind === "video" ? "▶" : "🖼"} {it.label}
+            </span>
+            <a href={it.url} target="_blank" rel="noopener noreferrer"
+              style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)", color: "white", borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>
+              {it.kind === "video" ? "Watch" : "View"}
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LeadCreatedCard({ data }: { data: any }) {
+  if (!data?.phone) return null;
+  const when: string | null = data.scheduled_label || null;
+  return (
+    <div style={{ background: "#E6F8EF", border: "1.5px solid #B5E5C8", borderRadius: 12, padding: 12, marginTop: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 18 }}>✅</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 800, fontSize: 12, color: "#1B6B3D" }}>Callback scheduled</div>
+          <div style={{ fontSize: 11, color: "#3D6A4F", marginTop: 2 }}>
+            We'll call +91 {data.phone}{when ? ` on ${when}` : " at the time you mentioned"}.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RiseUpCard({ data }: { data: any }) {
+  if (!data) return null;
+  const interestSaved = Number(data.interest_saved || 0);
+  const savedPct = Number(data.interest_saved_pct || 0);
+  return (
+    <div style={{ background: "linear-gradient(135deg,#1a1060,#2A3887)", borderRadius: 14, padding: 14, marginTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <span style={{ fontSize: 18 }}>🚀</span>
+        <span style={{ color: "#29A9DF", fontWeight: 900, fontSize: 13 }}>RiseUp Plan</span>
+      </div>
+      <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, marginBottom: 10, lineHeight: 1.45 }}>
+        Pay 80% across construction milestones. The remaining 20% is due 6 months after handover.
+      </p>
+
+      {/* Headline price + savings */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 6 }}>
+        <Kpi label="Unit Price" val={fmt(data.unit_price)} />
+        <Kpi label="80% (construction)" val={fmt(data.riseup_price)} hi />
+      </div>
+
+      {/* Down payment options */}
+      <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: "8px 10px", marginBottom: 6 }}>
+        <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 700, marginBottom: 4, letterSpacing: 0.4 }}>
+          DOWN PAYMENT AT BOOKING (PICK ONE)
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <DpRow label="10% option" dp={fmt(data.down_payment_10)} loan={fmt(data.bank_loan_90)} />
+          <DpRow label="20% option" dp={fmt(data.down_payment_20)} loan={fmt(data.bank_loan_80)} />
+        </div>
+      </div>
+
+      {/* Final 20% */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6, marginBottom: 6 }}>
+        <Kpi label="Final 20% (6 months after handover)" val={fmt(data.possession_amount)} />
+      </div>
+
+      {/* Estimated savings */}
+      {interestSaved > 0 && (
+        <div style={{ background: "rgba(41,169,223,0.18)", border: "1px solid rgba(41,169,223,0.45)", borderRadius: 10, padding: "8px 10px", marginBottom: 6 }}>
+          <div style={{ color: "#9DD8F2", fontSize: 10, fontWeight: 700, letterSpacing: 0.4 }}>EST. INTEREST SAVED</div>
+          <div style={{ color: "#29A9DF", fontWeight: 900, fontSize: 16 }}>
+            {fmt(interestSaved)} <span style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 700 }}>(~{savedPct}% of price)</span>
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, lineHeight: 1.4, marginTop: 2 }}>
+            Construction-period home-loan interest. Actual savings vary with your loan rate and the project's timeline.
+          </div>
+        </div>
+      )}
+
       <a href="https://riseup.house" target="_blank" rel="noopener noreferrer"
-        style={{ display: "block", textAlign: "center", marginTop: 10, background: "#29A9DF", color: "white", borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 800, textDecoration: "none" }}>
+        style={{ display: "block", textAlign: "center", background: "#29A9DF", color: "white", borderRadius: 8, padding: "7px 0", fontSize: 12, fontWeight: 800, textDecoration: "none" }}>
         Learn more at riseup.house →
       </a>
+    </div>
+  );
+}
+
+function Kpi({ label, val, hi }: { label: string; val: string; hi?: boolean }) {
+  return (
+    <div style={{ background: "rgba(255,255,255,0.07)", borderRadius: 8, padding: "6px 8px" }}>
+      <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 10 }}>{label}</div>
+      <div style={{ color: hi ? "#29A9DF" : "white", fontWeight: 800, fontSize: 13 }}>{val}</div>
+    </div>
+  );
+}
+
+function DpRow({ label, dp, loan }: { label: string; dp: string; loan: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+      <span style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 700, width: 68, flexShrink: 0 }}>{label}</span>
+      <span style={{ color: "white", fontWeight: 800, fontSize: 12 }}>{dp}</span>
+      <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 10 }}>+ bank loan {loan}</span>
     </div>
   );
 }
@@ -115,7 +384,7 @@ function ActionCard({ action }: { action: AssistantAction }) {
   if (!action || action.type === "none") return null;
 
   // Primary CTA button — navigate_* variants
-  if (action.type === "navigate_store" || action.type === "navigate_unit" || action.type === "navigate_project") {
+  if (action.type === "navigate_store" || action.type === "navigate_unit" || action.type === "navigate_project" || action.type === "navigate_site_visit") {
     if (!action.url) return null;
     return (
       <div style={{ marginTop: 8 }}>
@@ -397,7 +666,7 @@ export interface AssistantPageContext {
 }
 
 interface AssistantAction {
-  type: "navigate_store" | "navigate_unit" | "navigate_project" | "ask_which" | "none";
+  type: "navigate_store" | "navigate_unit" | "navigate_project" | "navigate_site_visit" | "ask_which" | "none";
   url?: string;
   label?: string;
   options?: { label: string; value: string; url?: string }[];
@@ -427,7 +696,7 @@ export default function ProactiveAssistant({
   const [visible, setVisible]           = useState(immediate);
   const [open, setOpen]                 = useState(false);
   const [tab, setTab]                   = useState<"chat" | "flow" | "riseup" | "callback">("chat");
-  const [messages, setMessages]         = useState<{ role: string; content: string; brochure?: any; riseup?: any; units?: any[]; action?: AssistantAction }[]>([]);
+  const [messages, setMessages]         = useState<{ role: string; content: string; brochure?: any; floor_plans?: any; media?: any; lead_created?: any; riseup?: any; units?: any[]; action?: AssistantAction }[]>([]);
   const [input, setInput]               = useState("");
   const [loading, setLoading]           = useState(false);
   const [riseupData, setRiseupData]     = useState<any>(null);
@@ -572,7 +841,22 @@ export default function ProactiveAssistant({
       .catch(() => {});
   }, []);
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // Smooth-scroll to the latest message when new ones arrive.
+  useEffect(() => {
+    if (!open || messages.length === 0) return;
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, open]);
+
+  // On panel open (e.g. after a page refresh that restored prior history),
+  // jump to the bottom *instantly* so the visitor lands on the latest message
+  // instead of the top of a long scrollback.
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => {
+      endRef.current?.scrollIntoView({ block: "end" });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [open]);
 
   // Restore chat history for this session on mount (so reopening the widget
   // shows the visitor their prior conversation)
@@ -646,7 +930,7 @@ export default function ProactiveAssistant({
     const msgs = [{ role: "user", content: initMsg }];
     const res = await callAssistant(msgs);
     if (res) {
-      setMessages([{ role: "assistant", content: res.reply, brochure: res.brochure, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units, action: res.action }]);
+      setMessages([{ role: "assistant", content: res.reply, brochure: res.brochure, floor_plans: res.floor_plans, media: res.media, lead_created: res.lead_created, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units, action: res.action }]);
       if (res.suggested_units?.length) setSuggestedUnits(res.suggested_units);
       if (res.riseup_data) setRiseupData(res.riseup_data);
     }
@@ -662,7 +946,7 @@ export default function ProactiveAssistant({
     setLoading(true);
     const res = await callAssistant(newMsgs);
     if (res) {
-      setMessages(m => [...m, { role: "assistant", content: res.reply, brochure: res.brochure, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units?.length ? res.suggested_units : undefined, action: res.action }]);
+      setMessages(m => [...m, { role: "assistant", content: res.reply, brochure: res.brochure, floor_plans: res.floor_plans, media: res.media, lead_created: res.lead_created, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units?.length ? res.suggested_units : undefined, action: res.action }]);
       if (res.suggested_units?.length) setSuggestedUnits(res.suggested_units);
       if (res.riseup_data) setRiseupData(res.riseup_data);
     }
@@ -927,6 +1211,9 @@ export default function ProactiveAssistant({
                       }}>{m.content}</div>
                     </div>
                     {m.brochure && <div style={{ marginLeft: 34 }}><BrochureCard brochure={m.brochure} /></div>}
+                    {m.floor_plans && <div style={{ marginLeft: 34 }}><FloorPlansCard plans={m.floor_plans} /></div>}
+                    {m.media && <div style={{ marginLeft: 34 }}><MediaCard media={m.media} /></div>}
+                    {m.lead_created && <div style={{ marginLeft: 34 }}><LeadCreatedCard data={m.lead_created} /></div>}
                     {m.riseup   && <div style={{ marginLeft: 34 }}><RiseUpCard data={m.riseup} /></div>}
                     {m.units?.length ? (
                       <div style={{ marginLeft: 34, marginTop: 6 }}>

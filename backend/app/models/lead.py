@@ -34,6 +34,9 @@ class Lead(UUIDMixin, TimeStampMixin, Base):
 
     # Relationships
     customer: Mapped["Customer"] = relationship("Customer", back_populates="leads")
+    activities: Mapped[list["LeadActivity"]] = relationship(
+        "LeadActivity", back_populates="lead", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
         return f"<Lead {self.name} - {self.status}>"

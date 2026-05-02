@@ -3,6 +3,7 @@ from backend.app.models.tower import Tower
 from backend.app.models.unit import Unit
 from backend.app.models.customer import Customer
 from backend.app.models.lead import Lead
+from backend.app.models.lead_activity import LeadActivity
 from backend.app.models.site_visit import SiteVisit
 from backend.app.models.cart import CartItem
 from backend.app.models.booking import Booking
@@ -14,7 +15,7 @@ from backend.app.models.assistant_chat_log import AssistantChatLog
 from backend.app.models.assistant_content import AssistantContent
 
 __all__ = [
-    "Project", "Tower", "Unit", "Customer", "Lead",
+    "Project", "Tower", "Unit", "Customer", "Lead", "LeadActivity",
     "SiteVisit", "CartItem", "Booking", "Coupon", "SearchLog", "SessionLog",
     "HomeLoanRequest", "AssistantChatLog", "AssistantContent",
 ]

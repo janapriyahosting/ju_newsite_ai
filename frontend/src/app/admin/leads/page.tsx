@@ -2,6 +2,21 @@
 import React, { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/adminAuth';
 
+interface LeadActivity {
+  id: string;
+  lead_id: string;
+  activity_type: string;
+  subject: string;
+  notes: string | null;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  status: string;
+  source: string | null;
+  assigned_to: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
 const STATUS_COLORS: Record<string,string> = {
   new: 'bg-blue-900/40 text-blue-300',
   contacted: 'bg-yellow-900/40 text-yellow-300',
@@ -189,6 +204,10 @@ export default function LeadsPage() {
                             <p className="text-gray-700 font-mono">{lead.sf_lead_id}</p>
                           </div>
                         )}
+                        {/* Activities */}
+                        <div className="col-span-2 md:col-span-4 border-t border-gray-300 pt-3 mt-1">
+                          <ActivitiesSection leadId={lead.id} />
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -207,6 +226,139 @@ export default function LeadsPage() {
             <button onClick={() => setPage(p => Math.min(totalPages,p+1))} disabled={page===totalPages}
               className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm disabled:opacity-40 hover:bg-gray-100">Next</button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActivitiesSection({ leadId }: { leadId: string }) {
+  const [items, setItems] = useState<LeadActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState({ activity_type: 'call', subject: '', notes: '', scheduled_at: '' });
+
+  const load = async () => {
+    setLoading(true);
+    const res = await adminApi(`/admin/leads/${leadId}/activities`);
+    const data = await res.json();
+    setItems(data.items || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, [leadId]);
+
+  const fmtWhen = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true }) : '—';
+
+  const setStatus = async (id: string, status: string) => {
+    await adminApi(`/admin/leads/activities/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+    load();
+  };
+  const remove = async (id: string) => {
+    if (!confirm('Delete this activity?')) return;
+    await adminApi(`/admin/leads/activities/${id}`, { method: 'DELETE' });
+    load();
+  };
+  const submit = async () => {
+    if (!draft.subject.trim()) { alert('Subject is required'); return; }
+    const body: any = { ...draft };
+    if (body.scheduled_at) body.scheduled_at = new Date(body.scheduled_at).toISOString();
+    else delete body.scheduled_at;
+    await adminApi(`/admin/leads/${leadId}/activities`, { method: 'POST', body: JSON.stringify(body) });
+    setDraft({ activity_type: 'call', subject: '', notes: '', scheduled_at: '' });
+    setAdding(false);
+    load();
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-gray-500 font-bold uppercase tracking-wider">Activities ({items.length})</p>
+        <button onClick={() => setAdding(a => !a)}
+          className="text-xs px-2.5 py-1 rounded-md bg-[#273b84] text-white hover:opacity-90">
+          {adding ? 'Cancel' : '+ Add Activity'}
+        </button>
+      </div>
+
+      {adding && (
+        <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3 grid grid-cols-1 md:grid-cols-4 gap-2">
+          <select value={draft.activity_type} onChange={e => setDraft(d => ({ ...d, activity_type: e.target.value }))}
+            className="border border-gray-300 rounded px-2 py-1.5 text-xs bg-white">
+            {['call','callback','meeting','site_visit','email','note','follow_up'].map(t => (
+              <option key={t} value={t}>{t.replace('_', ' ')}</option>
+            ))}
+          </select>
+          <input type="text" placeholder="Subject" value={draft.subject}
+            onChange={e => setDraft(d => ({ ...d, subject: e.target.value }))}
+            className="border border-gray-300 rounded px-2 py-1.5 text-xs md:col-span-2" />
+          <input type="datetime-local" value={draft.scheduled_at}
+            onChange={e => setDraft(d => ({ ...d, scheduled_at: e.target.value }))}
+            className="border border-gray-300 rounded px-2 py-1.5 text-xs" />
+          <textarea placeholder="Notes (optional)" value={draft.notes}
+            onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))}
+            className="border border-gray-300 rounded px-2 py-1.5 text-xs md:col-span-3" rows={2} />
+          <button onClick={submit}
+            className="bg-green-600 text-white text-xs rounded px-3 py-1.5 hover:opacity-90 self-start">
+            Save
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-gray-500 text-xs py-3">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="text-gray-500 text-xs py-3">No activities yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map(a => (
+            <div key={a.id} className="bg-white border border-gray-200 rounded-lg p-3 flex gap-3">
+              <div className={
+                'w-1.5 rounded-full ' +
+                (a.status === 'completed' ? 'bg-green-500' :
+                 a.status === 'cancelled' ? 'bg-gray-400' : 'bg-amber-500')
+              } />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold uppercase px-2 py-0.5 rounded bg-indigo-50 text-indigo-700">
+                    {a.activity_type.replace('_', ' ')}
+                  </span>
+                  <span className="text-xs font-medium text-gray-900">{a.subject}</span>
+                  <span className={
+                    'text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ' +
+                    (a.status === 'completed' ? 'bg-green-100 text-green-700' :
+                     a.status === 'cancelled' ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-700')
+                  }>
+                    {a.status}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Scheduled: <span className="font-medium text-gray-700">{fmtWhen(a.scheduled_at)}</span>
+                  {a.completed_at && <> · Completed: <span className="font-medium text-gray-700">{fmtWhen(a.completed_at)}</span></>}
+                  {a.created_by && <> · By {a.created_by}</>}
+                  {a.source && <> · {a.source}</>}
+                </p>
+                {a.notes && <p className="text-xs text-gray-700 mt-1 whitespace-pre-wrap">{a.notes}</p>}
+              </div>
+              <div className="flex flex-col gap-1 shrink-0">
+                {a.status !== 'completed' && (
+                  <button onClick={() => setStatus(a.id, 'completed')}
+                    className="text-[10px] px-2 py-1 rounded bg-green-600 text-white hover:opacity-90">
+                    Mark done
+                  </button>
+                )}
+                {a.status === 'completed' && (
+                  <button onClick={() => setStatus(a.id, 'pending')}
+                    className="text-[10px] px-2 py-1 rounded bg-amber-500 text-white hover:opacity-90">
+                    Reopen
+                  </button>
+                )}
+                <button onClick={() => remove(a.id)}
+                  className="text-[10px] px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50">
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
