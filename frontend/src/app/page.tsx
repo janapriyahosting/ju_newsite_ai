@@ -52,9 +52,7 @@ const SIZES = [
     label: "ANY SIZE OF A COZY HOME",
     headline: "A Treasure Chest of love & happiness",
     image: "/any-size-of-a-cozy.webp",
-    buttons: [
-      { text: "500+", sub: "sft", href: "/store?min_area=500" },
-    ],
+    buttons: [{ text: "500+", sub: "sft", href: "/store?min_area=500" }],
   },
   {
     id: "however-big",
@@ -79,50 +77,36 @@ const SIZES = [
 ];
 
 const BEDROOMS = [
-  {
-    id: "3bhk",
-    label: "3 BEDROOMS ARE SUCH BLISS",
-    image: "/3bedroom.webp",
-    cta: "Explore 3BHK Options",
-    href: "/store?bedrooms=3&unit_type=3BHK",
-  },
-  {
-    id: "2bhk",
-    label: "2 BEDROOM ARE SPECIAL",
-    image: "/2-bedroom-are-special.webp",
-    cta: "Explore 2BHK Options",
-    href: "/store?bedrooms=2&unit_type=2BHK",
-  },
-  {
-    id: "1bhk",
-    label: "INVEST IN A 1 BEDROOM",
-    image: "/invest-in-a-1-Bedroom.webp",
-    cta: "Explore 1BHK Options",
-    href: "/store?bedrooms=1",
-  },
+  { id: "3bhk", label: "3 BEDROOMS ARE SUCH BLISS", image: "/3bedroom.webp", cta: "Explore 3BHK Options", href: "/store?bedrooms=3&unit_type=3BHK" },
+  { id: "2bhk", label: "2 BEDROOM ARE SPECIAL", image: "/2-bedroom-are-special.webp", cta: "Explore 2BHK Options", href: "/store?bedrooms=2&unit_type=2BHK" },
+  { id: "1bhk", label: "INVEST IN A 1 BEDROOM", image: "/invest-in-a-1-Bedroom.webp", cta: "Explore 1BHK Options", href: "/store?bedrooms=1" },
 ];
 
 const LOCATIONS = [
+  { id: "houston",   label: "TAKE ME TO HOUSTON", image: "/cash-in-hand.webp", cta: "Know More", href: "https://janapriya.us/#1" },
+  { id: "bengaluru", label: "BENGALURU",           image: "/bengaluru.webp",   cta: "Know More", href: "/store" },
+  { id: "hyderabad", label: "HYDERABAD",           image: "/hyderabad.webp",   cta: "Know More", href: "/store" },
+];
+
+// ── FIX 1: correct tags + videoIds so thumbnails & embeds work ──────────────
+const NEWS = [
   {
-    id: "houston",
-    label: "TAKE ME TO HOUSTON",
-    image: "/cash-in-hand.webp",
-    cta: "Know More",
-    href: "https://janapriya.us/#1",
+    tag: "Podcast",
+    title: "Podcast With 𝐉𝐀𝐍𝐀𝐏𝐑𝐈𝐘𝐀 𝐔𝐏𝐒𝐂𝐀𝐋𝐄 Managing Director 𝐊𝐫𝐚𝐧𝐭𝐢 𝐊𝐢𝐫𝐚𝐧 𝐑𝐞𝐝𝐝𝐲",
+    date: "Dec 12, 2024",
+    videoId: "WsEVKn7uQFU",
   },
   {
-    id: "bengaluru",
-    label: "BENGALURU",
-    image: "/bengaluru.webp",
-    cta: "Know More",
-    href: "/store",
+    tag: "Sakshi Property Plus",
+    title: "Sakshi Property Plus: Janapriya Upscale MD – Mr. Kranti Kiran Reddy Exclusive Interview | Real Estate |",
+    date: "Nov 28, 2024",
+    videoId: "hmR4J7nbEII",
   },
   {
-    id: "hyderabad",
-    label: "HYDERABAD",
-    image: "/hyderabad.webp",
-    cta: "Know More",
-    href: "/store",
+    tag: "TDR GO Explained",
+    title: "TDR GO Explained: Controls on Redemption & Pricing | HMTV Panel Discussion",
+    date: "Apr 01, 2026",
+    videoId: "mhdoj1VQGzs",
   },
 ];
 
@@ -130,10 +114,7 @@ function useInView(ref: React.RefObject<HTMLElement>, threshold = 0.2) {
   const [inView, setInView] = useState(false);
   useEffect(() => {
     if (!ref.current) return;
-    const obs = new IntersectionObserver(
-      ([e]) => setInView(e.isIntersecting),
-      { threshold }
-    );
+    const obs = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold });
     obs.observe(ref.current);
     return () => obs.disconnect();
   }, []);
@@ -142,20 +123,8 @@ function useInView(ref: React.RefObject<HTMLElement>, threshold = 0.2) {
 
 function SectionHeader({ title }: { title: string }) {
   return (
-    <div style={{
-      background: "white",
-      textAlign: "center",
-      padding: "22px 24px",
-      borderBottom: "1px solid #E5E7EB",
-    }}>
-      <h3 style={{
-        margin: 0,
-        fontSize: "clamp(15px, 2vw, 21px)",
-        fontWeight: 900,
-        color: "#0D1B2A",
-        letterSpacing: 2.5,
-        textTransform: "uppercase",
-      }}>
+    <div style={{ background: "white", textAlign: "center", padding: "22px 24px", borderBottom: "1px solid #E5E7EB" }}>
+      <h3 style={{ margin: 0, fontSize: "clamp(15px, 2vw, 21px)", fontWeight: 900, color: "#0D1B2A", letterSpacing: 2.5, textTransform: "uppercase" }}>
         {title}
       </h3>
     </div>
@@ -172,12 +141,7 @@ interface AccordionItem {
   href?: string;
 }
 
-function AccordionPanel({
-  items,
-  defaultIndex = 0,
-  dir = "right",
-  noButtons = false,
-}: {
+function AccordionPanel({ items, defaultIndex = 0, dir = "right", noButtons = false }: {
   items: AccordionItem[];
   defaultIndex?: number;
   dir?: "right" | "left";
@@ -188,188 +152,49 @@ function AccordionPanel({
   const inView = useInView(ref as React.RefObject<HTMLElement>);
 
   return (
-    <div
-      ref={ref}
-      style={{
-        display: "flex",
-        flexDirection: dir === "right" ? "row" : "row-reverse",
-        width: "100%",
-        height: "calc(100vh - 105px)",
-        minHeight: 440,
-        maxHeight: 700,
-        overflow: "hidden",
-      }}
-    >
+    <div ref={ref} style={{ display: "flex", flexDirection: dir === "right" ? "row" : "row-reverse", width: "100%", height: "calc(100vh - 105px)", minHeight: 440, maxHeight: 700, overflow: "hidden" }}>
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         {items.map((it, i) => (
-          <div
-            key={it.id}
-            style={{
-              position: "absolute",
-              inset: 0,
-              opacity: active === i ? 1 : 0,
-              transition: "opacity 0.5s ease",
-              pointerEvents: active === i ? "auto" : "none",
-            }}
-          >
-            <img
-              src={it.image}
-              alt={it.label}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              background: noButtons
-                ? "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.18) 100%)"
-                : "linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.05) 100%)",
-            }} />
-
+          <div key={it.id} style={{ position: "absolute", inset: 0, opacity: active === i ? 1 : 0, transition: "opacity 0.5s ease", pointerEvents: active === i ? "auto" : "none" }}>
+            <img src={it.image} alt={it.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <div style={{ position: "absolute", inset: 0, background: noButtons ? "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.18) 100%)" : "linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.05) 100%)" }} />
             {!noButtons && it.buttons && (
-              <div style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                padding: "32px 48px 0",
-              }}>
-                <p style={{
-                  color: "white",
-                  fontWeight: 900,
-                  fontSize: "clamp(15px, 1.8vw, 22px)",
-                  textTransform: "uppercase",
-                  letterSpacing: 1.2,
-                  marginBottom: 22,
-                  textShadow: "0 2px 12px rgba(0,0,0,0.6)",
-                }}>
-                  {it.headline}
-                </p>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "32px 48px 0" }}>
+                <p style={{ color: "white", fontWeight: 900, fontSize: "clamp(15px, 1.8vw, 22px)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 22, textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}>{it.headline}</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                  {it.buttons.map((btn) =>
-                    btn.disabled ? (
-                      <span key={btn.text} style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 7,
-                        background: "#273b84",
-                        color: "rgba(255,255,255,0.45)",
-                        padding: "11px 22px",
-                        borderRadius: 9,
-                        fontWeight: 800,
-                        fontSize: 14,
-                        cursor: "not-allowed",
-                        whiteSpace: "nowrap",
-                        fontFamily: "inherit",
-                      }}>
-                        {btn.text}
-                        {btn.sub && <span style={{ fontWeight: 600, fontSize: 12 }}>{btn.sub}</span>}
-                      </span>
-                    ) : (
-                      <Link key={btn.text} href={btn.href} style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 7,
-                        background: "rgba(255,255,255,0.13)",
-                        backdropFilter: "blur(10px)",
-                        border: "1.5px solid rgba(255,255,255,0.38)",
-                        color: "white",
-                        padding: "11px 22px",
-                        borderRadius: 9,
-                        fontWeight: 800,
-                        fontSize: 14,
-                        textDecoration: "none",
-                        whiteSpace: "nowrap",
-                        transition: "all 0.22s",
-                        fontFamily: "inherit",
-                      }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLElement).style.background = "#273b84";
-                          (e.currentTarget as HTMLElement).style.borderColor = "#273b84";
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.13)";
-                          (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.38)";
-                        }}
-                      >
-                        {btn.text}
-                        {btn.sub && <span style={{ fontWeight: 600, fontSize: 12, opacity: 0.8 }}>{btn.sub}</span>}
-                      </Link>
-                    )
-                  )}
+                  {it.buttons.map((btn) => btn.disabled ? (
+                    <span key={btn.text} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#273b84", color: "rgba(255,255,255,0.45)", padding: "11px 22px", borderRadius: 9, fontWeight: 800, fontSize: 14, cursor: "not-allowed", whiteSpace: "nowrap", fontFamily: "inherit" }}>
+                      {btn.text}{btn.sub && <span style={{ fontWeight: 600, fontSize: 12 }}>{btn.sub}</span>}
+                    </span>
+                  ) : (
+                    <Link key={btn.text} href={btn.href} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.13)", backdropFilter: "blur(10px)", border: "1.5px solid rgba(255,255,255,0.38)", color: "white", padding: "11px 22px", borderRadius: 9, fontWeight: 800, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap", transition: "all 0.22s", fontFamily: "inherit" }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#273b84"; (e.currentTarget as HTMLElement).style.borderColor = "#273b84"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.13)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.38)"; }}>
+                      {btn.text}{btn.sub && <span style={{ fontWeight: 600, fontSize: 12, opacity: 0.8 }}>{btn.sub}</span>}
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}
-
             {noButtons && it.cta && it.href && (
-              <Link href={it.href} style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                background: "#273b84",
-                color: "white",
-                textAlign: "center",
-                padding: "15px",
-                fontWeight: 800,
-                fontSize: 15,
-                textDecoration: "none",
-                letterSpacing: 0.5,
-                transition: "background 0.2s",
-                display: "block",
-                fontFamily: "inherit",
-              }}
+              <Link href={it.href} style={{ position: "absolute", top: 0, left: 0, right: 0, background: "#273b84", color: "white", textAlign: "center", padding: "15px", fontWeight: 800, fontSize: 15, textDecoration: "none", letterSpacing: 0.5, transition: "background 0.2s", display: "block", fontFamily: "inherit" }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#1a2a6c")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#273b84")}
-              >
+                onMouseLeave={e => (e.currentTarget.style.background = "#273b84")}>
                 {it.cta}
               </Link>
             )}
           </div>
         ))}
       </div>
-
       <div style={{ display: "flex", flexDirection: "row" }}>
         {items.map((it, i) => {
           const isActive = active === i;
           return (
-            <button
-              key={it.id}
-              onClick={() => setActive(i)}
-              style={{
-                width: isActive ? 68 : 58,
-                background: isActive ? "#a9c6f8" : "#0D1B2A",
-                border: "1px solid rgba(255,255,255,0.07)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "all 0.45s cubic-bezier(0.05,0.61,0.41,0.95)",
-                outline: "none",
-                animation: inView
-                  ? `${dir === "right" ? "tabSlideRight" : "tabSlideLeft"} 0.55s cubic-bezier(0.05,0.61,0.41,0.95) ${i * 0.08}s both`
-                  : "none",
-              }}
-              onMouseEnter={e => {
-                if (!isActive) (e.currentTarget as HTMLElement).style.background = "#1a2a6c";
-              }}
-              onMouseLeave={e => {
-                if (!isActive) (e.currentTarget as HTMLElement).style.background = "#0D1B2A";
-              }}
-            >
-              <span style={{
-                writingMode: "vertical-rl",
-                transform: "scale(-1,-1)",
-                color: isActive ? "#0D1B2A" : "white",
-                fontWeight: 800,
-                fontSize: "clamp(8px, 0.9vw, 12px)",
-                letterSpacing: 1.5,
-                textTransform: "uppercase",
-                lineHeight: 1.3,
-                transition: "color 0.3s",
-                padding: "14px 0",
-                userSelect: "none",
-                fontFamily: "inherit",
-              }}>
+            <button key={it.id} onClick={() => setActive(i)}
+              style={{ width: isActive ? 68 : 58, background: isActive ? "#a9c6f8" : "#0D1B2A", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.45s cubic-bezier(0.05,0.61,0.41,0.95)", outline: "none", animation: inView ? `${dir === "right" ? "tabSlideRight" : "tabSlideLeft"} 0.55s cubic-bezier(0.05,0.61,0.41,0.95) ${i * 0.08}s both` : "none" }}
+              onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "#1a2a6c"; }}
+              onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "#0D1B2A"; }}>
+              <span style={{ writingMode: "vertical-rl", transform: "scale(-1,-1)", color: isActive ? "#0D1B2A" : "white", fontWeight: 800, fontSize: "clamp(8px, 0.9vw, 12px)", letterSpacing: 1.5, textTransform: "uppercase", lineHeight: 1.3, transition: "color 0.3s", padding: "14px 0", userSelect: "none", fontFamily: "inherit" }}>
                 {it.label}
               </span>
             </button>
@@ -382,65 +207,27 @@ function AccordionPanel({
 
 function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButtons?: boolean }) {
   return (
-    <div style={{
-      position: "relative",
-      minHeight: 270,
-      borderRadius: 18,
-      overflow: "hidden",
-      marginBottom: 16,
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "flex-end",
-    }}>
+    <div style={{ position: "relative", minHeight: 270, borderRadius: 18, overflow: "hidden", marginBottom: 16, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
       <img src={item.image} alt={item.label} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.48)", zIndex: 1 }} />
       <div style={{ position: "relative", zIndex: 2, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)", padding: "22px 18px 18px" }}>
-        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 800, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 6 }}>
-          {item.label}
-        </p>
-        {item.headline && (
-          <p style={{ color: "white", fontWeight: 900, fontSize: 15, marginBottom: 14, textTransform: "uppercase", lineHeight: 1.4 }}>
-            {item.headline}
-          </p>
-        )}
+        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 800, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 6 }}>{item.label}</p>
+        {item.headline && <p style={{ color: "white", fontWeight: 900, fontSize: 15, marginBottom: 14, textTransform: "uppercase", lineHeight: 1.4 }}>{item.headline}</p>}
         {!noButtons && item.buttons && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {item.buttons.map((btn) =>
-              btn.disabled ? (
-                <span key={btn.text} style={{
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  background: "#273b84", color: "rgba(255,255,255,0.4)",
-                  padding: "8px 14px", borderRadius: 7, fontWeight: 800, fontSize: 13,
-                  cursor: "not-allowed", fontFamily: "inherit",
-                }}>
-                  {btn.text} {btn.sub && <span style={{ fontWeight: 600, fontSize: 11 }}>{btn.sub}</span>}
-                </span>
-              ) : (
-                <Link key={btn.text} href={btn.href} style={{
-                  display: "inline-flex", alignItems: "center", gap: 5,
-                  background: "rgba(255,255,255,0.14)",
-                  border: "1.5px solid rgba(255,255,255,0.32)",
-                  color: "white", padding: "8px 14px", borderRadius: 7,
-                  fontWeight: 800, fontSize: 13, textDecoration: "none", fontFamily: "inherit",
-                }}>
-                  {btn.text} {btn.sub && <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.75 }}>{btn.sub}</span>}
-                </Link>
-              )
-            )}
+            {item.buttons.map((btn) => btn.disabled ? (
+              <span key={btn.text} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#273b84", color: "rgba(255,255,255,0.4)", padding: "8px 14px", borderRadius: 7, fontWeight: 800, fontSize: 13, cursor: "not-allowed", fontFamily: "inherit" }}>
+                {btn.text} {btn.sub && <span style={{ fontWeight: 600, fontSize: 11 }}>{btn.sub}</span>}
+              </span>
+            ) : (
+              <Link key={btn.text} href={btn.href} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(255,255,255,0.32)", color: "white", padding: "8px 14px", borderRadius: 7, fontWeight: 800, fontSize: 13, textDecoration: "none", fontFamily: "inherit" }}>
+                {btn.text} {btn.sub && <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.75 }}>{btn.sub}</span>}
+              </Link>
+            ))}
           </div>
         )}
         {noButtons && item.cta && item.href && (
-          <Link href={item.href} style={{
-            display: "inline-block",
-            background: "#273b84",
-            color: "white",
-            padding: "11px 24px",
-            borderRadius: 9,
-            fontWeight: 800,
-            fontSize: 14,
-            textDecoration: "none",
-            fontFamily: "inherit",
-          }}>
+          <Link href={item.href} style={{ display: "inline-block", background: "#273b84", color: "white", padding: "11px 24px", borderRadius: 9, fontWeight: 800, fontSize: 14, textDecoration: "none", fontFamily: "inherit" }}>
             {item.cta}
           </Link>
         )}
@@ -449,19 +236,15 @@ function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButton
   );
 }
 
-// Trending card now uses the shared @/components/UnitCard
-
 export default function HomePage() {
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
-  const [searched, setSearched] = useState(false);
   const [projects, setProjects] = useState<any[]>([]);
   const [trending, setTrending] = useState<any[]>([]);
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("Buy");
   const [activeSlide, setActiveSlide] = useState(0);
-  // Tracks which News card is currently playing its embedded YouTube video.
+  // ── FIX 2: keyed on videoId (unique) not tag ─────────────────────────────
   const [playing, setPlaying] = useState<string | null>(null);
 
   const HERO_SLIDES = [
@@ -493,139 +276,25 @@ export default function HomePage() {
     window.location.href = `/store?q=${encodeURIComponent(query.trim())}`;
   }
 
-  function getPrice(unit: any) {
-    const ta = unit.custom_fields?.total_amount;
-    if (ta && parseFloat(ta) > 0) return parseFloat(ta);
-    return unit.base_price ? parseFloat(unit.base_price) : null;
-  }
-
   function formatPrice(p: any) {
     if (!p) return "Price on request";
     const n = parseFloat(p);
     if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)} Cr`;
-    if (n >= 100000) return `₹${(n / 100000).toFixed(0)} L`;
+    if (n >= 100000)   return `₹${(n / 100000).toFixed(0)} L`;
     return `₹${n.toLocaleString()}`;
   }
 
-  const APARTMENT_TYPES = [
-    { icon: "🏠", label: "Villa" },
-    { icon: "🏢", label: "Apartment" },
-    { icon: "🏡", label: "Duplex" },
-    { icon: "🏗️", label: "Plot" },
-    { icon: "🌆", label: "Penthouse" },
-    { icon: "🏰", label: "Bungalow" },
-  ];
-
-  const SERVICES = [
-    {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          <polyline points="9,22 9,12 15,12 15,22"/>
-        </svg>
-      ),
-      title: "Buy A Property",
-      desc: "Find your dream home from our curated listings across prime locations in Hyderabad.",
-    },
-    {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="14" rx="2"/>
-          <line x1="8" y1="21" x2="16" y2="21"/>
-          <line x1="12" y1="17" x2="12" y2="21"/>
-          <path d="M7 8h10M7 12h6"/>
-        </svg>
-      ),
-      title: "Sell A Property",
-      desc: "List your property with us and reach thousands of verified buyers instantly.",
-    },
-    {
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 6v6l4 2"/>
-        </svg>
-      ),
-      title: "Rent A Property",
-      desc: "Explore flexible rental options tailored to your lifestyle and budget needs.",
-    },
-  ];
-
   const TESTIMONIALS = [
-    { name: "Veera Bhadram", role: "Software Engineer", city: "Hyderabad", text: "Excellent construction quality and transparent process. Janapriya delivered exactly what they promised. Highly recommended!", rating: 5, initial: "R" },
-    { name: "Priya Sharma", role: "Doctor", city: "Secunderabad", text: "Bought a 3BHK in Janapriya Heights. The team was professional at every step. Best decision of my life!", rating: 5, initial: "P" },
-    { name: "Venkat Reddy", role: "Business Owner", city: "Hyderabad", text: "Invested in Janapriya Meadows villa. Superb quality, premium location. Great ROI and an even better living experience.", rating: 5, initial: "V" },
-  ];
-
-  const AGENTS = [
-    { name: "Arjun Rao", role: "Senior Advisor", exp: "12 yrs", deals: "340+" },
-    { name: "Meena Pillai", role: "Property Consultant", exp: "8 yrs", deals: "210+" },
-    { name: "Karthik Boya", role: "Investment Expert", exp: "10 yrs", deals: "280+" },
-    { name: "Neha Gupta", role: "Sales Manager", exp: "6 yrs", deals: "160+" },
-  ];
-
-  const NEWS: { tag: string; title: string; date: string; videoId?: string }[] = [
-    { tag: "Market", title: "Podcast With 𝐉𝐀𝐍𝐀𝐏𝐑𝐈𝐘𝐀 𝐔𝐏𝐒𝐂𝐀𝐋𝐄 Managing Director 𝐊𝐫𝐚𝐧𝐭𝐢 𝐊𝐢𝐫𝐚𝐧 𝐑𝐞𝐝𝐝𝐲", date: "Dec 12, 2024" },
-    { tag: "Tips", title: "Sakshi Property Plus: Janapriya Upscale MD – Mr. Kranti Kiran Reddy Exclusive Interview | Real Estate |", date: "Nov 28, 2024" },
-    { tag: "Legal", title: "Janapriya Upscale to invest Rs 1,250 cr in 4 projects", date: "Nov 15, 2024" },
+    { name: "Veera Bhadram", role: "Software Engineer", city: "Hyderabad",    text: "Excellent construction quality and transparent process. Janapriya delivered exactly what they promised. Highly recommended!", rating: 5, initial: "R" },
+    { name: "Mr. Suresh Karri", role: "#2915 Nilevalley", city: "Nilevalley", text: "Heartfelt congratulations on completing 40 successful years! Building over 40,000 homes in four decades is a truly amazing achievement.", rating: 5, initial: "P" },
+    { name: "Venkat Reddy",   role: "Business Owner",    city: "Hyderabad",   text: "Invested in Janapriya Meadows villa. Superb quality, premium location. Great ROI and an even better living experience.", rating: 5, initial: "V" },
   ];
 
   const STATS = [
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
-          <path d="M12 12l1.5 5-1.5 1-1.5-1z"/>
-        </svg>
-      ),
-      iconBg: "#EBF4FF",
-      value: "40",
-      label: "Years of Experience",
-      valueColor: "#185FA5",
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2"/>
-          <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-          <line x1="12" y1="12" x2="12" y2="16"/>
-          <line x1="10" y1="14" x2="14" y2="14"/>
-        </svg>
-      ),
-      iconBg: "#E1F5EE",
-      value: "40K+",
-      label: "Dream Homes",
-      valueColor: "#0F6E56",
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#854F0B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        </svg>
-      ),
-      iconBg: "#FEF3C7",
-      value: "70K+",
-      label: "Happy Families",
-      valueColor: "#854F0B",
-    },
-    {
-      icon: (
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#993556" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="3" width="20" height="18" rx="2"/>
-          <line x1="9" y1="3" x2="9" y2="21"/>
-          <line x1="15" y1="3" x2="15" y2="21"/>
-          <line x1="2" y1="9" x2="22" y2="9"/>
-          <line x1="2" y1="15" x2="22" y2="15"/>
-        </svg>
-      ),
-      iconBg: "#FBEAF0",
-      value: "20+",
-      label: "Million Square Feet",
-      valueColor: "#993556",
-    },
+    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M12 12l1.5 5-1.5 1-1.5-1z"/></svg>, iconBg: "#EBF4FF", value: "40",   label: "Years of Experience",  valueColor: "#185FA5" },
+    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>, iconBg: "#E1F5EE", value: "40K+", label: "Dream Homes",          valueColor: "#0F6E56" },
+    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#854F0B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, iconBg: "#FEF3C7", value: "70K+", label: "Happy Families",       valueColor: "#854F0B" },
+    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#993556" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="2" y1="15" x2="22" y2="15"/></svg>, iconBg: "#FBEAF0", value: "20+",  label: "Million Square Feet",  valueColor: "#993556" },
   ];
 
   return (
@@ -640,11 +309,6 @@ export default function HomePage() {
         .card-hover:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(39,59,132,0.13); }
         .fade-in { animation: fadeUp 0.6s ease both; }
         @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-        .ticker { display: flex; gap: 40px; animation: tick 18s linear infinite; white-space: nowrap; }
-        @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        .pill-tab { border-radius: 8px; padding: 10px 28px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; border: none; }
-        .pill-tab.active { background: #273b84; color: white; }
-        .pill-tab:not(.active) { background: white; color: #374151; }
         .input-search { border: none; outline: none; background: transparent; flex: 1; font-size: 14px; color: #374151; font-family: inherit; min-width: 0; }
         .input-search::placeholder { color: #9CA3AF; }
         .section-label { font-size: 12px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: #273b84; margin-bottom: 8px; }
@@ -653,10 +317,6 @@ export default function HomePage() {
         .star { color: #F59E0B; font-size: 14px; }
         .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; }
         .badge-brand { background: #e8ebf8; color: #273b84; }
-        .badge-amber { background: #FEF3C7; color: #92400E; }
-        .badge-blue { background: #DBEAFE; color: #1E40AF; }
-        .news-img { width: 100%; height: 170px; object-fit: cover; border-radius: 12px 12px 0 0; background: linear-gradient(135deg, #0D1B2A, #273b84); }
-        .agent-avatar { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: white; background: linear-gradient(135deg, #0D1B2A, #273b84); margin: 0 auto 12px; }
         .scroll-indicator { width: 22px; height: 36px; border: 2px solid rgba(255,255,255,0.4); border-radius: 20px; display: flex; align-items: flex-start; justify-content: center; padding-top: 5px; }
         .scroll-dot { width: 4px; height: 8px; background: white; border-radius: 2px; animation: scrollDown 1.5s ease-in-out infinite; }
         @keyframes scrollDown { 0%,100% { transform: translateY(0); opacity:1; } 50% { transform: translateY(8px); opacity:0.3; } }
@@ -665,55 +325,10 @@ export default function HomePage() {
         @keyframes tabSlideRight { 0% { transform: translateX(40px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
         @keyframes tabSlideLeft  { 0% { transform: translateX(-40px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
         .hero-arrow:hover { background: rgba(39,59,132,0.25) !important; border-color: #273b84 !important; }
-        .search-card { transition: all 0.25s cubic-bezier(.4,0,.2,1); }
-        .search-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(39,59,132,0.12); }
-
-        /* ── Stats Box hover ── */
         .stat-box { transition: all 0.28s cubic-bezier(.4,0,.2,1); cursor: default; }
         .stat-box:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(39,59,132,0.12); }
 
-        /* ── Services Card hover ── */
-        .service-card-filled { transition: all 0.25s ease; }
-        .service-card-filled:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(0,0,0,0.18); }
-        .service-card-outline { transition: all 0.25s ease; }
-        .service-card-outline:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(39,59,132,0.12); border-color: #273b84 !important; }
-
-        /* ── Search Filter responsive ── */
-        .sf-desktop { display: flex !important; width: 100%; }
-        .sf-mobile  { display: none !important; }
-
-        /* ── Hero headline ── */
-        .hero-headline {
-          text-align: center;
-          margin-bottom: 28px;
-        }
-        .hero-headline-eyebrow {
-          color: rgba(255,255,255,0.7);
-          font-size: clamp(10px, 2.5vw, 13px);
-          font-weight: 800;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          margin-bottom: 12px;
-          display: block;
-        }
-        .hero-headline-h1 {
-          color: white;
-          font-weight: 900;
-          font-size: clamp(32px, 7vw, 60px);
-          line-height: 1.12;
-          margin: 0 0 14px;
-          text-shadow: 0 4px 24px rgba(0,0,0,0.45);
-        }
-        .hero-headline-sub {
-          color: rgba(255,255,255,0.62);
-          font-size: clamp(13px, 2vw, 16px);
-          font-weight: 500;
-          max-width: 460px;
-          margin: 0 auto;
-          line-height: 1.6;
-        }
-
-        /* ── Search bar ── */
+        /* Search bar base */
         .hero-search-bar {
           border-radius: 24px;
           padding: 6px 6px 6px 22px;
@@ -721,97 +336,97 @@ export default function HomePage() {
           align-items: center;
           gap: 0;
           box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
-          
           width: 100%;
           box-sizing: border-box;
         }
 
         /* ── MOBILE FIXES ── */
         @media (max-width: 767px) {
-          .sf-desktop { display: none !important; }
-          .sf-mobile  { display: block !important; }
           .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .services-grid { grid-template-columns: 1fr !important; }
 
-          /* Hero nav arrows — hide on mobile */
+          /* Hide hero nav arrows */
           .hero-arrow { display: none !important; }
 
-          /* Hero search bar — stack vertically on mobile */
+          /* ── FIX 4a: solid tappable background on mobile ── */
           .hero-search-bar {
             flex-wrap: wrap !important;
-            padding: 12px 14px !important;
+            padding: 14px !important;
             border-radius: 20px !important;
             gap: 10px !important;
             align-items: stretch !important;
+            background: rgba(13, 27, 42, 0.88) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1) !important;
           }
 
-          /* Hide non-essential elements inside the search bar on mobile */
+          /* Hide non-essential search bar elements */
           .hero-location { display: none !important; }
           .hero-divider  { display: none !important; }
           .hero-icon-box { display: none !important; }
 
-          /* Input: full width row */
+          /* Input: full-width, visible white text */
           .input-search.hero-search-input {
             font-size: 15px !important;
-            padding: 6px 0 !important;
+            padding: 8px 4px !important;
             width: 100% !important;
             flex: 1 1 100% !important;
-            min-width: 0 !important;
+            color: white !important;
           }
+          .input-search.hero-search-input::placeholder { color: rgba(255,255,255,0.5) !important; }
 
-          /* Button: full width row below input */
+          /* Button: full-width, min tap target */
           .hero-search-btn {
             width: 100% !important;
             flex: 1 1 100% !important;
             justify-content: center !important;
             border-radius: 14px !important;
-            padding: 14px 16px !important;
+            padding: 15px 16px !important;
             box-sizing: border-box !important;
             font-size: 15px !important;
+            min-height: 50px !important;
+            touch-action: manipulation !important;
           }
 
-          /* Hero headline sizes on mobile */
-          .hero-headline {
-            margin-bottom: 20px;
-          }
-          .hero-headline-h1 {
-            font-size: clamp(30px, 9vw, 44px) !important;
-          }
+          .hero-headline-h1 { font-size: clamp(30px, 9vw, 44px) !important; }
         }
       `}</style>
 
       <Navbar />
 
-      {/* ── HERO VIDEO SLIDER ──────────────────────────────────────────── */}
-      <section
-        className="relative overflow-hidden"
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          boxSizing: "border-box",
-        }}
-      >
+      {/* ── HERO VIDEO SLIDER ── */}
+      <section className="relative overflow-hidden" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", boxSizing: "border-box" }}>
+
+        {/* ── FIX 4b: pointerEvents none on inactive slides ── */}
         {HERO_SLIDES.map((slide, i) => (
-          <div key={i} className="absolute inset-0" style={{ zIndex: 1, opacity: activeSlide === i ? 1 : 0, transition: "opacity 1.2s ease-in-out" }}>
+          <div
+            key={i}
+            className="absolute inset-0"
+            style={{
+              zIndex: 1,
+              opacity: activeSlide === i ? 1 : 0,
+              transition: "opacity 1.2s ease-in-out",
+              pointerEvents: activeSlide === i ? "auto" : "none",
+            }}
+          >
             <div className="absolute inset-0" />
             {mounted && (
-              <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" style={{zIndex: 1 }}>
+              <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 1 }}>
                 <source src={slide.src} type="video/mp4" />
               </video>
             )}
           </div>
         ))}
-        <div className="absolute inset-0" style={{zIndex: 0 }} />
+
+        <div className="absolute inset-0" style={{ zIndex: 0 }} />
         <div className="absolute top-1/4 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.18), transparent 70%)", zIndex: 2 }} />
         <div className="absolute bottom-1/3 left-0 w-72 h-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.12), transparent 70%)", zIndex: 2 }} />
 
-        {/* ── Hero content ── */}
+        {/* ── FIX 4c: raise content above video layer ── */}
         <div
           className="relative mx-auto"
           style={{
-            zIndex: 1,
+            zIndex: 10,
             paddingTop: "clamp(100px, 20vw, 150px)",
             paddingBottom: "clamp(90px, 16vw, 130px)",
             paddingLeft: "clamp(16px, 5vw, 32px)",
@@ -821,30 +436,11 @@ export default function HomePage() {
             boxSizing: "border-box",
           }}
         >
-         
-
-          {/* ── Search Bar ── */}
-          <div
-            className="fade-in"
-            style={{ width: "100%", boxSizing: "border-box", animationDelay: "0.18s" }}
-          >
+          <div className="fade-in" style={{ width: "100%", boxSizing: "border-box", animationDelay: "0.18s" }}>
             <form onSubmit={handleSearch}>
               <div className="hero-search-bar">
                 {/* Icon */}
-                <div
-                  className="hero-icon-box"
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: "white",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                    marginRight: 10,
-                  }}
-                >
+                <div className="hero-icon-box" style={{ width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 10 }}>
                   <AiIcon size={28} />
                 </div>
 
@@ -858,57 +454,38 @@ export default function HomePage() {
                 />
 
                 {/* Divider */}
-                <div
-                  className="hero-divider"
-                  style={{ width: 1, height: 28, background: "#E5E7EB", flexShrink: 0, margin: "0 14px" }}
-                />
+                <div className="hero-divider" style={{ width: 1, height: 28, background: "#E5E7EB", flexShrink: 0, margin: "0 14px" }} />
 
                 {/* Location */}
-                <div
-                  className="hero-location"
-                  style={{ display: "flex", alignItems: "center", gap: 5, color: "#fff", fontSize: 13, fontWeight: 700, flexShrink: 0, marginRight: 10, whiteSpace: "nowrap" }}
-                >
+                <div className="hero-location" style={{ display: "flex", alignItems: "center", gap: 5, color: "#fff", fontSize: 13, fontWeight: 700, flexShrink: 0, marginRight: 10, whiteSpace: "nowrap" }}>
                   <span style={{ fontSize: 15 }}>📍</span> Hyderabad
                 </div>
 
-                {/* Submit button */}
+                {/* Submit */}
                 <button
                   type="submit"
                   disabled={searching}
                   className="hero-search-btn"
                   style={{
                     background: searching ? "#9CA3AF" : "linear-gradient(135deg, #273b84 0%, #1a2a6c 100%)",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 18,
-                    padding: "13px 28px",
-                    fontWeight: 900,
-                    fontSize: 14,
-                    cursor: searching ? "not-allowed" : "pointer",
-                    whiteSpace: "nowrap",
-                    fontFamily: "inherit",
-                    transition: "all 0.22s",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    boxShadow: searching ? "none" : "0 4px 20px rgba(39,59,132,0.5)",
-                    flexShrink: 0,
+                    color: "white", border: "none", borderRadius: 18, padding: "13px 28px",
+                    fontWeight: 900, fontSize: 14, cursor: searching ? "not-allowed" : "pointer",
+                    whiteSpace: "nowrap", fontFamily: "inherit", transition: "all 0.22s",
+                    display: "flex", alignItems: "center", gap: 8,
+                    boxShadow: searching ? "none" : "0 4px 20px rgba(39,59,132,0.5)", flexShrink: 0,
                   }}
                 >
-                  {searching ? (
-                    <><span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> Searching…</>
-                  ) : (
-                    <><span>🔍</span> AI Search</>
-                  )}
+                  {searching
+                    ? <><span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> Searching…</>
+                    : <><span>🔍</span> AI Search</>
+                  }
                 </button>
               </div>
             </form>
           </div>
-
-          {/* Search redirects to /store?q=... */}
         </div>
 
-        {/* ── Slide Dots + Scroll indicator ── */}
+        {/* Slide dots + scroll */}
         <div className="absolute" style={{ bottom: 36, left: "50%", transform: "translateX(-50%)", zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <div style={{ display: "flex", gap: 10 }}>
             {HERO_SLIDES.map((_, i) => (
@@ -919,64 +496,32 @@ export default function HomePage() {
           <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 2.5 }}>SCROLL</span>
         </div>
 
-        {/* ── Prev / Next arrows (hidden on mobile via CSS) ── */}
+        {/* Arrows */}
         <button onClick={() => setActiveSlide(s => (s - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ left: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>‹</button>
         <button onClick={() => setActiveSlide(s => (s + 1) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ right: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>›</button>
 
-        {/* ── Progress bar ── */}
+        {/* Progress bar */}
         <div className="absolute" style={{ bottom: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,0.1)", zIndex: 5 }}>
           <div key={activeSlide} style={{ height: "100%", background: "#273b84", animation: "heroProgress 7s linear forwards", transformOrigin: "left" }} />
         </div>
       </section>
 
-      {/* ── STATS ROW — BOX DESIGN ─────────────────────────────────────── */}
+      {/* ── STATS ── */}
       <section style={{ background: "#F8FAFB", padding: "48px 0" }}>
         <div className="max-w-5xl mx-auto px-6">
-          <div
-            className="stats-grid"
-            style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}
-          >
+          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
             {STATS.map((stat, i) => (
-              <div
-                key={i}
-                className="stat-box"
-                style={{
-                  background: "white",
-                  border: "1.5px solid #E5E7EB",
-                  borderRadius: 16,
-                  padding: "28px 20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 14,
-                  textAlign: "center",
-                }}
-              >
-                <div style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 14,
-                  background: stat.iconBg,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                }}>
-                  {stat.icon}
-                </div>
-                <div style={{ fontSize: 30, fontWeight: 900, color: stat.valueColor, lineHeight: 1 }}>
-                  {stat.value}
-                </div>
-                <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 600, lineHeight: 1.4 }}>
-                  {stat.label}
-                </div>
+              <div key={i} className="stat-box" style={{ background: "white", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
+                <div style={{ width: 60, height: 60, borderRadius: 14, background: stat.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{stat.icon}</div>
+                <div style={{ fontSize: 30, fontWeight: 900, color: stat.valueColor, lineHeight: 1 }}>{stat.value}</div>
+                <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 600, lineHeight: 1.4 }}>{stat.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── WHERE A HOUSE FEELS LIKE HOME ─────────────────────────────── */}
+      {/* ── ABOUT ── */}
       <section style={{ padding: "60px 0", background: "#F8FAFB" }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
@@ -988,15 +533,8 @@ export default function HomePage() {
                 For over four decades, Janapriya Engineers Syndicate has been crafting premium homes across Hyderabad. We combine quality construction, transparent pricing, and timely delivery — making your dream home a reality.
               </p>
               <div className="grid grid-cols-2 gap-4 mb-6">
-                {[
-                  { icon: "✅", text: "RERA Registered" },
-                  { icon: "🌿", text: "IGBC Green Certified" },
-                  { icon: "📱", text: "Smart Home Ready" },
-                  { icon: "💎", text: "Premium Finishes" },
-                ].map(f => (
-                  <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                    <span>{f.icon}</span> {f.text}
-                  </div>
+                {[{ icon: "✅", text: "RERA Registered" }, { icon: "🌿", text: "IGBC Green Certified" }, { icon: "📱", text: "Smart Home Ready" }, { icon: "💎", text: "Premium Finishes" }].map(f => (
+                  <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#374151" }}><span>{f.icon}</span> {f.text}</div>
                 ))}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
@@ -1004,13 +542,9 @@ export default function HomePage() {
                   <div style={{ fontSize: 28, fontWeight: 900, color: "white" }}>560+</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>CURRENT UNITS</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6 }}>Handpicked properties in the best<br />localities across Hyderabad.</div>
-                </div>
+                <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6 }}>Handpicked properties in the best<br />localities across Hyderabad.</div>
               </div>
-              <Link href="/projects" style={{ display: "inline-block", background: "#273b84", color: "white", borderRadius: 10, padding: "12px 28px", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>
-                Explore Projects →
-              </Link>
+              <Link href="/projects" style={{ display: "inline-block", background: "#273b84", color: "white", borderRadius: 10, padding: "12px 28px", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>Explore Projects →</Link>
             </div>
             <div style={{ position: "relative" }}>
               <div style={{ background: "linear-gradient(135deg, #0D1B2A, #273b84)", borderRadius: 20, height: 360, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
@@ -1034,7 +568,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── TRENDING PROPERTIES ────────────────────────────────────────── */}
+      {/* ── TRENDING PROPERTIES ── */}
       {trending.length > 0 && (
         <section style={{ padding: "80px 0", background: "#F8FAFB" }}>
           <div className="max-w-7xl mx-auto px-6">
@@ -1043,37 +577,26 @@ export default function HomePage() {
                 <p className="section-label">Trending Properties</p>
                 <h2 className="section-title">Property For Sale</h2>
               </div>
-              <Link href="/store" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>
-                View All Units →
-              </Link>
+              <Link href="/store" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>View All Units →</Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trending.map((u: any) => (
-                <UnitCard key={u.id} unit={u} isTrending />
-              ))}
+              {trending.map((u: any) => <UnitCard key={u.id} unit={u} isTrending />)}
             </div>
           </div>
         </section>
       )}
 
-      {/* ── JOIN JANAPRIYA STATS ───────────────────────────────────────── */}
+      {/* ── JOIN JANAPRIYA ── */}
       <section style={{ background: "linear-gradient(135deg, #0D1B2A, #1a2a6c)", padding: "72px 24px" }}>
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div>
             <p className="section-label" style={{ color: "#7b8fd4" }}>Why Join Us</p>
             <h2 style={{ color: "white", fontWeight: 900, fontSize: 36, lineHeight: 1.2, marginBottom: 16 }}>Join Janapriya And Experience Today</h2>
             <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: 28 }}>Four decades of excellence, thousands of satisfied families, and a legacy built on trust.</p>
-            <Link href="/contact" style={{ display: "inline-block", background: "#273b84", color: "white", borderRadius: 12, padding: "14px 32px", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>
-              Get in Touch →
-            </Link>
+            <Link href="/contact" style={{ display: "inline-block", background: "#273b84", color: "white", borderRadius: 12, padding: "14px 32px", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>Get in Touch →</Link>
           </div>
           <div className="grid grid-cols-2 gap-5">
-            {[
-              { v: "560+",  l: "Current Listings" },
-              { v: "196K+", l: "Total Apartments" },
-              { v: "₹16M+", l: "Total Land Value" },
-              { v: "40+",   l: "Years of Trust" },
-            ].map(s => (
+            {[{ v: "560+", l: "Current Listings" }, { v: "196K+", l: "Total Apartments" }, { v: "₹16M+", l: "Total Land Value" }, { v: "40+", l: "Years of Trust" }].map(s => (
               <div key={s.l} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "24px 20px" }}>
                 <div style={{ fontSize: 30, fontWeight: 900, color: "#7b8fd4", marginBottom: 4 }}>{s.v}</div>
                 <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{s.l}</div>
@@ -1083,7 +606,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FEATURED PROJECTS ──────────────────────────────────────────── */}
+      {/* ── FEATURED PROJECTS ── */}
       <section style={{ padding: "80px 0", background: "white", position: "relative", overflow: "hidden" }}>
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.05), transparent)", transform: "translate(30%,-30%)" }} />
         <div className="max-w-7xl mx-auto px-6 relative">
@@ -1094,110 +617,54 @@ export default function HomePage() {
               <div style={{ width: 32, height: 2, background: "#273b84", borderRadius: 2 }} />
             </div>
             <h2 className="section-title">Featured Projects</h2>
-            <p style={{ color: "#6B7280", fontSize: 14, marginTop: 8, maxWidth: 500, margin: "8px auto 0" }}>
-              Premium residential communities across Hyderabad — crafted to the highest standards.
-            </p>
+            <p style={{ color: "#6B7280", fontSize: 14, marginTop: 8, maxWidth: 500, margin: "8px auto 0" }}>Premium residential communities across Hyderabad — crafted to the highest standards.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {projects.length > 0 ? projects.slice(0, 3).map((p: any) => {
-              const stageRaw = (p.construction_stage || "").toString();
+              const stageRaw   = (p.construction_stage || "").toString();
               const stageLower = stageRaw.toLowerCase();
-              const statusColor = stageLower.includes("ready") ? "#22c55e"
-                : stageLower.includes("new") ? "#29A9DF"
-                : stageRaw ? "#f59e0b"
-                : "#94a3b8";
-              const statusBg = stageLower.includes("ready") ? "#f0fdf4"
-                : stageLower.includes("new") ? "#eff6ff"
-                : stageRaw ? "#fffbeb"
-                : "#f8fafc";
-              const statusLabel = stageRaw
-                ? stageRaw.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())
-                : "—";
+              const statusColor = stageLower.includes("ready") ? "#22c55e" : stageLower.includes("new") ? "#29A9DF" : stageRaw ? "#f59e0b" : "#94a3b8";
+              const statusBg    = stageLower.includes("ready") ? "#f0fdf4" : stageLower.includes("new") ? "#eff6ff"  : stageRaw ? "#fffbeb" : "#f8fafc";
+              const statusLabel = stageRaw ? stageRaw.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) : "—";
               const thumb = p.thumbnail || (p.images && p.images[0]);
               return (
-                <div key={p.id}
-                  className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
-                  style={{ boxShadow: "0 4px 24px rgba(42,56,135,0.10)", border: "1.5px solid #E2F1FC" }}>
-                  {/* Top bar: status + units count */}
+                <div key={p.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1" style={{ boxShadow: "0 4px 24px rgba(42,56,135,0.10)", border: "1.5px solid #E2F1FC" }}>
                   <div className="px-4 pt-4 pb-2 flex justify-between items-center">
-                    <span className="px-3 py-1 rounded-full text-xs font-black"
-                      style={{ color: statusColor, background: statusBg }}>
-                      ● {statusLabel}
-                    </span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full"
-                      style={{ background: "#F8F9FB", color: "#2A3887" }}>
-                      🏠 {p.total_units ?? "—"} units
-                    </span>
+                    <span className="px-3 py-1 rounded-full text-xs font-black" style={{ color: statusColor, background: statusBg }}>● {statusLabel}</span>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#F8F9FB", color: "#2A3887" }}>🏠 {p.total_units ?? "—"} units</span>
                   </div>
-
-                  {/* Project image */}
                   <div className="px-3 pb-1">
                     <Link href={`/projects/${p.slug || p.id}`} className="block">
-                      <div className="relative rounded-xl overflow-hidden w-full cursor-pointer"
-                        style={{ height: "220px", background: "#F4F6FB" }}>
+                      <div className="relative rounded-xl overflow-hidden w-full cursor-pointer" style={{ height: "220px", background: "#F4F6FB" }}>
                         {thumb ? (
-                          <img src={thumb.split("/").map((s: string) => encodeURIComponent(s)).join("/")}
-                            alt={p.name}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            onError={(e: any) => { e.target.style.display = "none"; }} />
+                          <img src={thumb.split("/").map((s: string) => encodeURIComponent(s)).join("/")} alt={p.name} className="absolute inset-0 w-full h-full object-cover" onError={(e: any) => { e.target.style.display = "none"; }} />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-2"
-                            style={{ background: "linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%)" }}>
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ background: "linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%)" }}>
                             <span style={{ fontSize: 48, opacity: 0.2 }}>🏗️</span>
-                            <span className="text-xs font-semibold" style={{ color: "#aac" }}>
-                              Image coming soon
-                            </span>
+                            <span className="text-xs font-semibold" style={{ color: "#aac" }}>Image coming soon</span>
                           </div>
                         )}
-                        <div className="absolute bottom-0 left-0 right-0 px-3 py-2"
-                          style={{ background: "linear-gradient(0deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0) 100%)" }}>
-                          <p className="text-xs font-semibold" style={{ color: "#888" }}>
-                            {p.property_type || p.unit_types || "Residential"}
-                          </p>
-                          <h3 className="font-black text-base leading-tight" style={{ color: "#2A3887" }}>
-                            {p.name}
-                          </h3>
+                        <div className="absolute bottom-0 left-0 right-0 px-3 py-2" style={{ background: "linear-gradient(0deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0) 100%)" }}>
+                          <p className="text-xs font-semibold" style={{ color: "#888" }}>{p.property_type || p.unit_types || "Residential"}</p>
+                          <h3 className="font-black text-base leading-tight" style={{ color: "#2A3887" }}>{p.name}</h3>
                         </div>
                       </div>
                     </Link>
                   </div>
-
-                  {/* Card body */}
                   <div className="p-4 flex flex-col gap-3">
-                    <p className="text-sm" style={{ color: "#555A5C" }}>
-                      📍 {p.location || p.city}{p.city && p.city !== p.location ? `, ${p.city}` : ""}
-                    </p>
-                    {p.description && (
-                      <p className="text-xs leading-relaxed" style={{ color: "#777" }}>
-                        {p.description.substring(0, 100)}
-                        {p.description.length > 100 ? "..." : ""}
-                      </p>
-                    )}
+                    <p className="text-sm" style={{ color: "#555A5C" }}>📍 {p.location || p.city}{p.city && p.city !== p.location ? `, ${p.city}` : ""}</p>
+                    {p.description && <p className="text-xs leading-relaxed" style={{ color: "#777" }}>{p.description.substring(0, 100)}{p.description.length > 100 ? "..." : ""}</p>}
                     <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid #F0F4FF" }}>
                       <div>
                         <div className="font-black text-lg" style={{ color: "#2A3887" }}>
-                          {p.min_price && p.max_price && p.min_price !== p.max_price
-                            ? `${formatPrice(p.min_price)} – ${formatPrice(p.max_price)}`
-                            : p.min_price ? formatPrice(p.min_price) : "On Request"}
+                          {p.min_price && p.max_price && p.min_price !== p.max_price ? `${formatPrice(p.min_price)} – ${formatPrice(p.max_price)}` : p.min_price ? formatPrice(p.min_price) : "On Request"}
                         </div>
-                        {p.min_price && (
-                          <div className="text-xs" style={{ color: "#999" }}>
-                            Starting price
-                          </div>
-                        )}
+                        {p.min_price && <div className="text-xs" style={{ color: "#999" }}>Starting price</div>}
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Link href={`/projects/${p.slug || p.id}`}
-                        className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors"
-                        style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>
-                        View Details
-                      </Link>
-                      <Link href={`/projects/${p.slug || p.id}#enquire`}
-                        className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors"
-                        style={{ border: "1.5px solid #2A3887", color: "#2A3887" }}>
-                        Enquire
-                      </Link>
+                      <Link href={`/projects/${p.slug || p.id}`} className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors" style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View Details</Link>
+                      <Link href={`/projects/${p.slug || p.id}#enquire`} className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors" style={{ border: "1.5px solid #2A3887", color: "#2A3887" }}>Enquire</Link>
                     </div>
                   </div>
                 </div>
@@ -1207,14 +674,12 @@ export default function HomePage() {
             ))}
           </div>
           <div style={{ textAlign: "center", marginTop: 48 }}>
-            <Link href="/projects" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 36px", fontWeight: 800, fontSize: 14, borderRadius: 50, border: "2px solid #273b84", color: "#273b84", textDecoration: "none", transition: "all 0.2s" }}>
-              View All Projects →
-            </Link>
+            <Link href="/projects" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 36px", fontWeight: 800, fontSize: 14, borderRadius: 50, border: "2px solid #273b84", color: "#273b84", textDecoration: "none", transition: "all 0.2s" }}>View All Projects →</Link>
           </div>
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ───────────────────────────────────────────────── */}
+      {/* ── TESTIMONIALS ── */}
       <section style={{ background: "#F8FAFB", padding: "80px 0" }}>
         <div className="max-w-6xl mx-auto px-6">
           <div style={{ textAlign: "center", marginBottom: 48 }}>
@@ -1240,38 +705,10 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 24, justifyContent: "center", marginTop: 48, flexWrap: "wrap" }}>
-            {["RERA", "IGBC", "ISO 9001", "CRISIL AA", "CREDAI"].map(logo => (
-              <div key={logo} style={{ background: "white", border: "1px solid #E5E7EB", borderRadius: 10, padding: "10px 20px", fontWeight: 800, fontSize: 12, color: "#6B7280", letterSpacing: 1 }}>{logo}</div>
-            ))}
-          </div>
         </div>
       </section>
 
-      {/* ── MEET AGENTS ────────────────────────────────────────────────── */}
-      <section style={{ background: "white", padding: "80px 0" }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
-            <p className="section-label">Our Team</p>
-            <h2 className="section-title">Meet With Agents</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {AGENTS.map(a => (
-              <div key={a.name} className="card-hover" style={{ background: "#F8FAFB", borderRadius: 18, padding: "24px 16px", textAlign: "center", border: "1px solid #F0F0F0" }}>
-                <div className="agent-avatar">{a.name[0]}</div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: "#0D1B2A" }}>{a.name}</div>
-                <div style={{ color: "#273b84", fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{a.role}</div>
-                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-                  <span style={{ background: "#e8ebf8", color: "#273b84", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{a.exp}</span>
-                  <span style={{ background: "#DBEAFE", color: "#1E40AF", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>{a.deals} deals</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── MILESTONES VIDEO ───────────────────────────────────────────── */}
+      {/* ── MILESTONES VIDEO ── */}
       {mounted && (
         <section style={{ background: "#0D1B2A", overflow: "hidden", position: "relative" }}>
           <video autoPlay muted loop playsInline className="hidden md:block" style={{ width: "100%", maxHeight: 620, objectFit: "cover", opacity: 0.55 }}>
@@ -1285,7 +722,7 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ── NEWS & ARTICLES ────────────────────────────────────────────── */}
+      {/* ── NEWS & ARTICLES ── */}
       <section style={{ background: "#F8FAFB", padding: "80px 0" }}>
         <div className="max-w-6xl mx-auto px-6">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
@@ -1293,15 +730,34 @@ export default function HomePage() {
               <p className="section-label">Insights</p>
               <h2 className="section-title">Our Latest Article And<br />News For You</h2>
             </div>
-            <Link href="/blog" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>
-              All Articles →
-            </Link>
+            <Link href="/blog" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>All Articles →</Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {NEWS.map(n => (
-              <div key={n.title} className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.05)" }}>
-                <div className="news-img" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <span style={{ fontSize: 40 }}>🏙️</span>
+              <div key={n.videoId} className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.05)" }}>
+                {/* ── FIX 2: discriminator = videoId throughout ── */}
+                <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000", overflow: "hidden" }}>
+                  {playing === n.videoId ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${n.videoId}?autoplay=1&rel=0`}
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                      style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
+                    />
+                  ) : (
+                    <>
+                      <img
+                        src={`https://img.youtube.com/vi/${n.videoId}/hqdefault.jpg`}
+                        alt={n.title}
+                        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                      <div onClick={() => setPlaying(n.videoId)} style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.18)", cursor: "pointer" }}>
+                        <div style={{ width: 52, height: 52, background: "rgba(255,255,255,0.92)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
+                          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><polygon points="5,2 16,9 5,16" fill="#273b84" /></svg>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div style={{ padding: "18px 20px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -1309,7 +765,7 @@ export default function HomePage() {
                     <span style={{ color: "#9CA3AF", fontSize: 11 }}>{n.date}</span>
                   </div>
                   <h3 style={{ fontWeight: 800, fontSize: 14, color: "#0D1B2A", lineHeight: 1.5, marginBottom: 12 }}>{n.title}</h3>
-                  <span style={{ color: "#273b84", fontSize: 12, fontWeight: 800 }}>Read more →</span>
+                  <span onClick={() => setPlaying(n.videoId)} style={{ color: "#273b84", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Watch now →</span>
                 </div>
               </div>
             ))}
@@ -1317,19 +773,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── CTA FOOTER BANNER ──────────────────────────────────────────── */}
+      {/* ── CTA ── */}
       <section style={{ background: "linear-gradient(135deg, #273b84, #1a2a6c)", padding: "72px 24px", textAlign: "center" }}>
         <div className="max-w-2xl mx-auto">
           <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 800, letterSpacing: 3, textTransform: "uppercase", marginBottom: 14 }}>Take The Next Step</p>
           <h2 style={{ color: "white", fontWeight: 900, fontSize: 36, marginBottom: 12, lineHeight: 1.2 }}>Ready to Find Your<br />Dream Home?</h2>
           <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, marginBottom: 32 }}>Talk to our experts today. Site visits available 7 days a week. No spam — ever.</p>
           <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/contact" style={{ background: "white", color: "#273b84", borderRadius: 12, padding: "14px 32px", fontWeight: 900, fontSize: 14, textDecoration: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
-              🗓 Schedule a Visit
-            </Link>
-            <Link href="/projects" style={{ background: "rgba(255,255,255,0.12)", color: "white", borderRadius: 12, padding: "14px 32px", fontWeight: 800, fontSize: 14, textDecoration: "none", border: "2px solid rgba(255,255,255,0.3)" }}>
-              Browse Projects →
-            </Link>
+            <Link href="/contact" style={{ background: "white", color: "#273b84", borderRadius: 12, padding: "14px 32px", fontWeight: 900, fontSize: 14, textDecoration: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>🗓 Schedule a Visit</Link>
+            <Link href="/projects" style={{ background: "rgba(255,255,255,0.12)", color: "white", borderRadius: 12, padding: "14px 32px", fontWeight: 800, fontSize: 14, textDecoration: "none", border: "2px solid rgba(255,255,255,0.3)" }}>Browse Projects →</Link>
           </div>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 20 }}>📞 Our team will reach out within 24 hours.</p>
         </div>

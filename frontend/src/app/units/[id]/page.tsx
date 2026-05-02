@@ -407,8 +407,8 @@ export default function UnitDetailPage() {
                       </span>
                       <div className="flex gap-1.5">
                         {[
-                          { fn: handleSave, icon: saved ? "♥" : "♡", bg: saved ? "rgba(239,68,68,0.9)" : "rgba(255,255,255,0.2)", title: "Save" },
-                          { fn: handleCompare, icon: "⇄", bg: inCompare ? "rgba(245,158,11,0.9)" : "rgba(255,255,255,0.2)", title: "Compare" },
+                          { fn: handleSave, icon: saved ? "♥" : "♡", bg: saved ? "rgba(233,30,61,0.9)" : "rgba(255,255,255,0.2)", title: "Save" },
+                          { fn: handleCompare, icon: "⇄", bg: inCompare ? "rgba(41,169,223,0.9)" : "rgba(255,255,255,0.2)", title: "Compare" },
                           { fn: handleShare, icon: "↗", bg: "rgba(255,255,255,0.2)", title: "Share" },
                         ].map((btn, i) => (
                           <button key={i} onClick={btn.fn} title={btn.title}
@@ -422,7 +422,7 @@ export default function UnitDetailPage() {
                   </div>
                   {toast && (
                     <div className="fixed top-20 right-6 z-50 px-5 py-3 rounded-2xl text-sm font-bold shadow-2xl flex items-center gap-2 animate-bounce"
-                      style={{ background: toast.includes('✅') ? '#16A34A' : '#2A3887', color: 'white', maxWidth: '280px' }}>
+                      style={{ background: toast.includes('✅') ? '#29A9DF' : '#2A3887', color: 'white', maxWidth: '280px' }}>
                       {toast}
                     </div>
                   )}
@@ -531,14 +531,14 @@ export default function UnitDetailPage() {
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <button onClick={addToCart} disabled={cartLoading || cartAdded}
                     className="py-3 rounded-xl font-black text-sm flex items-center justify-center gap-1.5 border-2 transition-all"
-                    style={{ borderColor: cartAdded ? '#16A34A' : '#2A3887',
-                             color: cartAdded ? '#16A34A' : '#2A3887',
-                             background: cartAdded ? 'rgba(22,163,74,0.06)' : 'white' }}>
+                    style={{ borderColor: cartAdded ? '#29A9DF' : '#2A3887',
+                             color: cartAdded ? '#29A9DF' : '#2A3887',
+                             background: cartAdded ? '#E2F1FC' : 'white' }}>
                     {cartLoading ? '⏳' : cartAdded ? '✓ In Cart' : '🛒 Add to Cart'}
                   </button>
                   <Link href={`/booking/${unit.id}`}
                     className="py-3 rounded-xl font-black text-sm flex items-center justify-center gap-1.5"
-                    style={{ background: 'linear-gradient(135deg,#16A34A,#22c55e)', color: 'white' }}>
+                    style={{ background: 'linear-gradient(135deg,#262262,#2A3887)', color: 'white' }}>
                     🏷️ Book Now
                   </Link>
                 </div>
@@ -553,12 +553,12 @@ export default function UnitDetailPage() {
               <div className="grid grid-cols-2 gap-3">
                 <Link href={`/home-loan/${id}`}
                   className="py-3.5 text-center text-white font-black rounded-xl text-sm transition-all hover:opacity-90"
-                  style={{ background: 'linear-gradient(135deg, #16A34A, #22c55e)' }}>
+                  style={{ background: 'linear-gradient(135deg,#262262,#2A3887)' }}>
                   🏦 Home Loan
                 </Link>
                 <button
                   className="py-3.5 font-black rounded-xl text-sm transition-all hover:opacity-90"
-                  style={{ background: 'linear-gradient(135deg, #F59E0B, #EAB308)', color: '#fff' }}>
+                  style={{ background: '#E2F1FC', color: '#2A3887', border: '2px solid #2A3887' }}>
                   📋 Get Quote
                 </button>
               </div>
@@ -589,12 +589,12 @@ export default function UnitDetailPage() {
               <div className="flex gap-3">
                 <button onClick={handleSave}
                   className="flex-1 py-3 font-bold rounded-xl text-sm transition-all"
-                  style={{ background: saved ? "#FEE2E2" : "#F8F9FB", color: saved ? "#DC2626" : "#555", border: "1.5px solid #E2F1FC" }}>
+                  style={{ background: saved ? "rgba(233,30,61,0.10)" : "#F8F9FB", color: saved ? "#E91E3D" : "#555", border: `1.5px solid ${saved ? "#E91E3D" : "#E2F1FC"}` }}>
                   {saved ? "♥ Saved" : "♡ Save"}
                 </button>
                 <button onClick={handleCompare}
                   className="flex-1 py-3 font-bold rounded-xl text-sm transition-all"
-                  style={{ background: inCompare ? "#FEF3C7" : "#F8F9FB", color: inCompare ? "#D97706" : "#555", border: "1.5px solid #E2F1FC" }}>
+                  style={{ background: inCompare ? "#E2F1FC" : "#F8F9FB", color: inCompare ? "#2A3887" : "#555", border: `1.5px solid ${inCompare ? "#29A9DF" : "#E2F1FC"}` }}>
                   {inCompare ? "⇄ In Compare" : "⇄ Compare"}
                 </button>
               </div>
