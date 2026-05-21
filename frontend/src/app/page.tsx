@@ -1,57 +1,396 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import { useState, useRef, useEffect } from "react";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
-type Msg = { role: "user" | "assistant"; content: string };
+// ─── Project filmstrip data — fetched from /api/v1/projects ──────────────────
+// The backend's `/projects` endpoint owns the canonical list (name, location,
+// price, construction stage, thumbnail). We adapt it into the filmstrip card
+// shape below.
+type ApiProject = {
+  id: string;
+  slug?: string;
+  name: string;
+  city?: string | null;
+  location?: string | null;
+  construction_stage?: string | null;
+  min_price?: number | null;
+  max_price?: number | null;
+  available_units?: number | null;
+  total_units?: number | null;
+  thumbnail?: string | null;
+  images?: string[] | null;
+};
 
-type Unit = {
+type ProjectCard = {
+  name: string;
+  location: string;
+  price: string;
+  type: string;
+  status: string;
+  img: string;
+  url: string;
+};
+
+// Strip `/api/v1` from NEXT_PUBLIC_API_URL to get the media-serving origin
+// (`/media/...` paths come off the same FastAPI host).
+const MEDIA_ORIGIN = (API || "").replace(/\/api\/v1\/?$/, "");
+
+function fmtFrom(n?: number | null): string {
+  if (!n) return "On enquiry";
+  if (n >= 10_000_000) return `₹${(n / 10_000_000).toFixed(2)} Cr+`;
+  if (n >= 100_000) return `₹${(n / 100_000).toFixed(2)} L+`;
+  return `₹${n.toLocaleString("en-IN")}+`;
+}
+
+function statusLabel(stage?: string | null): string {
+  if (!stage) return "Active";
+  const s = stage.toLowerCase();
+  if (s.includes("ready")) return "Ready to Move";
+  if (s.includes("launch")) return "New Launch";
+  if (s.includes("construction")) return "Under Construction";
+  if (s.includes("upcoming")) return "Upcoming";
+  return stage;
+}
+
+function projectImage(p: ApiProject): string {
+  const path = p.thumbnail || (p.images && p.images[0]) || "";
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return MEDIA_ORIGIN + path;
+}
+
+function adaptProject(p: ApiProject): ProjectCard {
+  return {
+    name: p.name,
+    location: p.location || p.city || "",
+    price: fmtFrom(p.min_price ?? null),
+    // We don't currently expose per-project BHK summary — derive when the
+    // backend gains a `bhk_summary` column.
+    type: "Residences",
+    status: statusLabel(p.construction_stage),
+    img: projectImage(p),
+    url: `/projects/${p.slug || p.id}`,
+  };
+}
+
+// ─── Prompt categories ─────────────────────────────────────────────────────────
+const CATEGORIES = [
+  {
+    id: "life",
+    icon: "🏠",
+    label: "My Life",
+    prompts: [
+      "I want a home where my children can run freely and grow up safely",
+      "We're 4 in the family — parents, spouse and I. Need the right space",
+      "I work from home and need a quiet, well-lit space",
+      "We're a young couple planning to start a family soon",
+    ],
+  },
+  {
+    id: "budget",
+    icon: "💰",
+    label: "Budget & Loans",
+    prompts: [
+      "What's the best flat I can get with a ₹40,000/month EMI?",
+      "I earn ₹1.2 lakh/month — how much loan am I eligible for?",
+      "Show me good options under ₹80 lakhs",
+      "I have ₹30L ready — what's the smartest way to use it?",
+    ],
+  },
+  {
+    id: "location",
+    icon: "📍",
+    label: "Location",
+    prompts: [
+      "I work in Hitech City — which project is easiest to commute from?",
+      "How good are schools near Bachupally or Chandanagar?",
+      "Tell me about living in Sainikpuri — what's the lifestyle like?",
+      "Which area has the best connectivity to the airport?",
+    ],
+  },
+  {
+    id: "market",
+    icon: "📊",
+    label: "Market Intel",
+    prompts: [
+      "What are current flat prices in Bachupally compared to Janapriya?",
+      "Is now a smart time to buy in Hyderabad or should I wait?",
+      "How does Janapriya pricing compare to other builders nearby?",
+      "Which area in Hyderabad will appreciate the most in 5 years?",
+    ],
+  },
+  {
+    id: "amenities",
+    icon: "🌿",
+    label: "Amenities",
+    prompts: [
+      "Which projects have a swimming pool and a proper gym?",
+      "I need a good children's play area and green spaces",
+      "Tell me about clubhouse facilities across your projects",
+      "Is there covered parking and 24x7 security?",
+    ],
+  },
+  {
+    id: "projects",
+    icon: "🏗️",
+    label: "Projects",
+    prompts: [
+      "Tell me everything about First Light in Bachupally",
+      "What's the difference between Bahiti and Nile Valley?",
+      "Which projects are ready to move in right now?",
+      "I want a 3 BHK above ₹1 Cr — show me my best options",
+    ],
+  },
+];
+
+const GOLD = "#C4973A";
+const GOLDB = "#E8CC87";
+const BG = "#05070D";
+
+// ─── Backend unit → PropCard shape ────────────────────────────────────────────
+type BackendUnit = {
   id: string;
   unit_number?: string;
   unit_type?: string;
   bedrooms?: number;
-  area_sqft?: number;
-  base_price?: number;
-  facing?: string;
-  floor_number?: number;
-  project_name?: string;
-  tower_name?: string;
+  area_sqft?: number | null;
+  base_price?: number | null;
+  facing?: string | null;
+  floor_number?: number | null;
+  project_name?: string | null;
+  tower_name?: string | null;
   is_riseup_eligible?: boolean;
   image?: string | null;
 };
-
-type AssistantTurn = {
-  reply: string;
-  suggested_units?: Unit[];
-  model_used?: string | null;
-  escalated?: boolean;
-  action?: { type: string; url?: string | null; label?: string | null } | null;
+type CardUnit = {
+  id: string;
+  name: string;
+  bhk: string;
+  floor: string;
+  price: string;
+  area: string;
+  tag: string;
+  status: string;
+  possession: string;
 };
 
-const QUICK_STARTS = [
-  "I'm looking for a home for my family",
-  "What's a good 3BHK around ₹1Cr?",
-  "How does RiseUp actually save me money?",
-  "I'd like to book a site visit",
-];
-
-function fmtPrice(p?: number | null) {
+function fmtPrice(p?: number | null): string {
   if (!p) return "Price on request";
   if (p >= 10_000_000) return `₹${(p / 10_000_000).toFixed(2)} Cr`;
   if (p >= 100_000) return `₹${(p / 100_000).toFixed(0)} L`;
   return `₹${p.toLocaleString("en-IN")}`;
 }
 
-function modelBadge(model?: string | null, escalated?: boolean) {
-  if (!model) return null;
-  if (model.startsWith("claude:sonnet") || escalated) return { label: "Sonnet", color: "#7C3AED", bg: "#F3E8FF" };
-  if (model.startsWith("claude:haiku")) return { label: "Haiku", color: "#16A34A", bg: "#DCFCE7" };
-  if (model.startsWith("groq")) return { label: "Groq", color: "#D97706", bg: "#FEF3C7" };
-  if (model.startsWith("gemini")) return { label: "Gemini", color: "#2A3887", bg: "#E2F1FC" };
-  return { label: model, color: "#555", bg: "#F0F4FF" };
+function floorSuffix(n: number): string {
+  if (n === 0) return "";
+  if (n >= 11 && n <= 13) return "th";
+  const last = n % 10;
+  return last === 1 ? "st" : last === 2 ? "nd" : last === 3 ? "rd" : "th";
 }
 
+function adaptUnits(units: BackendUnit[] | null | undefined): CardUnit[] {
+  if (!units) return [];
+  return units.map((u) => {
+    const project = u.project_name || "—";
+    const tower = u.tower_name ? ` · ${u.tower_name}` : "";
+    const bhk = u.unit_type || (u.bedrooms ? `${u.bedrooms} BHK` : "—");
+    const floor = typeof u.floor_number === "number" ? `${u.floor_number}${floorSuffix(u.floor_number)} Floor` : "—";
+    const area = u.area_sqft ? `${Math.round(u.area_sqft).toLocaleString("en-IN")} sq ft` : "—";
+    const tagParts: string[] = [];
+    if (u.facing) tagParts.push(`${String(u.facing).toLowerCase()} facing`);
+    if (u.is_riseup_eligible) tagParts.push("RiseUp eligible");
+    return {
+      id: u.id,
+      name: `${project}${tower}${u.unit_number ? ` · ${u.unit_number}` : ""}`,
+      bhk,
+      floor,
+      price: fmtPrice(u.base_price ?? null),
+      area,
+      tag: tagParts.join(" · ") || "Curated for you",
+      status: "Available",
+      possession: "Ready to view",
+    };
+  });
+}
+
+// ─── Backend message type ─────────────────────────────────────────────────────
+type Msg = { role: "user" | "assistant"; content: string };
+
+// ─── Property card ─────────────────────────────────────────────────────────────
+function PropCard({ u, i }: { u: CardUnit; i: number }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{ minWidth: 230, maxWidth: 248, flexShrink: 0, cursor: "pointer",
+        background: hov ? "rgba(196,151,58,0.07)" : "rgba(255,255,255,0.03)",
+        border: `1px solid ${hov ? "rgba(196,151,58,0.5)" : "rgba(255,255,255,0.08)"}`,
+        borderRadius: 14, padding: "16px 16px 14px",
+        transition: "all 0.28s cubic-bezier(0.2,0,0,1)",
+        transform: hov ? "translateY(-4px)" : "none",
+        animation: `cardIn 0.45s ease ${i * 0.09}s both` }}>
+      <div style={{ fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase",
+        fontWeight: 700, color: u.status === "Available" ? "#4ADE80" : "#FBBF24", marginBottom: 8 }}>
+        {u.status} · {u.possession}
+      </div>
+      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16,
+        fontWeight: 600, color: "#F5F0E8", marginBottom: 2, lineHeight: 1.3 }}>{u.name}</div>
+      <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 26,
+        fontWeight: 500, color: GOLDB, marginBottom: 10 }}>{u.price}</div>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 9 }}>
+        {[u.bhk, u.floor, u.area].map(v => (
+          <span key={v} style={{ fontSize: 11, color: "#6B7A9A",
+            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 5, padding: "2px 7px" }}>{v}</span>
+        ))}
+      </div>
+      <div style={{ fontSize: 11.5, color: GOLD, marginBottom: 12 }}>✦ {u.tag}</div>
+      <button style={{ width: "100%", background: "transparent",
+        border: `1px solid rgba(196,151,58,${hov ? "0.7" : "0.28"})`,
+        borderRadius: 7, padding: "7px", color: hov ? GOLDB : GOLD,
+        fontSize: 10.5, fontWeight: 600, cursor: "pointer",
+        letterSpacing: "0.07em", transition: "all 0.2s",
+        fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+        VIEW FLOOR PLAN →
+      </button>
+    </div>
+  );
+}
+
+// ─── Thinking indicator ────────────────────────────────────────────────────────
+function Thinking() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, animation: "fadeIn .3s ease" }}>
+      <div style={{ display: "flex", gap: 4 }}>
+        {[0, 1, 2].map(i => (
+          <span key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: GOLD,
+            display: "inline-block", animation: `thinkDot 1.2s ease ${i * 0.18}s infinite` }} />
+        ))}
+      </div>
+      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", letterSpacing: "0.04em", fontWeight: 300 }}>
+        Finding what fits your life...
+      </span>
+    </div>
+  );
+}
+
+// ─── Project filmstrip at bottom ───────────────────────────────────────────────
+function ProjectStrip({ projects }: { projects: ProjectCard[] }) {
+  if (!projects.length) return null;
+  // Duplicate the list 3× so the marquee animation can loop seamlessly when
+  // translating -33.333%. Anchor links stay internal (/projects/<id>) so the
+  // visitor doesn't leave the chat tab.
+  const items = [...projects, ...projects, ...projects];
+  return (
+    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+      height: 110, borderTop: "1px solid rgba(255,255,255,0.06)",
+      background: "rgba(5,7,13,0.97)", backdropFilter: "blur(24px)", overflow: "hidden" }}>
+      <div style={{ display: "flex", alignItems: "stretch", height: "100%",
+        animation: "tickerScroll 55s linear infinite", width: "max-content" }}
+        onMouseEnter={e => (e.currentTarget.style.animationPlayState = "paused")}
+        onMouseLeave={e => (e.currentTarget.style.animationPlayState = "running")}>
+        {items.map((p, i) => (
+          <a key={i} href={p.url}
+            style={{ display: "flex", alignItems: "stretch", textDecoration: "none",
+              borderRight: "1px solid rgba(255,255,255,0.05)", cursor: "pointer" }}>
+            <ProjectStripCard p={p} />
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProjectStripCard({ p }: { p: ProjectCard }) {
+  const [hov, setHov] = useState(false);
+  const [imgOk, setImgOk] = useState(true);
+  return (
+    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      style={{ display: "flex", alignItems: "center", gap: 0, height: "100%",
+        background: hov ? "rgba(196,151,58,0.05)" : "transparent",
+        transition: "background 0.25s" }}>
+      <div style={{ width: 90, height: "100%", overflow: "hidden", flexShrink: 0 }}>
+        {imgOk ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.img} alt={p.name}
+            onError={() => setImgOk(false)}
+            style={{ width: "100%", height: "100%", objectFit: "cover",
+              filter: hov ? "brightness(1.1)" : "brightness(0.85)",
+              transition: "filter 0.3s, transform 0.4s",
+              transform: hov ? "scale(1.06)" : "scale(1)" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%",
+            background: `linear-gradient(135deg, #0D1424, #1A2235)`,
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22,
+              color: GOLD, opacity: 0.4 }}>{p.name[0]}</span>
+          </div>
+        )}
+      </div>
+      <div style={{ padding: "0 18px 0 14px", minWidth: 150 }}>
+        <div style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+          color: p.status === "Ready to Move" ? "#4ADE80" : p.status === "Upcoming" ? GOLD : "#94A3B8",
+          fontWeight: 700, marginBottom: 3 }}>{p.status}</div>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16,
+          fontWeight: 600, color: hov ? GOLDB : "#F5F0E8",
+          transition: "color 0.2s", marginBottom: 1, whiteSpace: "nowrap" }}>{p.name}</div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)",
+          marginBottom: 4 }}>{p.location} · {p.type}</div>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15,
+          color: GOLD, fontWeight: 600 }}>{p.price}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Prompt category selector ──────────────────────────────────────────────────
+function PromptSelector({ onSelect, visible }: { onSelect: (p: string) => void; visible: boolean }) {
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  if (!visible) return null;
+  return (
+    <div style={{ width: "100%", maxWidth: 700, marginBottom: 12,
+      animation: "fadeUp 0.35s ease" }}>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center",
+        marginBottom: activeCat ? 10 : 0 }}>
+        {CATEGORIES.map(c => (
+          <button key={c.id}
+            onClick={() => setActiveCat(activeCat === c.id ? null : c.id)}
+            style={{ background: activeCat === c.id ? "rgba(196,151,58,0.12)" : "rgba(255,255,255,0.04)",
+              border: `1px solid ${activeCat === c.id ? "rgba(196,151,58,0.5)" : "rgba(255,255,255,0.09)"}`,
+              borderRadius: 20, padding: "6px 14px",
+              color: activeCat === c.id ? GOLDB : "rgba(255,255,255,0.45)",
+              fontSize: 12, fontWeight: activeCat === c.id ? 500 : 400,
+              cursor: "pointer", transition: "all 0.2s", display: "flex",
+              alignItems: "center", gap: 5,
+              fontFamily: "'Plus Jakarta Sans',sans-serif" }}>
+            <span>{c.icon}</span> {c.label}
+          </button>
+        ))}
+      </div>
+      {activeCat && (
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap",
+          justifyContent: "center", animation: "fadeUp 0.25s ease" }}>
+          {CATEGORIES.find(c => c.id === activeCat)?.prompts.map((p, i) => (
+            <button key={i}
+              onClick={() => { onSelect(p); setActiveCat(null); }}
+              style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8, padding: "7px 13px",
+                color: "rgba(245,240,232,0.65)", fontSize: 12.5, cursor: "pointer",
+                transition: "all 0.2s", textAlign: "left", fontWeight: 300,
+                fontFamily: "'Plus Jakarta Sans',sans-serif", lineHeight: 1.4,
+                maxWidth: 320 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(196,151,58,0.45)"; e.currentTarget.style.color = "#F5F0E8"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(245,240,232,0.65)"; }}>
+              &ldquo;{p}&rdquo;
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Session id (kept stable per browser) ─────────────────────────────────────
 function getSessionId(): string {
   if (typeof window === "undefined") return "";
   let id = localStorage.getItem("jp_chat_session");
@@ -62,253 +401,289 @@ function getSessionId(): string {
   return id;
 }
 
+// ─── Main app ──────────────────────────────────────────────────────────────────
 export default function HomeChat() {
-  const [messages, setMessages] = useState<Msg[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [lastModel, setLastModel] = useState<{ model?: string | null; escalated?: boolean } | null>(null);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
-  const taRef = useRef<HTMLTextAreaElement>(null);
+  const [input, setInput]       = useState("");
+  const [history, setHistory]   = useState<Msg[]>([]);
+  const [response, setResponse] = useState("");
+  const [units, setUnits]       = useState<CardUnit[] | null>(null);
+  const [loading, setLoading]   = useState(false);
+  const [active, setActive]     = useState(false);
+  const [isListening, setListen]= useState(false);
+  const [loanBadge, setLoan]    = useState<string | null>(null);
+  const [focused, setFocused]   = useState(false);
+  const [projects, setProjects] = useState<ProjectCard[]>([]);
+  const inputRef  = useRef<HTMLInputElement>(null);
+  // SpeechRecognition is non-standard so any here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognRef = useRef<any>(null);
 
+  // Pull live projects for the filmstrip from the backend (canonical source).
   useEffect(() => {
-    const el = listRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, sending]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API}/projects`);
+        if (!res.ok) return;
+        const raw = await res.json();
+        const list: ApiProject[] = Array.isArray(raw) ? raw : (raw.items || raw.projects || []);
+        if (cancelled) return;
+        setProjects(list.map(adaptProject));
+      } catch {
+        // Silent failure — without projects, ProjectStrip just renders nothing
+        // (better than showing stale hardcoded data).
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  async function send(text: string) {
-    const t = text.trim();
-    if (!t || sending) return;
-    setError("");
-    const nextMessages: Msg[] = [...messages, { role: "user", content: t }];
-    setMessages(nextMessages);
+  // Inject fonts + keyframes
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap";
+    document.head.appendChild(link);
+    const s = document.createElement("style");
+    s.textContent = `
+      @keyframes fadeIn  {from{opacity:0}to{opacity:1}}
+      @keyframes fadeUp  {from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes cardIn  {from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes thinkDot{0%,80%,100%{transform:scale(.5);opacity:.25}40%{transform:scale(1);opacity:1}}
+      @keyframes pulseRing{0%{transform:scale(1);opacity:.7}100%{transform:scale(2);opacity:0}}
+      @keyframes spin    {to{transform:rotate(360deg)}}
+      @keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-33.333%)}}
+      *{box-sizing:border-box;margin:0;padding:0}
+      html,body{background:${BG};overflow-x:hidden}
+      ::-webkit-scrollbar{width:0}
+      input::placeholder{color:rgba(255,255,255,0.17)}
+      button:focus{outline:none}
+    `;
+    document.head.appendChild(s);
+  }, []);
+
+  const toggleVoice = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert("Voice works in Chrome — please switch."); return; }
+    if (isListening) { recognRef.current?.stop(); setListen(false); return; }
+    const r = new SR();
+    r.continuous = false; r.interimResults = true; r.lang = "en-IN";
+    recognRef.current = r;
+    r.onstart = () => setListen(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    r.onresult = (e: any) => setInput(Array.from(e.results).map((x: any) => x[0].transcript).join(""));
+    r.onend = () => setListen(false);
+    r.onerror = () => setListen(false);
+    r.start();
+  };
+
+  const submit = async (txt?: string) => {
+    const t = (txt ?? input).trim();
+    if (!t || loading) return;
+    if (!active) setActive(true);
+    const userMsg: Msg = { role: "user", content: t };
+    const newHist = [...history, userMsg];
+    setHistory(newHist);
     setInput("");
-    setSending(true);
+    setLoading(true);
+    setUnits(null);
 
     try {
-      const r = await fetch(`${API}/assistant/chat`, {
+      const res = await fetch(`${API}/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages,
+          messages: newHist,
           context: { page: "home", session_id: getSessionId() },
           session_id: getSessionId(),
         }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data: AssistantTurn = await r.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "" }]);
-      if (data.suggested_units && data.suggested_units.length) {
-        setUnits(data.suggested_units);
-      }
-      setLastModel({ model: data.model_used, escalated: data.escalated });
-      // Honor server-provided navigation actions (e.g. "go to store with filters")
-      if (data.action?.type === "navigate_store" && data.action.url) {
-        // surface as a CTA below — frontend renders this manually via the action field
-      }
-    } catch (e: any) {
-      setError(e?.message || "Couldn't reach the assistant — please try again.");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const reply: string = data.reply || "";
+
+      // Extract loan eligibility figure from the reply text if present.
+      const lm = reply.match(/up to\s*₹\s*([\d.]+\s*(?:crore|cr|Cr|lakh|lakhs|L))/i);
+      if (lm) setLoan(`Eligibility · Up to ₹${lm[1].trim()}`);
+
+      const adapted = adaptUnits(data.suggested_units as BackendUnit[]);
+      if (adapted.length) setUnits(adapted);
+
+      setResponse(reply);
+      setHistory(prev => [...prev, { role: "assistant", content: reply }]);
+    } catch {
+      setResponse("A brief pause — could you send that again?");
     } finally {
-      setSending(false);
-      // re-focus the input for fast follow-ups
-      setTimeout(() => taRef.current?.focus(), 50);
+      setLoading(false);
     }
-  }
+  };
 
-  function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send(input);
-    }
-  }
-
-  const badge = modelBadge(lastModel?.model, lastModel?.escalated);
-  const empty = messages.length === 0;
-
-  // Navy-gold-white-red palette. Scoped to this homepage only — the rest of the
-  // site keeps the navy/light-blue brand palette (per saved brand guidance).
-  const NAVY_BG = "#0F1430";    // deep navy background
-  const NAVY = "#262262";        // primary brand navy
-  const NAVY_2 = "#2A3887";      // gradient companion
-  const GOLD = "#C9A84C";        // brand.gold token (from tailwind.config.ts)
-  const GOLD_SOFT = "#E5C77A";   // lighter gold for hovers / subtle borders
-  const RED = "#E91E3D";         // logo red (used sparingly — escalation, errors)
+  const handlePromptSelect = (p: string) => { setInput(p); inputRef.current?.focus(); };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: `radial-gradient(ellipse at top, #1a2050 0%, ${NAVY_BG} 60%, #07091C 100%)`, color: "#fff" }}>
-      {/* Thin top nav */}
-      <nav className="flex items-center justify-between px-4 sm:px-8 py-3" style={{ borderBottom: `1px solid ${GOLD}33`, background: "rgba(15,20,48,0.7)", backdropFilter: "blur(10px)" }}>
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-lg font-black tracking-tight" style={{ color: "#fff" }}>Janapriya</span>
-          <span className="text-lg font-light tracking-widest" style={{ color: GOLD }}>UPSCALE</span>
-        </Link>
-        <div className="flex items-center gap-2 sm:gap-5 text-sm">
-          <Link href="/projects" className="hidden sm:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Projects</Link>
-          <Link href="/store" className="hidden sm:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Units</Link>
-          <Link href="/welcome" className="hidden md:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Why Upscale</Link>
-          <Link href="/site-visit" className="hidden sm:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Site Visit</Link>
-          <Link href="/login" className="px-3 py-1.5 rounded-xl text-xs font-black" style={{ background: GOLD, color: NAVY }}>Login</Link>
+    <div style={{ minHeight: "100vh", background: BG, display: "flex",
+      flexDirection: "column", fontFamily: "'Plus Jakarta Sans',sans-serif",
+      color: "#F5F0E8", position: "relative" }}>
+
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        background: `radial-gradient(ellipse 80% 55% at 50% 18%, rgba(196,151,58,0.07), transparent 70%)` }} />
+      {active && <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        background: `radial-gradient(ellipse 55% 35% at 50% 58%, rgba(196,151,58,0.04), transparent 70%)`,
+        animation: "fadeIn 1s ease" }} />}
+
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 300,
+        padding: "16px 36px", display: "flex", justifyContent: "space-between", alignItems: "center",
+        background: active ? "rgba(5,7,13,0.88)" : "transparent",
+        backdropFilter: active ? "blur(20px)" : "none",
+        borderBottom: active ? "1px solid rgba(255,255,255,0.05)" : "none",
+        transition: "all 0.45s ease" }}>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22,
+          fontWeight: 600, letterSpacing: "0.02em" }}>
+          janapriya<span style={{ color: GOLD }}>.ai</span>
         </div>
-      </nav>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          {loanBadge && (
+            <div style={{ fontSize: 11, color: "#4ADE80", letterSpacing: "0.06em",
+              background: "rgba(74,222,128,0.07)", border: "1px solid rgba(74,222,128,0.18)",
+              borderRadius: 20, padding: "5px 13px", animation: "fadeIn 0.5s ease", fontWeight: 500 }}>
+              {loanBadge}
+            </div>
+          )}
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+            Hyderabad · Est. 1985
+          </span>
+        </div>
+      </header>
 
-      {/* Main chat region */}
-      <div className="flex-1 flex flex-col items-center px-4 py-6 sm:py-10">
-        <div className="w-full max-w-3xl flex-1 flex flex-col">
-          {empty ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
-              <div className="text-3xl sm:text-5xl font-black mb-3" style={{ color: "#fff" }}>
-                Ask more of <span style={{ color: GOLD }}>life</span>.
-              </div>
-              <p className="text-sm sm:text-base mb-7 max-w-lg" style={{ color: "#C7CAD8" }}>
-                Hi, I&apos;m Priya from Janapriya Upscale. Tell me a little about what you&apos;re looking for and I&apos;ll help you find the right home — and arrange a visit so you can see it in person.
+      <main style={{ flex: 1, display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        padding: `${active ? 108 : 0}px 20px 130px`,
+        minHeight: "100vh", position: "relative", zIndex: 1,
+        transition: "padding 0.5s cubic-bezier(0.2,0,0,1)" }}>
+
+        <div style={{ textAlign: "center", marginBottom: active ? 26 : 48,
+          transform: `scale(${active ? 0.78 : 1})`, opacity: active ? 0.45 : 1,
+          transformOrigin: "center bottom",
+          transition: "all 0.5s cubic-bezier(0.2,0,0,1)" }}>
+          <h1 style={{ fontFamily: "'Cormorant Garamond',serif",
+            fontSize: "clamp(44px, 7.5vw, 86px)",
+            fontWeight: 500, lineHeight: 1.1, letterSpacing: "-0.025em" }}>
+            Ask more of<br />
+            your <em style={{ fontStyle: "italic", color: GOLD }}>next home.</em>
+          </h1>
+          {!active && (
+            <p style={{ marginTop: 16, fontSize: "clamp(13px,1.6vw,15px)",
+              color: "rgba(255,255,255,0.28)", fontWeight: 300, letterSpacing: "0.03em",
+              animation: "fadeUp 0.9s ease 0.4s both" }}>
+              Prices · locations · loans · lifestyle — ask anything about Hyderabad real estate.
+            </p>
+          )}
+        </div>
+
+        {(response || loading) && (
+          <div style={{ maxWidth: 640, width: "100%", marginBottom: 28,
+            animation: "fadeUp 0.4s cubic-bezier(0.2,0,0,1)" }}>
+            {loading ? <Thinking /> : (
+              <p style={{ fontSize: "clamp(15px,2vw,18px)", lineHeight: 1.82,
+                color: "rgba(245,240,232,0.82)", fontWeight: 300, letterSpacing: "0.005em" }}>
+                {response}
               </p>
-              <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
-                {QUICK_STARTS.map((q) => (
-                  <button key={q}
-                    onClick={() => send(q)}
-                    className="px-3 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all hover:-translate-y-0.5"
-                    style={{ background: "rgba(255,255,255,0.06)", border: `1.5px solid ${GOLD}66`, color: "#fff" }}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div ref={listRef} className="flex-1 overflow-y-auto pr-1 space-y-4 mb-4" style={{ minHeight: "55vh", maxHeight: "calc(100vh - 280px)" }}>
-              {messages.map((m, i) => (
-                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed`}
-                    style={m.role === "user"
-                      ? { background: `linear-gradient(135deg, ${GOLD}, ${GOLD_SOFT})`, color: NAVY, borderBottomRightRadius: "6px", boxShadow: `0 4px 14px ${GOLD}33` }
-                      : { background: "#fff", color: NAVY, borderBottomLeftRadius: "6px", boxShadow: "0 2px 14px rgba(0,0,0,0.25)" }
-                    }>
-                    {m.content}
-                  </div>
-                </div>
-              ))}
-              {sending && (
-                <div className="flex justify-start">
-                  <div className="px-4 py-3 rounded-2xl text-sm bg-white">
-                    <span className="inline-flex gap-1" aria-label="Thinking">
-                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: GOLD, animationDelay: "0ms" }} />
-                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: GOLD, animationDelay: "120ms" }} />
-                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: GOLD, animationDelay: "240ms" }} />
-                    </span>
-                  </div>
-                </div>
-              )}
+            )}
+          </div>
+        )}
 
-              {/* Best-fit recommendation rail — at most 3 visible to stay curated */}
-              {units.length > 0 && (
-                <div className="mt-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: GOLD }}>Best fit for you</p>
-                    <Link href="/store" className="text-xs font-bold" style={{ color: GOLD }}>Browse all →</Link>
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
-                    {units.slice(0, 3).map((u) => (
-                      <Link key={u.id} href={`/units/${u.id}`}
-                        className="flex-shrink-0 w-56 rounded-2xl p-3 bg-white transition-all hover:-translate-y-0.5"
-                        style={{ border: `1px solid ${GOLD}66`, boxShadow: "0 4px 14px rgba(0,0,0,0.2)" }}
-                        title={u.unit_number ? `${u.unit_type} ${u.unit_number} — ${u.project_name}` : ""}>
-                        <div className="w-full h-28 rounded-xl mb-2 flex items-center justify-center"
-                          style={u.image
-                            ? { backgroundImage: `url(${u.image})`, backgroundSize: "cover", backgroundPosition: "center" }
-                            : { background: `linear-gradient(135deg, ${NAVY_2}, ${NAVY})` }}>
-                          {!u.image && <span className="text-2xl" style={{ color: GOLD }}>🏠</span>}
-                        </div>
-                        <p className="text-xs font-black truncate" style={{ color: NAVY }}>
-                          {u.unit_type || `${u.bedrooms || "?"}BHK`} · {u.unit_number || "—"}
-                        </p>
-                        <p className="text-xs truncate" style={{ color: "#666" }}>
-                          {u.project_name || "—"}{u.tower_name ? ` · ${u.tower_name}` : ""}
-                        </p>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-sm font-black" style={{ color: NAVY }}>{fmtPrice(u.base_price)}</span>
-                          {u.is_riseup_eligible && (
-                            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: GOLD, color: NAVY }}>RiseUp</span>
-                          )}
-                        </div>
-                        <p className="text-xs mt-1" style={{ color: "#888" }}>
-                          {u.area_sqft ? `${Math.round(u.area_sqft)} sqft` : ""}
-                          {u.facing ? ` · ${u.facing}-facing` : ""}
-                          {typeof u.floor_number === "number" ? ` · Fl ${u.floor_number}` : ""}
-                        </p>
-                      </Link>
-                    ))}
-                  </div>
+        {units && units.length > 0 && (
+          <div style={{ width: "100%", maxWidth: 820, marginBottom: 28,
+            display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4,
+            animation: "fadeUp 0.45s ease 0.12s both" }}>
+            {units.map((u, i) => <PropCard key={u.id} u={u} i={i} />)}
+          </div>
+        )}
 
-                  {/* Conversion CTA — visible only once Priya has a recommendation on screen */}
-                  <div className="mt-3 rounded-2xl p-4 flex items-center gap-3"
-                    style={{ background: `linear-gradient(135deg, ${GOLD}, ${GOLD_SOFT})`, color: NAVY, boxShadow: `0 6px 20px ${GOLD}55` }}>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-sm leading-tight">Seeing is believing.</p>
-                      <p className="text-xs leading-snug">Book a site visit — pick a time that works and we&apos;ll show you around.</p>
-                    </div>
-                    <Link href="/site-visit"
-                      className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-transform hover:-translate-y-0.5"
-                      style={{ background: NAVY, color: "#fff" }}>
-                      Book site visit →
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
+        <PromptSelector onSelect={handlePromptSelect} visible={!loading} />
+
+        <div style={{ width: "100%", maxWidth: 700, position: "relative" }}>
+          {(focused || isListening) && (
+            <div style={{ position: "absolute", inset: -3, borderRadius: 32,
+              background: `radial-gradient(ellipse 100% 130%, rgba(196,151,58,0.16), transparent 70%)`,
+              pointerEvents: "none", zIndex: 0, animation: "fadeIn 0.3s ease" }} />
           )}
+          <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center",
+            background: focused ? "rgba(255,255,255,0.065)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${isListening ? "rgba(196,151,58,0.72)" : focused ? "rgba(196,151,58,0.52)" : "rgba(255,255,255,0.1)"}`,
+            borderRadius: 30, padding: "7px 7px 7px 22px", backdropFilter: "blur(24px)",
+            boxShadow: focused ? `0 0 0 1px rgba(196,151,58,0.1), 0 14px 50px rgba(0,0,0,0.5)` : "0 10px 48px rgba(0,0,0,0.35)",
+            transition: "all 0.3s cubic-bezier(0.2,0,0,1)" }}>
 
-          {error && (
-            <div className="mb-2 px-3 py-2 rounded-xl text-xs" style={{ background: `${RED}22`, color: "#fff", border: `1px solid ${RED}` }}>
-              {error}
-            </div>
-          )}
+            <span style={{ fontSize: 13, color: GOLD, opacity: 0.7, marginRight: 11, flexShrink: 0 }}>✦</span>
 
-          {/* Composer */}
-          <div className="rounded-2xl p-2 flex items-end gap-2" style={{ background: "rgba(255,255,255,0.06)", border: `1.5px solid ${GOLD}66`, boxShadow: `0 8px 30px rgba(0,0,0,0.3), 0 0 0 1px ${GOLD}22 inset` }}>
-            <textarea
-              ref={taRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKey}
-              rows={1}
-              placeholder="Tell me what you're looking for — budget, BHK, facing, EMI…"
-              className="flex-1 resize-none px-3 py-2 text-sm focus:outline-none bg-transparent placeholder:text-white/40"
-              style={{ maxHeight: "120px", color: "#fff" }}
-              disabled={sending}
-            />
-            <button
-              onClick={() => send(input)}
-              disabled={sending || !input.trim()}
-              className="px-4 py-2 rounded-xl text-sm font-black disabled:opacity-40 transition-transform hover:-translate-y-0.5"
-              style={{ background: `linear-gradient(135deg, ${GOLD}, ${GOLD_SOFT})`, color: NAVY }}
-            >
-              {sending ? "…" : "Send"}
+            <input ref={inputRef} value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
+              onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+              placeholder={active ? "Ask anything more — about prices, locations, lifestyle..." : "Tell me about your family, your life, your dream home..."}
+              disabled={loading}
+              style={{ flex: 1, background: "transparent", border: "none", outline: "none",
+                color: "#F5F0E8", fontSize: "clamp(14px,1.8vw,16px)", fontWeight: 300,
+                letterSpacing: "0.01em", padding: "11px 0",
+                fontFamily: "'Plus Jakarta Sans',sans-serif" }} />
+
+            <button onClick={toggleVoice}
+              style={{ position: "relative", width: 46, height: 46, borderRadius: "50%",
+                background: isListening ? "rgba(196,151,58,0.15)" : "transparent",
+                border: `1px solid ${isListening ? "rgba(196,151,58,0.55)" : "rgba(255,255,255,0.09)"}`,
+                color: isListening ? GOLD : "rgba(255,255,255,0.35)",
+                cursor: "pointer", fontSize: 17, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                marginRight: 7, transition: "all 0.25s" }}>
+              {isListening && <>
+                <span style={{ position: "absolute", inset: -5, borderRadius: "50%",
+                  border: `2px solid rgba(196,151,58,0.6)`, animation: "pulseRing 1.1s ease-out infinite" }} />
+                <span style={{ position: "absolute", inset: -11, borderRadius: "50%",
+                  border: `1px solid rgba(196,151,58,0.2)`, animation: "pulseRing 1.1s ease-out .3s infinite" }} />
+              </>}
+              🎙️
+            </button>
+
+            <button onClick={() => submit()} disabled={loading || !input.trim()}
+              style={{ width: 46, height: 46, borderRadius: "50%", flexShrink: 0,
+                background: input.trim() && !loading ? `linear-gradient(135deg,#7A5C10,${GOLD})` : "rgba(255,255,255,0.05)",
+                border: "none", color: input.trim() && !loading ? BG : "rgba(255,255,255,0.2)",
+                fontSize: 18, fontWeight: 700, cursor: input.trim() ? "pointer" : "default",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.25s", opacity: input.trim() && !loading ? 1 : 0.35 }}>
+              {loading
+                ? <span style={{ width: 15, height: 15, borderRadius: "50%",
+                    border: "2px solid rgba(255,255,255,0.15)", borderTopColor: GOLD,
+                    display: "inline-block", animation: "spin 0.75s linear infinite" }} />
+                : "↑"}
             </button>
           </div>
 
-          {/* Footer line: model badge + reset */}
-          <div className="mt-3 flex items-center justify-between text-xs" style={{ color: "#9CA0B5" }}>
-            <div className="flex items-center gap-2">
-              {badge && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: badge.bg, color: badge.color }}>
-                  {badge.label}
-                </span>
-              )}
-              {lastModel?.escalated && <span style={{ color: RED }}>· escalated for complexity</span>}
+          {isListening && (
+            <div style={{ textAlign: "center", marginTop: 9, fontSize: 12,
+              color: GOLD, letterSpacing: "0.05em", animation: "fadeIn 0.2s ease" }}>
+              Listening — speak now
             </div>
-            {messages.length > 0 && (
-              <button
-                onClick={() => { setMessages([]); setUnits([]); setLastModel(null); setError(""); }}
-                className="font-bold"
-                style={{ color: GOLD }}
-              >
-                New chat
-              </button>
-            )}
-          </div>
+          )}
         </div>
-      </div>
+
+        {active && history.filter(m => m.role === "user").length > 1 && (
+          <div style={{ marginTop: 20, display: "flex", gap: 6, flexWrap: "wrap",
+            justifyContent: "center", maxWidth: 640, animation: "fadeIn 0.5s ease" }}>
+            {history.filter(m => m.role === "user").slice(-4).map((m, i) => (
+              <span key={i} style={{ fontSize: 11, color: "rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: 10, padding: "3px 9px", maxWidth: 200,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {m.content.slice(0, 50)}{m.content.length > 50 ? "…" : ""}
+              </span>
+            ))}
+          </div>
+        )}
+      </main>
+
+      <ProjectStrip projects={projects} />
     </div>
   );
 }
