@@ -413,10 +413,22 @@ export default function HomeChat() {
   const [loanBadge, setLoan]    = useState<string | null>(null);
   const [focused, setFocused]   = useState(false);
   const [projects, setProjects] = useState<ProjectCard[]>([]);
+  const [isMobile, setIsMobile] = useState(false);
   const inputRef  = useRef<HTMLInputElement>(null);
   // SpeechRecognition is non-standard so any here.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognRef = useRef<any>(null);
+
+  // Track mobile viewport so we can shorten the composer placeholder and hide
+  // the "HYDERABAD · EST. 1985" badge — both crowd the narrow phone layout.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 640px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // Pull live projects for the filmstrip from the backend (canonical source).
   useEffect(() => {
@@ -549,9 +561,11 @@ export default function HomeChat() {
               {loanBadge}
             </div>
           )}
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
-            Hyderabad · Est. 1985
-          </span>
+          {!isMobile && (
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              Hyderabad · Est. 1985
+            </span>
+          )}
         </div>
       </header>
 
@@ -621,7 +635,11 @@ export default function HomeChat() {
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-              placeholder={active ? "Ask anything more — about prices, locations, lifestyle..." : "Tell me about your family, your life, your dream home..."}
+              placeholder={
+                isMobile
+                  ? (active ? "Ask anything more…" : "Tell me about your life…")
+                  : (active ? "Ask anything more — about prices, locations, lifestyle..." : "Tell me about your family, your life, your dream home...")
+              }
               disabled={loading}
               style={{ flex: 1, background: "transparent", border: "none", outline: "none",
                 color: "#F5F0E8", fontSize: "clamp(14px,1.8vw,16px)", fontWeight: 300,
