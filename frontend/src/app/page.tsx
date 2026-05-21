@@ -275,15 +275,19 @@ function Thinking() {
 }
 
 // ─── Project filmstrip at bottom ───────────────────────────────────────────────
-function ProjectStrip({ projects }: { projects: ProjectCard[] }) {
+// On mobile we keep the strip compact (110px) so it doesn't eat the viewport.
+// On desktop we open it up to 160px with a wider image cell + slightly larger
+// typography so the projects feel like a proper gallery rather than a footer.
+function ProjectStrip({ projects, compact }: { projects: ProjectCard[]; compact: boolean }) {
   if (!projects.length) return null;
+  const stripHeight = compact ? 110 : 160;
+  const imgWidth = compact ? 90 : 150;
   // Duplicate the list 3× so the marquee animation can loop seamlessly when
-  // translating -33.333%. Anchor links stay internal (/projects/<id>) so the
-  // visitor doesn't leave the chat tab.
+  // translating -33.333%. Anchor links stay internal (/projects/<id>).
   const items = [...projects, ...projects, ...projects];
   return (
     <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
-      height: 110, borderTop: "1px solid rgba(255,255,255,0.06)",
+      height: stripHeight, borderTop: "1px solid rgba(255,255,255,0.06)",
       background: "rgba(5,7,13,0.97)", backdropFilter: "blur(24px)", overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "stretch", height: "100%",
         animation: "tickerScroll 55s linear infinite", width: "max-content" }}
@@ -293,7 +297,7 @@ function ProjectStrip({ projects }: { projects: ProjectCard[] }) {
           <a key={i} href={p.url}
             style={{ display: "flex", alignItems: "stretch", textDecoration: "none",
               borderRight: "1px solid rgba(255,255,255,0.05)", cursor: "pointer" }}>
-            <ProjectStripCard p={p} />
+            <ProjectStripCard p={p} imgWidth={imgWidth} compact={compact} />
           </a>
         ))}
       </div>
@@ -301,15 +305,20 @@ function ProjectStrip({ projects }: { projects: ProjectCard[] }) {
   );
 }
 
-function ProjectStripCard({ p }: { p: ProjectCard }) {
+function ProjectStripCard({ p, imgWidth, compact }: { p: ProjectCard; imgWidth: number; compact: boolean }) {
   const [hov, setHov] = useState(false);
   const [imgOk, setImgOk] = useState(true);
+  const nameSize = compact ? 16 : 19;
+  const priceSize = compact ? 15 : 17;
+  const metaSize = compact ? 11 : 12;
+  const statusSize = compact ? 9 : 10;
+  const initialSize = compact ? 22 : 32;
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
       style={{ display: "flex", alignItems: "center", gap: 0, height: "100%",
         background: hov ? "rgba(196,151,58,0.05)" : "transparent",
         transition: "background 0.25s" }}>
-      <div style={{ width: 90, height: "100%", overflow: "hidden", flexShrink: 0 }}>
+      <div style={{ width: imgWidth, height: "100%", overflow: "hidden", flexShrink: 0 }}>
         {imgOk ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.img} alt={p.name}
@@ -322,21 +331,21 @@ function ProjectStripCard({ p }: { p: ProjectCard }) {
           <div style={{ width: "100%", height: "100%",
             background: `linear-gradient(135deg, #0D1424, #1A2235)`,
             display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 22,
+            <span style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: initialSize,
               color: GOLD, opacity: 0.4 }}>{p.name[0]}</span>
           </div>
         )}
       </div>
-      <div style={{ padding: "0 18px 0 14px", minWidth: 150 }}>
-        <div style={{ fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase",
+      <div style={{ padding: compact ? "0 18px 0 14px" : "0 24px 0 18px", minWidth: compact ? 150 : 190 }}>
+        <div style={{ fontSize: statusSize, letterSpacing: "0.1em", textTransform: "uppercase",
           color: p.status === "Ready to Move" ? "#4ADE80" : p.status === "Upcoming" ? GOLD : "#94A3B8",
-          fontWeight: 700, marginBottom: 3 }}>{p.status}</div>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 16,
+          fontWeight: 700, marginBottom: compact ? 3 : 5 }}>{p.status}</div>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: nameSize,
           fontWeight: 600, color: hov ? GOLDB : "#F5F0E8",
-          transition: "color 0.2s", marginBottom: 1, whiteSpace: "nowrap" }}>{p.name}</div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)",
-          marginBottom: 4 }}>{p.location} · {p.type}</div>
-        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: 15,
+          transition: "color 0.2s", marginBottom: compact ? 1 : 3, whiteSpace: "nowrap" }}>{p.name}</div>
+        <div style={{ fontSize: metaSize, color: "rgba(255,255,255,0.35)",
+          marginBottom: compact ? 4 : 6 }}>{p.location} · {p.type}</div>
+        <div style={{ fontFamily: "'Cormorant Garamond',serif", fontSize: priceSize,
           color: GOLD, fontWeight: 600 }}>{p.price}</div>
       </div>
     </div>
@@ -571,7 +580,7 @@ export default function HomeChat() {
 
       <main style={{ flex: 1, display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        padding: `${active ? 108 : 0}px 20px 130px`,
+        padding: `${active ? 108 : 0}px 20px ${isMobile ? 130 : 180}px`,
         minHeight: "100vh", position: "relative", zIndex: 1,
         transition: "padding 0.5s cubic-bezier(0.2,0,0,1)" }}>
 
@@ -701,7 +710,7 @@ export default function HomeChat() {
         )}
       </main>
 
-      <ProjectStrip projects={projects} />
+      <ProjectStrip projects={projects} compact={isMobile} />
     </div>
   );
 }
