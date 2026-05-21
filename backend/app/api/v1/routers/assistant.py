@@ -182,6 +182,8 @@ class AssistantResponse(BaseModel):
     media: Optional[dict] = None        # {name, type, items: [{label, url, kind}]}
     lead_created: Optional[dict] = None # {phone, when, source} when assistant creates a callback lead
     action: Optional[AssistantAction] = None
+    model_used: Optional[str] = None     # "claude:haiku" | "claude:sonnet" | "groq" | "gemini:..." | None
+    escalated: bool = False              # True when Haiku handed off to Sonnet
 
 class FlowCreate(BaseModel):
     name: str
@@ -1429,7 +1431,7 @@ async def assistant_chat(data: AssistantRequest, request: Request, db: AsyncSess
                 "a 10-digit mobile number and a preferred time."
             )
 
-    system_prompt = f"""You are the Janapriya Upscale website assistant. You help visitors with Janapriya Upscale's own projects only.
+    system_prompt = f"""You are Priya, a senior sales advisor at Janapriya Upscale — a leading residential developer in Hyderabad. You are speaking with a website visitor. Your goal is to genuinely understand what they need, recommend the right home from our catalog, and warmly guide them toward booking a site visit so they can experience the property in person.
 
 {site_context}
 
@@ -1438,23 +1440,61 @@ async def assistant_chat(data: AssistantRequest, request: Request, db: AsyncSess
 
 Visitor context: searched="{search_query}", results={results_count}, budget={budget_str}
 
-STRICT RULES — these override everything else:
-1. ONLY use facts from SITE DATA above and the RiseUp description. Never invent projects, prices, locations, floor plans, amenities, or availability that are not listed.
-2. Never name, compare to, recommend, or discuss other developers, builders, competitors, or properties outside Janapriya Upscale. If asked about competitors, alternatives, other projects, market comparisons, reviews, or ratings, reply exactly: "I can only share information about Janapriya Upscale's own projects. Would you like me to connect you with our sales team?"
-3. If the visitor asks about anything not in SITE DATA (specific unit numbers, floor plans, exact layouts, possession dates, legal/tax advice, news, opinions, general real-estate questions), say you don't have that detail on hand and offer a callback.
-4. Do not guess. Do not use your general training knowledge about Hyderabad, real estate, or developers.
-5. Answer in 2-3 short sentences. No markdown, no bullet points, no lists.
-   Exception: RiseUp / pricing breakdowns may use up to 5 short sentences so the down-payment options, finishing demand, and estimated savings all fit. Still no markdown or bullet points — write it as flowing prose.
-6. If budget is a concern or 0 results, you may mention RiseUp naturally.
-7. If they ask for a brochure or floor plan and one is available, say you're sharing it below. If none is available, apologise and offer a callback. If they ask to schedule or book a site visit, confirm and point to the 'Book a site visit' button below — never ask them to call us instead.
-8. The `available by type` and `available by facing` breakdowns in SITE DATA are INDEPENDENT counts. Never multiply, intersect, or combine them to claim a specific count for a combination (e.g. "east-facing 3BHK"). Instead, acknowledge the individual totals you know (e.g. "NileValley has 29 3BHK units and 23 east-facing units overall") and say the exact matching set will open on the Store page."""
+HOW TO BEHAVE — like a real sales advisor, not a search engine:
+
+1. **Be warm and human.** Greet visitors naturally. Use a friendly, confident tone. Sound like a person, not a chatbot. Write 2-4 short sentences per turn. No markdown, no bullet points, no numbered lists — prose only.
+
+2. **Qualify before you recommend.** Before pitching a specific unit, learn the visitor's situation. Ask 1-2 short qualifying questions per turn (never more, never an interrogation). Across the conversation, try to learn:
+   - Who they're buying for (family with kids? parents? self-use? investment?)
+   - Their timeline (ready to book? exploring for 3-6 months? just looking?)
+   - Budget and how flexible it is
+   - Location, facing, floor, area preferences
+   - Whether they need a home loan
+   Spread these naturally across turns. Don't ask everything at once.
+
+3. **Curate — don't dump search results.** When you call search_units, the system returns several matches but you should pick the SINGLE BEST one (occasionally two) to actually recommend. Describe it like a person would: "There's a beautiful 3BHK on the 12th floor in Bahiti, east-facing, ₹68L — perfect for morning light. With RiseUp the down payment comes to under ₹14L." Don't list 5 units. Don't say "here are 8 options" — that's a search engine, not a sales advisor.
+
+4. **Always be moving toward a site visit.** The site visit is the conversion. After you've made a recommendation that fits them, invite them warmly: "Would you like to come see it this weekend? Seeing the home in person makes everything click." When they agree, confirm and tell them the booking button is right below.
+
+5. **Handle hesitation with our actual value props.**
+   - "Budget tight" → RiseUp lets you pay only 80% during construction; the final 20% is due 6 months after handover, so you save lakhs in home-loan interest during the build period.
+   - "Need to think" → Offer to send a brochure or schedule a relaxed site visit, no pressure.
+   - "Comparing options" → Don't name competitors. Steer back to what makes THIS project special (location, RiseUp, amenities, the actual unit you recommended).
+
+6. **Capture their phone naturally.** When the visitor shows clear buying intent (asks about pricing, wants to book, asks for brochure), ask warmly: "Could I have your number so a senior advisor can call you with the full details and walk you through the next steps?" — never as the first ask, only after you've added value.
+
+STRICT GUARDRAILS — these override everything above:
+
+- ONLY use facts from SITE DATA and the RiseUp description above. Never invent projects, prices, locations, amenities, or availability that aren't listed. Never use your general training knowledge about Hyderabad, real estate, or any developer.
+- Never name, compare to, or recommend other developers, builders, or competitor properties. If asked about competitors, alternatives, market comparisons, reviews, or ratings, reply: "I can only share information about Janapriya Upscale's own projects. Would you like me to connect you with our sales team?"
+- If the visitor asks for a detail we don't have (specific unit not in SITE DATA, possession dates, legal/tax advice), say you don't have that exact detail on hand and offer to have a senior advisor call them.
+- The `available by type` and `available by facing` counts in SITE DATA are INDEPENDENT — never multiply or intersect them to claim a combination count.
+- If they ask for a brochure or floor plan and one is available, say you're sharing it below. If none is available, apologise and offer a callback.
+- Exception to the "2-4 sentences" rule: detailed RiseUp/EMI/pricing math may run to 5-6 sentences when explicitly asked. Still prose, still no markdown."""
 
     recent_msgs = data.messages[-6:]
 
-    # Cascade: Groq → primary Gemini/Gemma → secondary Gemini/Gemma → canned reply.
+    # Cascade: Claude (Haiku→Sonnet) → Groq → primary Gemini/Gemma → secondary Gemini/Gemma → canned reply.
     reply = None
     provider_used = None
-    if settings.GROQ_API_KEY:
+    claude_units: list[dict] = []
+    claude_escalated = False
+    if settings.ANTHROPIC_API_KEY:
+        try:
+            from backend.app.services.claude_chat import run_claude_turn
+            result = await run_claude_turn(system_prompt, recent_msgs, db)
+            if result.get("text"):
+                reply = result["text"]
+                claude_units = result.get("suggested_units") or []
+                claude_escalated = bool(result.get("escalated"))
+                # "claude:haiku" or "claude:sonnet" — match the existing
+                # provider_used naming (e.g. "gemini:gemini-2.0-flash").
+                model = result.get("model_used", "")
+                tag = "sonnet" if "sonnet" in model else "haiku"
+                provider_used = f"claude:{tag}"
+        except Exception as e:
+            print(f"[Assistant] Claude failed ({type(e).__name__}: {e}); trying Groq")
+    if reply is None and settings.GROQ_API_KEY:
         try:
             reply = _call_groq(system_prompt, recent_msgs)
             provider_used = "groq"
@@ -1536,9 +1576,13 @@ STRICT RULES — these override everything else:
         latency_ms=int((time.monotonic() - _t_start) * 1000),
         client_ip=client_ip, user_agent=user_agent, visitor_meta=visitor_meta,
     )
+    # Claude's tool-driven matches take precedence over the RiseUp budget fallback;
+    # we only fall back to `suggested` if Claude didn't find anything.
+    final_units = claude_units if claude_units else suggested
+
     return AssistantResponse(
         reply=reply,
-        suggested_units=suggested,
+        suggested_units=final_units,
         show_callback_form=show_callback,
         show_riseup=show_riseup,
         riseup_data=riseup_data_val,
@@ -1547,6 +1591,8 @@ STRICT RULES — these override everything else:
         media=media,
         lead_created=lead_created,
         action=action,
+        model_used=provider_used,
+        escalated=claude_escalated,
     )
 
 
@@ -1662,6 +1708,14 @@ async def admin_list_chat_sessions(
     """One row per chat session with a preview of the first user question.
     Sorted by most recent activity."""
     # Aggregate per session_id.
+    # `array_agg(DISTINCT provider) FILTER (WHERE provider IS NOT NULL)` collects
+    # the set of LLM providers used across the session (e.g. ["claude:haiku",
+    # "claude:sonnet"]) so the admin list can show a model column at a glance.
+    providers_agg = (
+        func.array_agg(func.distinct(AssistantChatLog.provider))
+        .filter(AssistantChatLog.provider.isnot(None))
+        .label("providers")
+    )
     subq = (
         select(
             AssistantChatLog.session_id.label("session_id"),
@@ -1675,6 +1729,7 @@ async def admin_list_chat_sessions(
             func.max(AssistantChatLog.utm_medium).label("utm_medium"),
             func.max(AssistantChatLog.utm_campaign).label("utm_campaign"),
             func.max(AssistantChatLog.page).label("latest_page"),
+            providers_agg,
         )
         .group_by(AssistantChatLog.session_id)
         .subquery()
@@ -1734,6 +1789,7 @@ async def admin_list_chat_sessions(
             "utm_medium": r.utm_medium,
             "utm_campaign": r.utm_campaign,
             "latest_page": r.latest_page,
+            "models_used": sorted([p for p in (r.providers or []) if p]),
             "preview": (previews.get(r.session_id) or "")[:180],
         }
         for r in rows

@@ -1,794 +1,314 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import UnitCard from "@/components/UnitCard";
-import AiIcon from "@/components/AiIcon";
-import ProactiveAssistant from "@/components/ProactiveAssistant";
 
-const PAYMENTS = [
-  {
-    id: "easy-budget",
-    label: "AN EASY BUDGET",
-    headline: "Allows you to buy a home for the loved",
-    image: "/AnEasyBudget.webp",
-    buttons: [
-      { text: "₹ 1.3Cr+", sub: "is my budget", href: "/store?min_price=13000000" },
-      { text: "₹ 90L+",   sub: "is my budget", href: "/store?min_price=9000000" },
-      { text: "₹ 70L+",   sub: "is my budget", href: "/store?min_price=7000000" },
-      { text: "₹ 50L+",   sub: "is my budget", href: "/store?min_price=5000000" },
-    ],
-  },
-  {
-    id: "lighter-emi",
-    label: "A LIGHTER EMI",
-    headline: "Lets your family enjoy a good lifestyle",
-    image: "/ALighterEMI.webp",
-    buttons: [
-      { text: "₹ 85K+", sub: "EMI", href: "/store?max_emi=85000" },
-      { text: "₹ 75K+", sub: "EMI", href: "/store?max_emi=75000" },
-      { text: "₹ 55K+", sub: "EMI", href: "/store?max_emi=55000" },
-      { text: "₹ 35K+", sub: "EMI", href: "/store?max_emi=35000" },
-    ],
-  },
-  {
-    id: "downpayment",
-    label: "A SUITABLE DOWNPAYMENT",
-    headline: "For your dreamhome to ease stress",
-    image: "/ASuitableDownpayment1.webp",
-    buttons: [
-      { text: "₹ 18L+", sub: "Downpayment", href: "/store?max_down_payment=1800000" },
-      { text: "₹ 16L+", sub: "Downpayment", href: "/store?max_down_payment=1600000" },
-      { text: "₹ 12L+", sub: "Downpayment", href: "/store?max_down_payment=1200000" },
-      { text: "₹ 8L+",  sub: "Downpayment", href: "/store?max_down_payment=800000" },
-    ],
-  },
-];
+const API = process.env.NEXT_PUBLIC_API_URL || "";
 
-const SIZES = [
-  {
-    id: "cozy",
-    label: "ANY SIZE OF A COZY HOME",
-    headline: "A Treasure Chest of love & happiness",
-    image: "/any-size-of-a-cozy.webp",
-    buttons: [{ text: "500+", sub: "sft", href: "/store?min_area=500" }],
-  },
-  {
-    id: "however-big",
-    label: "HOWEVER BIG THE HOME IS",
-    headline: "There is no place like home",
-    image: "/full-shot-woman-sitting-floor.webp",
-    buttons: [
-      { text: "1500+", sub: "sft", href: "/store?min_area=1500" },
-      { text: "1000+", sub: "sft", href: "/store?min_area=1000" },
-    ],
-  },
-  {
-    id: "lot-starts",
-    label: "HOME IS WHERE A LOT STARTS",
-    headline: "Work, Passion or just unwind",
-    image: "/home-is-where-a-lot-starts.webp",
-    buttons: [
-      { text: "1500+", sub: "sft", disabled: true, href: "/store?min_area=1500" },
-      { text: "2000+", sub: "sft", href: "/store?min_area=2000" },
-    ],
-  },
-];
+type Msg = { role: "user" | "assistant"; content: string };
 
-const BEDROOMS = [
-  { id: "3bhk", label: "3 BEDROOMS ARE SUCH BLISS", image: "/3bedroom.webp", cta: "Explore 3BHK Options", href: "/store?bedrooms=3&unit_type=3BHK" },
-  { id: "2bhk", label: "2 BEDROOM ARE SPECIAL", image: "/2-bedroom-are-special.webp", cta: "Explore 2BHK Options", href: "/store?bedrooms=2&unit_type=2BHK" },
-  { id: "1bhk", label: "INVEST IN A 1 BEDROOM", image: "/invest-in-a-1-Bedroom.webp", cta: "Explore 1BHK Options", href: "/store?bedrooms=1" },
-];
-
-const LOCATIONS = [
-  { id: "houston",   label: "TAKE ME TO HOUSTON", image: "/cash-in-hand.webp", cta: "Know More", href: "https://janapriya.us/#1" },
-  { id: "bengaluru", label: "BENGALURU",           image: "/bengaluru.webp",   cta: "Know More", href: "/store" },
-  { id: "hyderabad", label: "HYDERABAD",           image: "/hyderabad.webp",   cta: "Know More", href: "/store" },
-];
-
-// ── FIX 1: correct tags + videoIds so thumbnails & embeds work ──────────────
-const NEWS = [
-  {
-    tag: "Podcast",
-    title: "Podcast With 𝐉𝐀𝐍𝐀𝐏𝐑𝐈𝐘𝐀 𝐔𝐏𝐒𝐂𝐀𝐋𝐄 Managing Director 𝐊𝐫𝐚𝐧𝐭𝐢 𝐊𝐢𝐫𝐚𝐧 𝐑𝐞𝐝𝐝𝐲",
-    date: "Dec 12, 2024",
-    videoId: "WsEVKn7uQFU",
-  },
-  {
-    tag: "Sakshi Property Plus",
-    title: "Sakshi Property Plus: Janapriya Upscale MD – Mr. Kranti Kiran Reddy Exclusive Interview | Real Estate |",
-    date: "Nov 28, 2024",
-    videoId: "hmR4J7nbEII",
-  },
-  {
-    tag: "TDR GO Explained",
-    title: "TDR GO Explained: Controls on Redemption & Pricing | HMTV Panel Discussion",
-    date: "Apr 01, 2026",
-    videoId: "mhdoj1VQGzs",
-  },
-];
-
-function useInView(ref: React.RefObject<HTMLElement>, threshold = 0.2) {
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    if (!ref.current) return;
-    const obs = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold });
-    obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, []);
-  return inView;
-}
-
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <div style={{ background: "white", textAlign: "center", padding: "22px 24px", borderBottom: "1px solid #E5E7EB" }}>
-      <h3 style={{ margin: 0, fontSize: "clamp(15px, 2vw, 21px)", fontWeight: 900, color: "#0D1B2A", letterSpacing: 2.5, textTransform: "uppercase" }}>
-        {title}
-      </h3>
-    </div>
-  );
-}
-
-interface AccordionItem {
+type Unit = {
   id: string;
-  label: string;
-  headline?: string;
-  image: string;
-  buttons?: { text: string; sub?: string; href: string; disabled?: boolean }[];
-  cta?: string;
-  href?: string;
+  unit_number?: string;
+  unit_type?: string;
+  bedrooms?: number;
+  area_sqft?: number;
+  base_price?: number;
+  facing?: string;
+  floor_number?: number;
+  project_name?: string;
+  tower_name?: string;
+  is_riseup_eligible?: boolean;
+  image?: string | null;
+};
+
+type AssistantTurn = {
+  reply: string;
+  suggested_units?: Unit[];
+  model_used?: string | null;
+  escalated?: boolean;
+  action?: { type: string; url?: string | null; label?: string | null } | null;
+};
+
+const QUICK_STARTS = [
+  "I'm looking for a home for my family",
+  "What's a good 3BHK around ₹1Cr?",
+  "How does RiseUp actually save me money?",
+  "I'd like to book a site visit",
+];
+
+function fmtPrice(p?: number | null) {
+  if (!p) return "Price on request";
+  if (p >= 10_000_000) return `₹${(p / 10_000_000).toFixed(2)} Cr`;
+  if (p >= 100_000) return `₹${(p / 100_000).toFixed(0)} L`;
+  return `₹${p.toLocaleString("en-IN")}`;
 }
 
-function AccordionPanel({ items, defaultIndex = 0, dir = "right", noButtons = false }: {
-  items: AccordionItem[];
-  defaultIndex?: number;
-  dir?: "right" | "left";
-  noButtons?: boolean;
-}) {
-  const [active, setActive] = useState(defaultIndex);
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref as React.RefObject<HTMLElement>);
-
-  return (
-    <div ref={ref} style={{ display: "flex", flexDirection: dir === "right" ? "row" : "row-reverse", width: "100%", height: "calc(100vh - 105px)", minHeight: 440, maxHeight: 700, overflow: "hidden" }}>
-      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-        {items.map((it, i) => (
-          <div key={it.id} style={{ position: "absolute", inset: 0, opacity: active === i ? 1 : 0, transition: "opacity 0.5s ease", pointerEvents: active === i ? "auto" : "none" }}>
-            <img src={it.image} alt={it.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            <div style={{ position: "absolute", inset: 0, background: noButtons ? "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.18) 100%)" : "linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.12) 50%, rgba(0,0,0,0.05) 100%)" }} />
-            {!noButtons && it.buttons && (
-              <div style={{ position: "absolute", top: 0, left: 0, right: 0, padding: "32px 48px 0" }}>
-                <p style={{ color: "white", fontWeight: 900, fontSize: "clamp(15px, 1.8vw, 22px)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 22, textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}>{it.headline}</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                  {it.buttons.map((btn) => btn.disabled ? (
-                    <span key={btn.text} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#273b84", color: "rgba(255,255,255,0.45)", padding: "11px 22px", borderRadius: 9, fontWeight: 800, fontSize: 14, cursor: "not-allowed", whiteSpace: "nowrap", fontFamily: "inherit" }}>
-                      {btn.text}{btn.sub && <span style={{ fontWeight: 600, fontSize: 12 }}>{btn.sub}</span>}
-                    </span>
-                  ) : (
-                    <Link key={btn.text} href={btn.href} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.13)", backdropFilter: "blur(10px)", border: "1.5px solid rgba(255,255,255,0.38)", color: "white", padding: "11px 22px", borderRadius: 9, fontWeight: 800, fontSize: 14, textDecoration: "none", whiteSpace: "nowrap", transition: "all 0.22s", fontFamily: "inherit" }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#273b84"; (e.currentTarget as HTMLElement).style.borderColor = "#273b84"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.13)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.38)"; }}>
-                      {btn.text}{btn.sub && <span style={{ fontWeight: 600, fontSize: 12, opacity: 0.8 }}>{btn.sub}</span>}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-            {noButtons && it.cta && it.href && (
-              <Link href={it.href} style={{ position: "absolute", top: 0, left: 0, right: 0, background: "#273b84", color: "white", textAlign: "center", padding: "15px", fontWeight: 800, fontSize: 15, textDecoration: "none", letterSpacing: 0.5, transition: "background 0.2s", display: "block", fontFamily: "inherit" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "#1a2a6c")}
-                onMouseLeave={e => (e.currentTarget.style.background = "#273b84")}>
-                {it.cta}
-              </Link>
-            )}
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", flexDirection: "row" }}>
-        {items.map((it, i) => {
-          const isActive = active === i;
-          return (
-            <button key={it.id} onClick={() => setActive(i)}
-              style={{ width: isActive ? 68 : 58, background: isActive ? "#a9c6f8" : "#0D1B2A", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.45s cubic-bezier(0.05,0.61,0.41,0.95)", outline: "none", animation: inView ? `${dir === "right" ? "tabSlideRight" : "tabSlideLeft"} 0.55s cubic-bezier(0.05,0.61,0.41,0.95) ${i * 0.08}s both` : "none" }}
-              onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "#1a2a6c"; }}
-              onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "#0D1B2A"; }}>
-              <span style={{ writingMode: "vertical-rl", transform: "scale(-1,-1)", color: isActive ? "#0D1B2A" : "white", fontWeight: 800, fontSize: "clamp(8px, 0.9vw, 12px)", letterSpacing: 1.5, textTransform: "uppercase", lineHeight: 1.3, transition: "color 0.3s", padding: "14px 0", userSelect: "none", fontFamily: "inherit" }}>
-                {it.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+function modelBadge(model?: string | null, escalated?: boolean) {
+  if (!model) return null;
+  if (model.startsWith("claude:sonnet") || escalated) return { label: "Sonnet", color: "#7C3AED", bg: "#F3E8FF" };
+  if (model.startsWith("claude:haiku")) return { label: "Haiku", color: "#16A34A", bg: "#DCFCE7" };
+  if (model.startsWith("groq")) return { label: "Groq", color: "#D97706", bg: "#FEF3C7" };
+  if (model.startsWith("gemini")) return { label: "Gemini", color: "#2A3887", bg: "#E2F1FC" };
+  return { label: model, color: "#555", bg: "#F0F4FF" };
 }
 
-function MobileCard({ item, noButtons = false }: { item: AccordionItem; noButtons?: boolean }) {
-  return (
-    <div style={{ position: "relative", minHeight: 270, borderRadius: 18, overflow: "hidden", marginBottom: 16, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-      <img src={item.image} alt={item.label} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.48)", zIndex: 1 }} />
-      <div style={{ position: "relative", zIndex: 2, background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%)", padding: "22px 18px 18px" }}>
-        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 800, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 6 }}>{item.label}</p>
-        {item.headline && <p style={{ color: "white", fontWeight: 900, fontSize: 15, marginBottom: 14, textTransform: "uppercase", lineHeight: 1.4 }}>{item.headline}</p>}
-        {!noButtons && item.buttons && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {item.buttons.map((btn) => btn.disabled ? (
-              <span key={btn.text} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "#273b84", color: "rgba(255,255,255,0.4)", padding: "8px 14px", borderRadius: 7, fontWeight: 800, fontSize: 13, cursor: "not-allowed", fontFamily: "inherit" }}>
-                {btn.text} {btn.sub && <span style={{ fontWeight: 600, fontSize: 11 }}>{btn.sub}</span>}
-              </span>
-            ) : (
-              <Link key={btn.text} href={btn.href} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.14)", border: "1.5px solid rgba(255,255,255,0.32)", color: "white", padding: "8px 14px", borderRadius: 7, fontWeight: 800, fontSize: 13, textDecoration: "none", fontFamily: "inherit" }}>
-                {btn.text} {btn.sub && <span style={{ fontWeight: 600, fontSize: 11, opacity: 0.75 }}>{btn.sub}</span>}
-              </Link>
-            ))}
-          </div>
-        )}
-        {noButtons && item.cta && item.href && (
-          <Link href={item.href} style={{ display: "inline-block", background: "#273b84", color: "white", padding: "11px 24px", borderRadius: 9, fontWeight: 800, fontSize: 14, textDecoration: "none", fontFamily: "inherit" }}>
-            {item.cta}
-          </Link>
-        )}
-      </div>
-    </div>
-  );
+function getSessionId(): string {
+  if (typeof window === "undefined") return "";
+  let id = localStorage.getItem("jp_chat_session");
+  if (!id) {
+    id = "s_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem("jp_chat_session", id);
+  }
+  return id;
 }
 
-export default function HomePage() {
-  const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [projects, setProjects] = useState<any[]>([]);
-  const [trending, setTrending] = useState<any[]>([]);
-  const [mounted, setMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState("Buy");
-  const [activeSlide, setActiveSlide] = useState(0);
-  // ── FIX 2: keyed on videoId (unique) not tag ─────────────────────────────
-  const [playing, setPlaying] = useState<string | null>(null);
-
-  const HERO_SLIDES = [
-    { src: "/jp_final.mp4" },
-    { src: "/RiseUpExplainer.mp4" },
-  ];
+export default function HomeChat() {
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [lastModel, setLastModel] = useState<{ model?: string | null; escalated?: boolean } | null>(null);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    const timer = setInterval(() => setActiveSlide(s => (s + 1) % HERO_SLIDES.length), 7000);
-    return () => clearInterval(timer);
-  }, []);
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, sending]);
 
-  useEffect(() => {
-    setMounted(true);
-    const API = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
-    fetch(`${API}/units/trending?limit=6`)
-      .then(r => r.json() as Promise<any>)
-      .then(d => setTrending(Array.isArray(d) ? d : (d.items || [])))
-      .catch(() => {});
-    fetch(`${API}/projects?is_featured=true`)
-      .then(r => r.json())
-      .then(d => setProjects(Array.isArray(d) ? d.slice(0, 4) : (d.items || []).slice(0, 4)))
-      .catch(() => {});
-  }, []);
+  async function send(text: string) {
+    const t = text.trim();
+    if (!t || sending) return;
+    setError("");
+    const nextMessages: Msg[] = [...messages, { role: "user", content: t }];
+    setMessages(nextMessages);
+    setInput("");
+    setSending(true);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    window.location.href = `/store?q=${encodeURIComponent(query.trim())}`;
+    try {
+      const r = await fetch(`${API}/assistant/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages,
+          context: { page: "home", session_id: getSessionId() },
+          session_id: getSessionId(),
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data: AssistantTurn = await r.json();
+      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || "" }]);
+      if (data.suggested_units && data.suggested_units.length) {
+        setUnits(data.suggested_units);
+      }
+      setLastModel({ model: data.model_used, escalated: data.escalated });
+      // Honor server-provided navigation actions (e.g. "go to store with filters")
+      if (data.action?.type === "navigate_store" && data.action.url) {
+        // surface as a CTA below — frontend renders this manually via the action field
+      }
+    } catch (e: any) {
+      setError(e?.message || "Couldn't reach the assistant — please try again.");
+    } finally {
+      setSending(false);
+      // re-focus the input for fast follow-ups
+      setTimeout(() => taRef.current?.focus(), 50);
+    }
   }
 
-  function formatPrice(p: any) {
-    if (!p) return "Price on request";
-    const n = parseFloat(p);
-    if (n >= 10000000) return `₹${(n / 10000000).toFixed(1)} Cr`;
-    if (n >= 100000)   return `₹${(n / 100000).toFixed(0)} L`;
-    return `₹${n.toLocaleString()}`;
+  function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send(input);
+    }
   }
 
-  const TESTIMONIALS = [
-    { name: "Veera Bhadram", role: "Software Engineer", city: "Hyderabad",    text: "Excellent construction quality and transparent process. Janapriya delivered exactly what they promised. Highly recommended!", rating: 5, initial: "R" },
-    { name: "Mr. Suresh Karri", role: "#2915 Nilevalley", city: "Nilevalley", text: "Heartfelt congratulations on completing 40 successful years! Building over 40,000 homes in four decades is a truly amazing achievement.", rating: 5, initial: "P" },
-    { name: "Venkat Reddy",   role: "Business Owner",    city: "Hyderabad",   text: "Invested in Janapriya Meadows villa. Superb quality, premium location. Great ROI and an even better living experience.", rating: 5, initial: "V" },
-  ];
+  const badge = modelBadge(lastModel?.model, lastModel?.escalated);
+  const empty = messages.length === 0;
 
-  const STATS = [
-    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#185FA5" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M6 20v-2a6 6 0 0 1 12 0v2"/><path d="M12 12l1.5 5-1.5 1-1.5-1z"/></svg>, iconBg: "#EBF4FF", value: "40",   label: "Years of Experience",  valueColor: "#185FA5" },
-    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>, iconBg: "#E1F5EE", value: "40K+", label: "Dream Homes",          valueColor: "#0F6E56" },
-    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#854F0B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, iconBg: "#FEF3C7", value: "70K+", label: "Happy Families",       valueColor: "#854F0B" },
-    { icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#993556" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="2" y1="9" x2="22" y2="9"/><line x1="2" y1="15" x2="22" y2="15"/></svg>, iconBg: "#FBEAF0", value: "20+",  label: "Million Square Feet",  valueColor: "#993556" },
-  ];
+  // Navy-gold-white-red palette. Scoped to this homepage only — the rest of the
+  // site keeps the navy/light-blue brand palette (per saved brand guidance).
+  const NAVY_BG = "#0F1430";    // deep navy background
+  const NAVY = "#262262";        // primary brand navy
+  const NAVY_2 = "#2A3887";      // gradient companion
+  const GOLD = "#C9A84C";        // brand.gold token (from tailwind.config.ts)
+  const GOLD_SOFT = "#E5C77A";   // lighter gold for hovers / subtle borders
+  const RED = "#E91E3D";         // logo red (used sparingly — escalation, errors)
 
   return (
-    <main style={{ fontFamily: "'Nunito', 'Segoe UI', sans-serif" }} className="min-h-screen bg-white">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-        .jp-brand { color: #273b84; }
-        .jp-brand-bg { background: #273b84; }
-        .jp-dark { color: #0D1B2A; }
-        .jp-gray { color: #6B7280; }
-        .card-hover { transition: all 0.28s cubic-bezier(.4,0,.2,1); }
-        .card-hover:hover { transform: translateY(-6px); box-shadow: 0 20px 50px rgba(39,59,132,0.13); }
-        .fade-in { animation: fadeUp 0.6s ease both; }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
-        .input-search { border: none; outline: none; background: transparent; flex: 1; font-size: 14px; color: #374151; font-family: inherit; min-width: 0; }
-        .input-search::placeholder { color: #9CA3AF; }
-        .section-label { font-size: 12px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; color: #273b84; margin-bottom: 8px; }
-        .section-title { font-size: clamp(28px, 4vw, 42px); font-weight: 900; color: #0D1B2A; line-height: 1.2; }
-        .divider-brand { width: 48px; height: 3px; background: #273b84; border-radius: 2px; margin: 16px 0; }
-        .star { color: #F59E0B; font-size: 14px; }
-        .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; }
-        .badge-brand { background: #e8ebf8; color: #273b84; }
-        .scroll-indicator { width: 22px; height: 36px; border: 2px solid rgba(255,255,255,0.4); border-radius: 20px; display: flex; align-items: flex-start; justify-content: center; padding-top: 5px; }
-        .scroll-dot { width: 4px; height: 8px; background: white; border-radius: 2px; animation: scrollDown 1.5s ease-in-out infinite; }
-        @keyframes scrollDown { 0%,100% { transform: translateY(0); opacity:1; } 50% { transform: translateY(8px); opacity:0.3; } }
-        @keyframes heroProgress { from { width: 0%; } to { width: 100%; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes tabSlideRight { 0% { transform: translateX(40px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
-        @keyframes tabSlideLeft  { 0% { transform: translateX(-40px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
-        .hero-arrow:hover { background: rgba(39,59,132,0.25) !important; border-color: #273b84 !important; }
-        .stat-box { transition: all 0.28s cubic-bezier(.4,0,.2,1); cursor: default; }
-        .stat-box:hover { transform: translateY(-5px); box-shadow: 0 16px 40px rgba(39,59,132,0.12); }
+    <div className="min-h-screen flex flex-col" style={{ background: `radial-gradient(ellipse at top, #1a2050 0%, ${NAVY_BG} 60%, #07091C 100%)`, color: "#fff" }}>
+      {/* Thin top nav */}
+      <nav className="flex items-center justify-between px-4 sm:px-8 py-3" style={{ borderBottom: `1px solid ${GOLD}33`, background: "rgba(15,20,48,0.7)", backdropFilter: "blur(10px)" }}>
+        <Link href="/" className="flex items-center gap-2">
+          <span className="text-lg font-black tracking-tight" style={{ color: "#fff" }}>Janapriya</span>
+          <span className="text-lg font-light tracking-widest" style={{ color: GOLD }}>UPSCALE</span>
+        </Link>
+        <div className="flex items-center gap-2 sm:gap-5 text-sm">
+          <Link href="/projects" className="hidden sm:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Projects</Link>
+          <Link href="/store" className="hidden sm:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Units</Link>
+          <Link href="/welcome" className="hidden md:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Why Upscale</Link>
+          <Link href="/site-visit" className="hidden sm:inline font-bold transition-colors" style={{ color: "#E5E7EB" }}>Site Visit</Link>
+          <Link href="/login" className="px-3 py-1.5 rounded-xl text-xs font-black" style={{ background: GOLD, color: NAVY }}>Login</Link>
+        </div>
+      </nav>
 
-        /* Search bar base */
-        .hero-search-bar {
-          border-radius: 24px;
-          padding: 6px 6px 6px 22px;
-          display: flex;
-          align-items: center;
-          gap: 0;
-          box-shadow: 0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
-          width: 100%;
-          box-sizing: border-box;
-        }
-
-        /* ── MOBILE FIXES ── */
-        @media (max-width: 767px) {
-          .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-
-          /* Hide hero nav arrows */
-          .hero-arrow { display: none !important; }
-
-          /* ── FIX 4a: solid tappable background on mobile ── */
-          .hero-search-bar {
-            flex-wrap: wrap !important;
-            padding: 14px !important;
-            border-radius: 20px !important;
-            gap: 10px !important;
-            align-items: stretch !important;
-            background: rgba(13, 27, 42, 0.88) !important;
-            backdrop-filter: blur(16px) !important;
-            -webkit-backdrop-filter: blur(16px) !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1) !important;
-          }
-
-          /* Hide non-essential search bar elements */
-          .hero-location { display: none !important; }
-          .hero-divider  { display: none !important; }
-          .hero-icon-box { display: none !important; }
-
-          /* Input: full-width, visible white text */
-          .input-search.hero-search-input {
-            font-size: 15px !important;
-            padding: 8px 4px !important;
-            width: 100% !important;
-            flex: 1 1 100% !important;
-            color: white !important;
-          }
-          .input-search.hero-search-input::placeholder { color: rgba(255,255,255,0.5) !important; }
-
-          /* Button: full-width, min tap target */
-          .hero-search-btn {
-            width: 100% !important;
-            flex: 1 1 100% !important;
-            justify-content: center !important;
-            border-radius: 14px !important;
-            padding: 15px 16px !important;
-            box-sizing: border-box !important;
-            font-size: 15px !important;
-            min-height: 50px !important;
-            touch-action: manipulation !important;
-          }
-
-          .hero-headline-h1 { font-size: clamp(30px, 9vw, 44px) !important; }
-        }
-      `}</style>
-
-      <Navbar />
-
-      {/* ── HERO VIDEO SLIDER ── */}
-      <section className="relative overflow-hidden" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "center", boxSizing: "border-box" }}>
-
-        {/* ── FIX 4b: pointerEvents none on inactive slides ── */}
-        {HERO_SLIDES.map((slide, i) => (
-          <div
-            key={i}
-            className="absolute inset-0"
-            style={{
-              zIndex: 1,
-              opacity: activeSlide === i ? 1 : 0,
-              transition: "opacity 1.2s ease-in-out",
-              pointerEvents: activeSlide === i ? "auto" : "none",
-            }}
-          >
-            <div className="absolute inset-0" />
-            {mounted && (
-              <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover" style={{ zIndex: 1 }}>
-                <source src={slide.src} type="video/mp4" />
-              </video>
-            )}
-          </div>
-        ))}
-
-        <div className="absolute inset-0" style={{ zIndex: 0 }} />
-        <div className="absolute top-1/4 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.18), transparent 70%)", zIndex: 2 }} />
-        <div className="absolute bottom-1/3 left-0 w-72 h-72 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.12), transparent 70%)", zIndex: 2 }} />
-
-        {/* ── FIX 4c: raise content above video layer ── */}
-        <div
-          className="relative mx-auto"
-          style={{
-            zIndex: 10,
-            paddingTop: "clamp(100px, 20vw, 150px)",
-            paddingBottom: "clamp(90px, 16vw, 130px)",
-            paddingLeft: "clamp(16px, 5vw, 32px)",
-            paddingRight: "clamp(16px, 5vw, 32px)",
-            width: "100%",
-            maxWidth: 800,
-            boxSizing: "border-box",
-          }}
-        >
-          <div className="fade-in" style={{ width: "100%", boxSizing: "border-box", animationDelay: "0.18s" }}>
-            <form onSubmit={handleSearch}>
-              <div className="hero-search-bar">
-                {/* Icon */}
-                <div className="hero-icon-box" style={{ width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginRight: 10 }}>
-                  <AiIcon size={28} />
-                </div>
-
-                {/* Input */}
-                <input
-                  className="input-search hero-search-input"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                  style={{ flex: 1, fontSize: 15, color: "#fff", padding: "12px 0", fontWeight: 600 }}
-                  placeholder={`Search ${activeTab === "Buy" ? "properties to buy" : activeTab === "Rent" ? "rental properties" : "investment opportunities"}…`}
-                />
-
-                {/* Divider */}
-                <div className="hero-divider" style={{ width: 1, height: 28, background: "#E5E7EB", flexShrink: 0, margin: "0 14px" }} />
-
-                {/* Location */}
-                <div className="hero-location" style={{ display: "flex", alignItems: "center", gap: 5, color: "#fff", fontSize: 13, fontWeight: 700, flexShrink: 0, marginRight: 10, whiteSpace: "nowrap" }}>
-                  <span style={{ fontSize: 15 }}>📍</span> Hyderabad
-                </div>
-
-                {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={searching}
-                  className="hero-search-btn"
-                  style={{
-                    background: searching ? "#9CA3AF" : "linear-gradient(135deg, #273b84 0%, #1a2a6c 100%)",
-                    color: "white", border: "none", borderRadius: 18, padding: "13px 28px",
-                    fontWeight: 900, fontSize: 14, cursor: searching ? "not-allowed" : "pointer",
-                    whiteSpace: "nowrap", fontFamily: "inherit", transition: "all 0.22s",
-                    display: "flex", alignItems: "center", gap: 8,
-                    boxShadow: searching ? "none" : "0 4px 20px rgba(39,59,132,0.5)", flexShrink: 0,
-                  }}
-                >
-                  {searching
-                    ? <><span style={{ display: "inline-block", width: 13, height: 13, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} /> Searching…</>
-                    : <><span>🔍</span> AI Search</>
-                  }
-                </button>
+      {/* Main chat region */}
+      <div className="flex-1 flex flex-col items-center px-4 py-6 sm:py-10">
+        <div className="w-full max-w-3xl flex-1 flex flex-col">
+          {empty ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center py-10">
+              <div className="text-3xl sm:text-5xl font-black mb-3" style={{ color: "#fff" }}>
+                Ask more of <span style={{ color: GOLD }}>life</span>.
               </div>
-            </form>
-          </div>
-        </div>
-
-        {/* Slide dots + scroll */}
-        <div className="absolute" style={{ bottom: 36, left: "50%", transform: "translateX(-50%)", zIndex: 5, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-          <div style={{ display: "flex", gap: 10 }}>
-            {HERO_SLIDES.map((_, i) => (
-              <button key={i} onClick={() => setActiveSlide(i)} style={{ width: activeSlide === i ? 28 : 8, height: 8, borderRadius: 4, background: activeSlide === i ? "#273b84" : "rgba(255,255,255,0.3)", border: "none", cursor: "pointer", transition: "all 0.4s ease", padding: 0 }} />
-            ))}
-          </div>
-          <div className="scroll-indicator"><div className="scroll-dot" /></div>
-          <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 9, letterSpacing: 2.5 }}>SCROLL</span>
-        </div>
-
-        {/* Arrows */}
-        <button onClick={() => setActiveSlide(s => (s - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ left: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>‹</button>
-        <button onClick={() => setActiveSlide(s => (s + 1) % HERO_SLIDES.length)} className="absolute hero-arrow" style={{ right: 24, top: "50%", transform: "translateY(-50%)", zIndex: 5, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", color: "white", width: 44, height: 44, borderRadius: "50%", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>›</button>
-
-        {/* Progress bar */}
-        <div className="absolute" style={{ bottom: 0, left: 0, right: 0, height: 3, background: "rgba(255,255,255,0.1)", zIndex: 5 }}>
-          <div key={activeSlide} style={{ height: "100%", background: "#273b84", animation: "heroProgress 7s linear forwards", transformOrigin: "left" }} />
-        </div>
-      </section>
-
-      {/* ── STATS ── */}
-      <section style={{ background: "#F8FAFB", padding: "48px 0" }}>
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="stats-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
-            {STATS.map((stat, i) => (
-              <div key={i} className="stat-box" style={{ background: "white", border: "1.5px solid #E5E7EB", borderRadius: 16, padding: "28px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
-                <div style={{ width: 60, height: 60, borderRadius: 14, background: stat.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{stat.icon}</div>
-                <div style={{ fontSize: 30, fontWeight: 900, color: stat.valueColor, lineHeight: 1 }}>{stat.value}</div>
-                <div style={{ fontSize: 13, color: "#6B7280", fontWeight: 600, lineHeight: 1.4 }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── ABOUT ── */}
-      <section style={{ padding: "60px 0", background: "#F8FAFB" }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-            <div>
-              <p className="section-label">About Janapriya</p>
-              <h2 className="section-title">Where Find A House<br />Feels Like Home</h2>
-              <div className="divider-brand" />
-              <p style={{ color: "#6B7280", fontSize: 15, lineHeight: 1.8, marginBottom: 24 }}>
-                For over four decades, Janapriya Engineers Syndicate has been crafting premium homes across Hyderabad. We combine quality construction, transparent pricing, and timely delivery — making your dream home a reality.
+              <p className="text-sm sm:text-base mb-7 max-w-lg" style={{ color: "#C7CAD8" }}>
+                Hi, I&apos;m Priya from Janapriya Upscale. Tell me a little about what you&apos;re looking for and I&apos;ll help you find the right home — and arrange a visit so you can see it in person.
               </p>
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                {[{ icon: "✅", text: "RERA Registered" }, { icon: "🌿", text: "IGBC Green Certified" }, { icon: "📱", text: "Smart Home Ready" }, { icon: "💎", text: "Premium Finishes" }].map(f => (
-                  <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "#374151" }}><span>{f.icon}</span> {f.text}</div>
+              <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
+                {QUICK_STARTS.map((q) => (
+                  <button key={q}
+                    onClick={() => send(q)}
+                    className="px-3 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all hover:-translate-y-0.5"
+                    style={{ background: "rgba(255,255,255,0.06)", border: `1.5px solid ${GOLD}66`, color: "#fff" }}
+                  >
+                    {q}
+                  </button>
                 ))}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
-                <div style={{ background: "#273b84", borderRadius: 12, padding: "14px 20px", textAlign: "center" }}>
-                  <div style={{ fontSize: 28, fontWeight: 900, color: "white" }}>560+</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>CURRENT UNITS</div>
-                </div>
-                <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.6 }}>Handpicked properties in the best<br />localities across Hyderabad.</div>
-              </div>
-              <Link href="/projects" style={{ display: "inline-block", background: "#273b84", color: "white", borderRadius: 10, padding: "12px 28px", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>Explore Projects →</Link>
             </div>
-            <div style={{ position: "relative" }}>
-              <div style={{ background: "linear-gradient(135deg, #0D1B2A, #273b84)", borderRadius: 20, height: 360, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
-                {mounted && (
-                  <video autoPlay muted loop playsInline style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }}>
-                    <source src="/jp_final.mp4" type="video/mp4" />
-                  </video>
-                )}
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(13,27,42,0.6) 0%, transparent 60%)" }} />
-                <div style={{ position: "absolute", bottom: 20, left: 20, right: 20 }}>
-                  <p style={{ color: "white", fontWeight: 900, fontSize: 18 }}>40 Years of Trust</p>
-                  <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12 }}>Building premium homes since 1984</p>
-                </div>
-              </div>
-              <div style={{ position: "absolute", top: -16, right: -16, background: "#273b84", borderRadius: 14, padding: "14px 18px", boxShadow: "0 8px 24px rgba(39,59,132,0.35)" }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: "white" }}>4.9★</div>
-                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700 }}>RATING</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── TRENDING PROPERTIES ── */}
-      {trending.length > 0 && (
-        <section style={{ padding: "80px 0", background: "#F8FAFB" }}>
-          <div className="max-w-7xl mx-auto px-6">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
-              <div>
-                <p className="section-label">Trending Properties</p>
-                <h2 className="section-title">Property For Sale</h2>
-              </div>
-              <Link href="/store" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>View All Units →</Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {trending.map((u: any) => <UnitCard key={u.id} unit={u} isTrending />)}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── JOIN JANAPRIYA ── */}
-      <section style={{ background: "linear-gradient(135deg, #0D1B2A, #1a2a6c)", padding: "72px 24px" }}>
-        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div>
-            <p className="section-label" style={{ color: "#7b8fd4" }}>Why Join Us</p>
-            <h2 style={{ color: "white", fontWeight: 900, fontSize: 36, lineHeight: 1.2, marginBottom: 16 }}>Join Janapriya And Experience Today</h2>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, marginBottom: 28 }}>Four decades of excellence, thousands of satisfied families, and a legacy built on trust.</p>
-            <Link href="/contact" style={{ display: "inline-block", background: "#273b84", color: "white", borderRadius: 12, padding: "14px 32px", fontWeight: 800, fontSize: 14, textDecoration: "none" }}>Get in Touch →</Link>
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            {[{ v: "560+", l: "Current Listings" }, { v: "196K+", l: "Total Apartments" }, { v: "₹16M+", l: "Total Land Value" }, { v: "40+", l: "Years of Trust" }].map(s => (
-              <div key={s.l} style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "24px 20px" }}>
-                <div style={{ fontSize: 30, fontWeight: 900, color: "#7b8fd4", marginBottom: 4 }}>{s.v}</div>
-                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>{s.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FEATURED PROJECTS ── */}
-      <section style={{ padding: "80px 0", background: "white", position: "relative", overflow: "hidden" }}>
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full" style={{ background: "radial-gradient(circle, rgba(39,59,132,0.05), transparent)", transform: "translate(30%,-30%)" }} />
-        <div className="max-w-7xl mx-auto px-6 relative">
-          <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 8 }}>
-              <div style={{ width: 32, height: 2, background: "#273b84", borderRadius: 2 }} />
-              <p className="section-label" style={{ marginBottom: 0 }}>Our Projects</p>
-              <div style={{ width: 32, height: 2, background: "#273b84", borderRadius: 2 }} />
-            </div>
-            <h2 className="section-title">Featured Projects</h2>
-            <p style={{ color: "#6B7280", fontSize: 14, marginTop: 8, maxWidth: 500, margin: "8px auto 0" }}>Premium residential communities across Hyderabad — crafted to the highest standards.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {projects.length > 0 ? projects.slice(0, 3).map((p: any) => {
-              const stageRaw   = (p.construction_stage || "").toString();
-              const stageLower = stageRaw.toLowerCase();
-              const statusColor = stageLower.includes("ready") ? "#22c55e" : stageLower.includes("new") ? "#29A9DF" : stageRaw ? "#f59e0b" : "#94a3b8";
-              const statusBg    = stageLower.includes("ready") ? "#f0fdf4" : stageLower.includes("new") ? "#eff6ff"  : stageRaw ? "#fffbeb" : "#f8fafc";
-              const statusLabel = stageRaw ? stageRaw.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) : "—";
-              const thumb = p.thumbnail || (p.images && p.images[0]);
-              return (
-                <div key={p.id} className="bg-white rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1" style={{ boxShadow: "0 4px 24px rgba(42,56,135,0.10)", border: "1.5px solid #E2F1FC" }}>
-                  <div className="px-4 pt-4 pb-2 flex justify-between items-center">
-                    <span className="px-3 py-1 rounded-full text-xs font-black" style={{ color: statusColor, background: statusBg }}>● {statusLabel}</span>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: "#F8F9FB", color: "#2A3887" }}>🏠 {p.total_units ?? "—"} units</span>
+          ) : (
+            <div ref={listRef} className="flex-1 overflow-y-auto pr-1 space-y-4 mb-4" style={{ minHeight: "55vh", maxHeight: "calc(100vh - 280px)" }}>
+              {messages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed`}
+                    style={m.role === "user"
+                      ? { background: `linear-gradient(135deg, ${GOLD}, ${GOLD_SOFT})`, color: NAVY, borderBottomRightRadius: "6px", boxShadow: `0 4px 14px ${GOLD}33` }
+                      : { background: "#fff", color: NAVY, borderBottomLeftRadius: "6px", boxShadow: "0 2px 14px rgba(0,0,0,0.25)" }
+                    }>
+                    {m.content}
                   </div>
-                  <div className="px-3 pb-1">
-                    <Link href={`/projects/${p.slug || p.id}`} className="block">
-                      <div className="relative rounded-xl overflow-hidden w-full cursor-pointer" style={{ height: "220px", background: "#F4F6FB" }}>
-                        {thumb ? (
-                          <img src={thumb.split("/").map((s: string) => encodeURIComponent(s)).join("/")} alt={p.name} className="absolute inset-0 w-full h-full object-cover" onError={(e: any) => { e.target.style.display = "none"; }} />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ background: "linear-gradient(135deg,#eef2ff 0%,#e0f2fe 100%)" }}>
-                            <span style={{ fontSize: 48, opacity: 0.2 }}>🏗️</span>
-                            <span className="text-xs font-semibold" style={{ color: "#aac" }}>Image coming soon</span>
-                          </div>
-                        )}
-                        <div className="absolute bottom-0 left-0 right-0 px-3 py-2" style={{ background: "linear-gradient(0deg,rgba(255,255,255,0.95) 0%,rgba(255,255,255,0) 100%)" }}>
-                          <p className="text-xs font-semibold" style={{ color: "#888" }}>{p.property_type || p.unit_types || "Residential"}</p>
-                          <h3 className="font-black text-base leading-tight" style={{ color: "#2A3887" }}>{p.name}</h3>
+                </div>
+              ))}
+              {sending && (
+                <div className="flex justify-start">
+                  <div className="px-4 py-3 rounded-2xl text-sm bg-white">
+                    <span className="inline-flex gap-1" aria-label="Thinking">
+                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: GOLD, animationDelay: "0ms" }} />
+                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: GOLD, animationDelay: "120ms" }} />
+                      <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: GOLD, animationDelay: "240ms" }} />
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Best-fit recommendation rail — at most 3 visible to stay curated */}
+              {units.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color: GOLD }}>Best fit for you</p>
+                    <Link href="/store" className="text-xs font-bold" style={{ color: GOLD }}>Browse all →</Link>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                    {units.slice(0, 3).map((u) => (
+                      <Link key={u.id} href={`/units/${u.id}`}
+                        className="flex-shrink-0 w-56 rounded-2xl p-3 bg-white transition-all hover:-translate-y-0.5"
+                        style={{ border: `1px solid ${GOLD}66`, boxShadow: "0 4px 14px rgba(0,0,0,0.2)" }}
+                        title={u.unit_number ? `${u.unit_type} ${u.unit_number} — ${u.project_name}` : ""}>
+                        <div className="w-full h-28 rounded-xl mb-2 flex items-center justify-center"
+                          style={u.image
+                            ? { backgroundImage: `url(${u.image})`, backgroundSize: "cover", backgroundPosition: "center" }
+                            : { background: `linear-gradient(135deg, ${NAVY_2}, ${NAVY})` }}>
+                          {!u.image && <span className="text-2xl" style={{ color: GOLD }}>🏠</span>}
                         </div>
-                      </div>
+                        <p className="text-xs font-black truncate" style={{ color: NAVY }}>
+                          {u.unit_type || `${u.bedrooms || "?"}BHK`} · {u.unit_number || "—"}
+                        </p>
+                        <p className="text-xs truncate" style={{ color: "#666" }}>
+                          {u.project_name || "—"}{u.tower_name ? ` · ${u.tower_name}` : ""}
+                        </p>
+                        <div className="flex items-center justify-between mt-2">
+                          <span className="text-sm font-black" style={{ color: NAVY }}>{fmtPrice(u.base_price)}</span>
+                          {u.is_riseup_eligible && (
+                            <span className="text-xs font-bold px-1.5 py-0.5 rounded-full" style={{ background: GOLD, color: NAVY }}>RiseUp</span>
+                          )}
+                        </div>
+                        <p className="text-xs mt-1" style={{ color: "#888" }}>
+                          {u.area_sqft ? `${Math.round(u.area_sqft)} sqft` : ""}
+                          {u.facing ? ` · ${u.facing}-facing` : ""}
+                          {typeof u.floor_number === "number" ? ` · Fl ${u.floor_number}` : ""}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+
+                  {/* Conversion CTA — visible only once Priya has a recommendation on screen */}
+                  <div className="mt-3 rounded-2xl p-4 flex items-center gap-3"
+                    style={{ background: `linear-gradient(135deg, ${GOLD}, ${GOLD_SOFT})`, color: NAVY, boxShadow: `0 6px 20px ${GOLD}55` }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-sm leading-tight">Seeing is believing.</p>
+                      <p className="text-xs leading-snug">Book a site visit — pick a time that works and we&apos;ll show you around.</p>
+                    </div>
+                    <Link href="/site-visit"
+                      className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-transform hover:-translate-y-0.5"
+                      style={{ background: NAVY, color: "#fff" }}>
+                      Book site visit →
                     </Link>
                   </div>
-                  <div className="p-4 flex flex-col gap-3">
-                    <p className="text-sm" style={{ color: "#555A5C" }}>📍 {p.location || p.city}{p.city && p.city !== p.location ? `, ${p.city}` : ""}</p>
-                    {p.description && <p className="text-xs leading-relaxed" style={{ color: "#777" }}>{p.description.substring(0, 100)}{p.description.length > 100 ? "..." : ""}</p>}
-                    <div className="flex items-center justify-between pt-2" style={{ borderTop: "1px solid #F0F4FF" }}>
-                      <div>
-                        <div className="font-black text-lg" style={{ color: "#2A3887" }}>
-                          {p.min_price && p.max_price && p.min_price !== p.max_price ? `${formatPrice(p.min_price)} – ${formatPrice(p.max_price)}` : p.min_price ? formatPrice(p.min_price) : "On Request"}
-                        </div>
-                        {p.min_price && <div className="text-xs" style={{ color: "#999" }}>Starting price</div>}
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Link href={`/projects/${p.slug || p.id}`} className="flex-1 text-center py-2.5 text-white text-sm font-bold rounded-xl transition-colors" style={{ background: "linear-gradient(135deg,#2A3887,#29A9DF)" }}>View Details</Link>
-                      <Link href={`/projects/${p.slug || p.id}#enquire`} className="flex-1 text-center py-2.5 text-sm font-bold rounded-xl transition-colors" style={{ border: "1.5px solid #2A3887", color: "#2A3887" }}>Enquire</Link>
-                    </div>
-                  </div>
                 </div>
-              );
-            }) : [1, 2, 3].map(i => (
-              <div key={i} style={{ height: 500, borderRadius: 20, background: "#F3F4F6", animation: "pulse 1.5s ease-in-out infinite" }} />
-            ))}
-          </div>
-          <div style={{ textAlign: "center", marginTop: 48 }}>
-            <Link href="/projects" style={{ display: "inline-flex", alignItems: "center", gap: 10, padding: "14px 36px", fontWeight: 800, fontSize: 14, borderRadius: 50, border: "2px solid #273b84", color: "#273b84", textDecoration: "none", transition: "all 0.2s" }}>View All Projects →</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section style={{ background: "#F8FAFB", padding: "80px 0" }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div style={{ textAlign: "center", marginBottom: 48 }}>
-            <p className="section-label">Happy Families</p>
-            <h2 className="section-title">What People Saying About<br />Our Real Estate</h2>
-            <p style={{ color: "#6B7280", fontSize: 14, marginTop: 8 }}>70,000+ customers trust us</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map(t => (
-              <div key={t.name} className="card-hover" style={{ background: "white", borderRadius: 18, padding: 28, border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.04)", position: "relative" }}>
-                <div style={{ position: "absolute", top: 20, right: 24, fontSize: 40, color: "#e8ebf8", fontWeight: 900, lineHeight: 1 }}>"</div>
-                <div style={{ display: "flex", gap: 2, marginBottom: 14 }}>
-                  {Array(t.rating).fill(0).map((_, i) => <span key={i} className="star">★</span>)}
-                </div>
-                <p style={{ color: "#374151", fontSize: 13, lineHeight: 1.75, marginBottom: 20 }}>{t.text}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, borderTop: "1px solid #F3F4F6", paddingTop: 16 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: "linear-gradient(135deg, #0D1B2A, #273b84)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 900, fontSize: 16, flexShrink: 0 }}>{t.initial}</div>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 13, color: "#0D1B2A" }}>{t.name}</div>
-                    <div style={{ color: "#9CA3AF", fontSize: 11 }}>{t.role}, {t.city}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── MILESTONES VIDEO ── */}
-      {mounted && (
-        <section style={{ background: "#0D1B2A", overflow: "hidden", position: "relative" }}>
-          <video autoPlay muted loop playsInline className="hidden md:block" style={{ width: "100%", maxHeight: 620, objectFit: "cover", opacity: 0.55 }}>
-            <source src="/jp_milestones.mp4" type="video/mp4" />
-          </video>
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", padding: 24 }}>
-            <p className="section-label" style={{ color: "#7b8fd4" }}>Our Journey</p>
-            <h2 style={{ color: "white", fontWeight: 900, fontSize: 36, marginBottom: 12 }}>40 Years of Milestones</h2>
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 14, maxWidth: 400 }}>From our first project in 1984 to 40,000+ homes delivered — a legacy of excellence.</p>
-          </div>
-        </section>
-      )}
-
-      {/* ── NEWS & ARTICLES ── */}
-      <section style={{ background: "#F8FAFB", padding: "80px 0" }}>
-        <div className="max-w-6xl mx-auto px-6">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 40, flexWrap: "wrap", gap: 16 }}>
-            <div>
-              <p className="section-label">Insights</p>
-              <h2 className="section-title">Our Latest Article And<br />News For You</h2>
+              )}
             </div>
-            <Link href="/blog" style={{ color: "#273b84", fontWeight: 800, fontSize: 13, textDecoration: "none", border: "2px solid #273b84", borderRadius: 10, padding: "10px 20px" }}>All Articles →</Link>
+          )}
+
+          {error && (
+            <div className="mb-2 px-3 py-2 rounded-xl text-xs" style={{ background: `${RED}22`, color: "#fff", border: `1px solid ${RED}` }}>
+              {error}
+            </div>
+          )}
+
+          {/* Composer */}
+          <div className="rounded-2xl p-2 flex items-end gap-2" style={{ background: "rgba(255,255,255,0.06)", border: `1.5px solid ${GOLD}66`, boxShadow: `0 8px 30px rgba(0,0,0,0.3), 0 0 0 1px ${GOLD}22 inset` }}>
+            <textarea
+              ref={taRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKey}
+              rows={1}
+              placeholder="Tell me what you're looking for — budget, BHK, facing, EMI…"
+              className="flex-1 resize-none px-3 py-2 text-sm focus:outline-none bg-transparent placeholder:text-white/40"
+              style={{ maxHeight: "120px", color: "#fff" }}
+              disabled={sending}
+            />
+            <button
+              onClick={() => send(input)}
+              disabled={sending || !input.trim()}
+              className="px-4 py-2 rounded-xl text-sm font-black disabled:opacity-40 transition-transform hover:-translate-y-0.5"
+              style={{ background: `linear-gradient(135deg, ${GOLD}, ${GOLD_SOFT})`, color: NAVY }}
+            >
+              {sending ? "…" : "Send"}
+            </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {NEWS.map(n => (
-              <div key={n.videoId} className="card-hover" style={{ background: "white", borderRadius: 18, overflow: "hidden", border: "1px solid #F0F0F0", boxShadow: "0 4px 16px rgba(0,0,0,0.05)" }}>
-                {/* ── FIX 2: discriminator = videoId throughout ── */}
-                <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", background: "#000", overflow: "hidden" }}>
-                  {playing === n.videoId ? (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${n.videoId}?autoplay=1&rel=0`}
-                      allow="autoplay; encrypted-media"
-                      allowFullScreen
-                      style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }}
-                    />
-                  ) : (
-                    <>
-                      <img
-                        src={`https://img.youtube.com/vi/${n.videoId}/hqdefault.jpg`}
-                        alt={n.title}
-                        style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                      <div onClick={() => setPlaying(n.videoId)} style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.18)", cursor: "pointer" }}>
-                        <div style={{ width: 52, height: 52, background: "rgba(255,255,255,0.92)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 16px rgba(0,0,0,0.25)" }}>
-                          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><polygon points="5,2 16,9 5,16" fill="#273b84" /></svg>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <div style={{ padding: "18px 20px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                    <span className="badge badge-brand">{n.tag}</span>
-                    <span style={{ color: "#9CA3AF", fontSize: 11 }}>{n.date}</span>
-                  </div>
-                  <h3 style={{ fontWeight: 800, fontSize: 14, color: "#0D1B2A", lineHeight: 1.5, marginBottom: 12 }}>{n.title}</h3>
-                  <span onClick={() => setPlaying(n.videoId)} style={{ color: "#273b84", fontSize: 12, fontWeight: 800, cursor: "pointer" }}>Watch now →</span>
-                </div>
-              </div>
-            ))}
+
+          {/* Footer line: model badge + reset */}
+          <div className="mt-3 flex items-center justify-between text-xs" style={{ color: "#9CA0B5" }}>
+            <div className="flex items-center gap-2">
+              {badge && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-bold" style={{ background: badge.bg, color: badge.color }}>
+                  {badge.label}
+                </span>
+              )}
+              {lastModel?.escalated && <span style={{ color: RED }}>· escalated for complexity</span>}
+            </div>
+            {messages.length > 0 && (
+              <button
+                onClick={() => { setMessages([]); setUnits([]); setLastModel(null); setError(""); }}
+                className="font-bold"
+                style={{ color: GOLD }}
+              >
+                New chat
+              </button>
+            )}
           </div>
         </div>
-      </section>
-
-      {/* ── CTA ── */}
-      <section style={{ background: "linear-gradient(135deg, #273b84, #1a2a6c)", padding: "72px 24px", textAlign: "center" }}>
-        <div className="max-w-2xl mx-auto">
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, fontWeight: 800, letterSpacing: 3, textTransform: "uppercase", marginBottom: 14 }}>Take The Next Step</p>
-          <h2 style={{ color: "white", fontWeight: 900, fontSize: 36, marginBottom: 12, lineHeight: 1.2 }}>Ready to Find Your<br />Dream Home?</h2>
-          <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, marginBottom: 32 }}>Talk to our experts today. Site visits available 7 days a week. No spam — ever.</p>
-          <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-            <Link href="/contact" style={{ background: "white", color: "#273b84", borderRadius: 12, padding: "14px 32px", fontWeight: 900, fontSize: 14, textDecoration: "none", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>🗓 Schedule a Visit</Link>
-            <Link href="/projects" style={{ background: "rgba(255,255,255,0.12)", color: "white", borderRadius: 12, padding: "14px 32px", fontWeight: 800, fontSize: 14, textDecoration: "none", border: "2px solid rgba(255,255,255,0.3)" }}>Browse Projects →</Link>
-          </div>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, marginTop: 20 }}>📞 Our team will reach out within 24 hours.</p>
-        </div>
-      </section>
-
-      <Footer />
-      <ProactiveAssistant immediate />
-    </main>
+      </div>
+    </div>
   );
 }
