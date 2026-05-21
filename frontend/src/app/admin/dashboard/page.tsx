@@ -33,8 +33,17 @@ export default function AdminDashboard() {
   const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState("");
   const [pwSaving, setPwSaving] = useState(false);
+  const [anth, setAnth] = useState<any>(null);
+  const [anthLoading, setAnthLoading] = useState(false);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); checkAnthropic(); }, []);
+
+  async function checkAnthropic() {
+    setAnthLoading(true);
+    try { setAnth(await apiFetch("/health/anthropic")); }
+    catch (e: any) { setAnth({ status: "error", error: e.message || "Request failed" }); }
+    setAnthLoading(false);
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -191,16 +200,45 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl p-5" style={{ border: "1px solid #E2F1FC", boxShadow: "0 2px 10px rgba(42,56,135,0.06)" }}>
-          <h2 className="font-black text-sm mb-4" style={{ color: "#262262" }}>Quick Access</h2>
-          <div className="space-y-2">
-            {QUICK.map(q => (
-              <Link key={q.href} href={q.href} className="flex items-center gap-3 p-3 rounded-xl transition-all hover:-translate-y-0.5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
-                <span className="text-lg w-7 text-center">{q.icon}</span>
-                <div><p className="font-bold text-sm" style={{ color: "#2A3887" }}>{q.label}</p><p className="text-xs" style={{ color: "#999" }}>{q.desc}</p></div>
-                <span className="ml-auto text-xs" style={{ color: "#ccc" }}>→</span>
-              </Link>
-            ))}
+        <div className="space-y-5">
+          <div className="bg-white rounded-2xl p-5" style={{ border: "1px solid #E2F1FC", boxShadow: "0 2px 10px rgba(42,56,135,0.06)" }}>
+            <h2 className="font-black text-sm mb-4" style={{ color: "#262262" }}>Quick Access</h2>
+            <div className="space-y-2">
+              {QUICK.map(q => (
+                <Link key={q.href} href={q.href} className="flex items-center gap-3 p-3 rounded-xl transition-all hover:-translate-y-0.5" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
+                  <span className="text-lg w-7 text-center">{q.icon}</span>
+                  <div><p className="font-bold text-sm" style={{ color: "#2A3887" }}>{q.label}</p><p className="text-xs" style={{ color: "#999" }}>{q.desc}</p></div>
+                  <span className="ml-auto text-xs" style={{ color: "#ccc" }}>→</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5" style={{ border: "1px solid #E2F1FC", boxShadow: "0 2px 10px rgba(42,56,135,0.06)" }}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-black text-sm" style={{ color: "#262262" }}>Integrations</h2>
+              <button onClick={checkAnthropic} disabled={anthLoading} className="text-xs font-bold disabled:opacity-50" style={{ color: "#29A9DF" }}>
+                {anthLoading ? "Testing…" : "↻ Test"}
+              </button>
+            </div>
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "#F8F9FB", border: "1px solid #E2F1FC" }}>
+              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{
+                background: anth?.status === "ok" ? "#16A34A" : anth?.status === "error" ? "#DC2626" : "#ccc"
+              }} />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-xs" style={{ color: "#2A3887" }}>Claude API</p>
+                <p className="text-xs truncate" style={{ color: "#999" }}>
+                  {anth?.status === "ok" ? `${anth.model} · "${anth.reply}"`
+                    : anth?.status === "error" ? (anth.error || "Failed")
+                    : "Not checked"}
+                </p>
+              </div>
+              {anth?.status === "ok" && anth.usage && (
+                <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "#DCFCE7", color: "#16A34A" }}>
+                  {anth.usage.input_tokens}/{anth.usage.output_tokens} tok
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

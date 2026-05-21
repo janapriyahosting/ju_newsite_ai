@@ -11,7 +11,7 @@ module.exports = {
     {
       name: 'janapriya-web',
       script: 'npm',
-      args: 'run dev -- --port 3000 -H 0.0.0.0',
+      args: 'run start -- --port 3000 -H 0.0.0.0',
       cwd: '/home/jpuser/projects/janapriyaupscale/frontend',
     }
   ]

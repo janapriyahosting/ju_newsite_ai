@@ -14,7 +14,19 @@ interface SessionRow {
   utm_medium: string | null;
   utm_campaign: string | null;
   latest_page: string | null;
+  models_used: string[];
   preview: string;
+}
+
+function modelChip(provider: string): { label: string; color: string } {
+  // Matches the homepage chat badge colors so admin and visitor views agree.
+  if (provider.startsWith('claude:sonnet')) return { label: 'Sonnet', color: '#7C3AED' };
+  if (provider.startsWith('claude:haiku'))  return { label: 'Haiku',  color: '#16A34A' };
+  if (provider.startsWith('claude:'))       return { label: provider.slice(7) || 'Claude', color: '#16A34A' };
+  if (provider === 'groq')                  return { label: 'Groq',   color: '#D97706' };
+  if (provider.startsWith('gemini:gemma'))  return { label: 'Gemma',  color: '#0891B2' };
+  if (provider.startsWith('gemini:'))       return { label: 'Gemini', color: '#2A3887' };
+  return { label: provider, color: '#555' };
 }
 
 interface TranscriptRow {
@@ -128,14 +140,14 @@ export default function AssistantChatsPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
-              {['Preview', 'Turns', 'Page', 'UTM', 'IP', 'Last activity'].map(h => (
+              {['Preview', 'Turns', 'Model', 'Page', 'UTM', 'IP', 'Last activity'].map(h => (
                 <th key={h} className="text-left text-gray-500 font-medium px-4 py-3">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan={6} className="text-center text-gray-500 py-10">Loading…</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan={6} className="text-center text-gray-500 py-10">No chats yet — visitors' conversations will show up here.</td></tr>}
+            {loading && <tr><td colSpan={7} className="text-center text-gray-500 py-10">Loading…</td></tr>}
+            {!loading && items.length === 0 && <tr><td colSpan={7} className="text-center text-gray-500 py-10">No chats yet — visitors' conversations will show up here.</td></tr>}
             {items.map(s => (
               <tr key={s.session_id} onClick={() => loadDetail(s.session_id)}
                 className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
@@ -144,6 +156,16 @@ export default function AssistantChatsPage() {
                   <p className="text-[11px] text-gray-400 mt-0.5">Visitor {s.visitor_id?.slice(-8) || '—'} · Session {s.session_id.slice(-8)}</p>
                 </td>
                 <td className="px-4 py-3 text-gray-700">{s.turn_count}</td>
+                <td className="px-4 py-3">
+                  {s.models_used && s.models_used.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {s.models_used.map(m => {
+                        const c = modelChip(m);
+                        return <Badge key={m} color={c.color}>{c.label}</Badge>;
+                      })}
+                    </div>
+                  ) : '—'}
+                </td>
                 <td className="px-4 py-3">{s.latest_page ? <Badge color="#273b84">{s.latest_page}</Badge> : '—'}</td>
                 <td className="px-4 py-3 text-[11px] text-gray-500">
                   {s.utm_source ? `${s.utm_source}${s.utm_medium ? ' / ' + s.utm_medium : ''}` : 'direct'}

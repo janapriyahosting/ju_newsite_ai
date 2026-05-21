@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from backend.app.core.database import get_db
 from backend.app.core.config import settings
+from backend.app.api.v1.routers.admin_auth import verify_admin_token
 import redis.asyncio as aioredis
 
 router = APIRouter(prefix="/health", tags=["health"])
@@ -60,6 +61,44 @@ async def cache_health():
             "cache": "valkey",
             "connected": False,
             "error": str(e),
+        }
+
+
+@router.get("/anthropic")
+async def anthropic_health(admin=Depends(verify_admin_token)):
+    if not settings.ANTHROPIC_API_KEY:
+        return {
+            "status": "error",
+            "provider": "anthropic",
+            "connected": False,
+            "error": "ANTHROPIC_API_KEY not set",
+        }
+    try:
+        from anthropic import AsyncAnthropic
+        client = AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY, timeout=10.0)
+        resp = await client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=8,
+            messages=[{"role": "user", "content": "Reply with exactly: pong"}],
+        )
+        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+        return {
+            "status": "ok",
+            "provider": "anthropic",
+            "connected": True,
+            "model": resp.model,
+            "reply": text,
+            "usage": {
+                "input_tokens": resp.usage.input_tokens,
+                "output_tokens": resp.usage.output_tokens,
+            },
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "provider": "anthropic",
+            "connected": False,
+            "error": f"{type(e).__name__}: {e}",
         }
 
 
