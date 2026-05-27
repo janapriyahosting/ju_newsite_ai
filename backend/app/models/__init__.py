@@ -13,9 +13,10 @@ from backend.app.models.session_log import SessionLog
 from backend.app.models.home_loan_request import HomeLoanRequest
 from backend.app.models.assistant_chat_log import AssistantChatLog
 from backend.app.models.assistant_content import AssistantContent
+from backend.app.models.site_page import SitePage
 
 __all__ = [
     "Project", "Tower", "Unit", "Customer", "Lead", "LeadActivity",
     "SiteVisit", "CartItem", "Booking", "Coupon", "SearchLog", "SessionLog",
-    "HomeLoanRequest", "AssistantChatLog", "AssistantContent",
+    "HomeLoanRequest", "AssistantChatLog", "AssistantContent", "SitePage",
 ]

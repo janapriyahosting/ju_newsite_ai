@@ -184,6 +184,7 @@ class AssistantResponse(BaseModel):
     action: Optional[AssistantAction] = None
     model_used: Optional[str] = None     # "claude:haiku" | "claude:sonnet" | "groq" | "gemini:..." | None
     escalated: bool = False              # True when Haiku handed off to Sonnet
+    affordability: Optional[dict] = None # {monthly_emi, eligible_loan, suggested_property_price, down_payment, ...} when Claude renders an EMI card
 
 class FlowCreate(BaseModel):
     name: str
@@ -327,6 +328,108 @@ _MEDIA_KEYWORDS = ("video", "walkthrough", "walk through", "walk-through",
 _CALLBACK_KEYWORDS = ("callback", "call back", "call-back", "call me", "arrange a call",
                       "schedule a call", "phone me", "ring me", "give me a call")
 _RISEUP_KEYWORDS = ("riseup", "rise up", "80%", "payment plan", "20% at possession", "final demand")
+
+
+_NUMBER_WORDS = {
+    "lakh": 100_000, "lakhs": 100_000, "lac": 100_000, "lacs": 100_000, "l": 100_000,
+    "crore": 10_000_000, "crores": 10_000_000, "cr": 10_000_000,
+    "thousand": 1_000, "k": 1_000,
+}
+
+
+def _parse_inr(token: str, suffix: str = "") -> Optional[float]:
+    """Parse '1.5', '50,000', '60k', '1.5 lakh' style amounts into rupees."""
+    s = token.replace(",", "").replace("₹", "").strip().lower()
+    suf = suffix.strip().lower()
+    try:
+        n = float(s)
+    except ValueError:
+        return None
+    mult = _NUMBER_WORDS.get(suf, 1)
+    return n * mult
+
+
+_INCOME_PATTERNS = [
+    re.compile(r"(?:my\s+)?(?:monthly\s+)?(?:income|salary|earn(?:ing)?s?|take\s*home)\s*(?:is|of|=|:)?\s*[₹]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr|k|thousand|l)?\b", re.IGNORECASE),
+    re.compile(r"(?:i\s+)?(?:make|earn)\s+[₹]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr|k|thousand|l)?\s+(?:per|a)?\s*month", re.IGNORECASE),
+    re.compile(r"[₹]\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr|k|thousand|l)?\s+(?:salary|income|per\s+month|monthly)", re.IGNORECASE),
+]
+
+_EMI_PATTERNS = [
+    # "EMI of 60000", "EMI ₹60k", "EMI is 1.5 lakh"
+    re.compile(r"\bemi\b[^.\n]*?[₹]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr|k|thousand|l)?", re.IGNORECASE),
+    # "60000 EMI", "₹50k EMI per month"
+    re.compile(r"[₹]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr|k|thousand|l)?\s*(?:as\s+)?\bemi\b", re.IGNORECASE),
+    # "comfortably pay 60000 per month" without the word EMI
+    re.compile(r"(?:comfortably|comfortable|afford(?:able)?)\s*(?:do|pay|with)?\s*[₹]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr|k|thousand|l)?\s+(?:per|a)?\s*month", re.IGNORECASE),
+]
+
+_PRICE_PATTERNS = [
+    re.compile(r"(?:budget|looking\s+at|target|around|upto|up\s+to|under|below|max(?:imum)?)\s+[₹]?\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr|k|thousand|l)?\b", re.IGNORECASE),
+    re.compile(r"[₹]\s*([0-9]+(?:[.,][0-9]+)?)\s*(lakh|lakhs|lac|lacs|crore|crores|cr)\s+(?:home|house|flat|apartment|property|budget)", re.IGNORECASE),
+]
+
+_AFFORD_TRIGGER_KEYWORDS = (
+    "afford", "eligibility", "eligible", "loan", "emi", "down payment", "downpayment",
+    "down-payment", "income", "salary", "earn", "what can i", "how much can i",
+    "what price", "what property", "what budget",
+)
+
+
+def _detect_affordability(user_msg: str) -> Optional[dict]:
+    """Deterministic detector for affordability/EMI signals. Returns the
+    show_affordability payload (matches what Claude's tool produces) or None.
+    Lets the visual card render even when the Claude tool path is unavailable
+    (e.g. provider 529s, cascade falls to Groq/Gemini)."""
+    if not user_msg:
+        return None
+    text = user_msg.lower()
+
+    # Avoid firing on incidental number talk — there must be at least one
+    # affordability-related signal word in the message.
+    if not any(k in text for k in _AFFORD_TRIGGER_KEYWORDS):
+        return None
+
+    def _first_match(patterns: list[re.Pattern], minimum: float, maximum: float) -> Optional[float]:
+        for pat in patterns:
+            mt = pat.search(user_msg)
+            if not mt:
+                continue
+            val = _parse_inr(mt.group(1), mt.group(2) or "")
+            if val is None:
+                continue
+            # If no unit suffix and the bare number is small, assume lakhs for
+            # income/price (e.g. "income is 2" → ₹2 lakh, "budget 80" → ₹80 lakh).
+            if not (mt.group(2) or "").strip() and val < 1000:
+                val = val * 100_000
+            if minimum <= val <= maximum:
+                return val
+        return None
+
+    monthly_income = _first_match(_INCOME_PATTERNS, 10_000, 50_000_000)
+    monthly_emi = _first_match(_EMI_PATTERNS, 1_000, 5_000_000)
+    target_price = _first_match(_PRICE_PATTERNS, 100_000, 1_000_000_000)
+
+    if monthly_income is None and monthly_emi is None:
+        return None
+
+    # Delegate the math to the same helper Claude's tool calls.
+    try:
+        from backend.app.services.claude_chat import _do_show_affordability
+        args = {}
+        if monthly_income is not None:
+            args["monthly_income"] = int(monthly_income)
+        if monthly_emi is not None:
+            args["monthly_emi_budget"] = int(monthly_emi)
+        if target_price is not None:
+            args["target_property_price"] = int(target_price)
+        payload = _do_show_affordability(args)
+        if "error" in payload:
+            return None
+        return payload
+    except Exception as e:
+        print(f"[Assistant] _detect_affordability fallback failed: {type(e).__name__}: {e}")
+        return None
 
 
 def _detect_intent(user_msg: str) -> str:
@@ -561,30 +664,54 @@ async def _build_site_context(db: AsyncSession) -> str:
         )
         facing_counts = {(f or "Other").strip(): int(n) for f, n in facing_rows.all() if f}
 
-        # Breakdown of available units by unit_type (e.g. 2BHK, 3BHK)
+        # Breakdown of available units by unit_type (e.g. 2BHK, 3BHK) with
+        # built-up area range — fed to the LLM so it never has to guess sqft.
         type_rows = await db.execute(
-            select(Unit.unit_type, func.count())
+            select(
+                Unit.unit_type,
+                func.count(),
+                func.min(Unit.area_sqft),
+                func.max(Unit.area_sqft),
+            )
             .join(Tower, Unit.tower_id == Tower.id)
             .where(Tower.project_id == p.id, Unit.status == "available", Unit.unit_type.isnot(None))
             .group_by(Unit.unit_type)
         )
-        type_counts = {(t or "").strip(): int(n) for t, n in type_rows.all() if t}
+        type_info: dict[str, tuple[int, Optional[float], Optional[float]]] = {
+            (t or "").strip(): (int(n), float(mn) if mn is not None else None, float(mx) if mx is not None else None)
+            for t, n, mn, mx in type_rows.all() if t
+        }
 
         bits = [f"- {p.name}"]
         loc = ", ".join(x for x in [p.location, p.city] if x)
         if loc:
             bits.append(f"({loc})")
+        # Availability is exposed as a flag only — never as a count. Customers
+        # should not see "55 units" or similar inventory numbers.
         if total:
-            bits.append(f"{total} units, {available or 0} available")
+            if available and available > 0:
+                bits.append("inventory available")
+            else:
+                bits.append("currently sold out")
         if min_p:
             price_range = _fmt(float(min_p)) if min_p == max_p else f"{_fmt(float(min_p))}–{_fmt(float(max_p))}"
             bits.append(f"price {price_range}")
-        if type_counts:
-            bhk_desc = ", ".join(f"{k}:{v}" for k, v in sorted(type_counts.items()))
-            bits.append(f"available by type [{bhk_desc}]")
+        if type_info:
+            # No counts — just BHK type and size range, so the bot can describe
+            # configurations without leaking how many units are left.
+            def _t(k: str, v: tuple[int, Optional[float], Optional[float]]) -> str:
+                _n, mn, mx = v
+                if mn is None or mx is None:
+                    return k
+                if mn == mx:
+                    return f"{k} ({int(mn)} sqft)"
+                return f"{k} ({int(mn)}–{int(mx)} sqft)"
+            bhk_desc = ", ".join(_t(k, v) for k, v in sorted(type_info.items()))
+            bits.append(f"configurations: [{bhk_desc}]")
         if facing_counts:
-            facing_desc = ", ".join(f"{k}:{v}" for k, v in sorted(facing_counts.items()))
-            bits.append(f"available by facing [{facing_desc}]")
+            # Facing directions only, no counts.
+            facing_desc = ", ".join(sorted(facing_counts.keys()))
+            bits.append(f"facings: [{facing_desc}]")
         if min_floor is not None and max_floor is not None:
             if min_floor == max_floor:
                 bits.append(f"floor {min_floor}")
@@ -604,7 +731,39 @@ async def _build_site_context(db: AsyncSession) -> str:
             "rule above contradicts them):\n"
             + "\n".join(f"- {f}" for f in facts_site_wide)
         )
+
+    pages_index = await _build_pages_index(db)
+    if pages_index:
+        body += "\n\n" + pages_index
     return body
+
+
+async def _build_pages_index(db: AsyncSession) -> str:
+    """Index of crawled website pages for the system prompt. Lists each active
+    page's path + title + one-line summary so the model knows what exists and
+    can call the read_page tool with an exact path for the full content.
+    Populated by the site crawler (scripts/crawl_site.py); degrades to empty
+    if the table is missing or unseeded."""
+    try:
+        rows = (await db.execute(sa_text(
+            "SELECT url, title, summary FROM site_pages "
+            "WHERE is_active = TRUE ORDER BY url"
+        ))).mappings().all()
+    except Exception as e:
+        print(f"[Assistant] site_pages unavailable: {type(e).__name__}: {e}")
+        return ""
+    if not rows:
+        return ""
+    lines = [
+        "WEBSITE PAGES (call the read_page tool with the exact path to read a "
+        "page's full content; use for company/technology/contact/portfolio "
+        "questions, NOT for finding units):",
+    ]
+    for r in rows:
+        title = (r["title"] or "").split("—")[0].strip() or r["url"]
+        summary = re.sub(r"\s+", " ", (r["summary"] or "")).strip()
+        lines.append(f"- {r['url']} — {title}: {summary}")
+    return "\n".join(lines)
 
 
 async def _find_brochure(query: str, db: AsyncSession) -> Optional[dict]:
@@ -1449,24 +1608,32 @@ async def assistant_chat(data: AssistantRequest, request: Request, db: AsyncSess
 
 Visitor context: searched="{search_query}", results={results_count}, budget={budget_str}
 
-VOICE: Editorial, warm, confident. Like a trusted architect-friend. Never robotic or salesy. 2-3 sentences prose max. End every response with ONE open, evocative question.
+VOICE: Editorial, warm, confident. Like a trusted architect-friend. Never robotic or salesy. Default to 2-3 sentences of prose. When the visitor asks for options, features, comparisons, or step-by-step info, use a short markdown bulleted list (3-5 items, each one line) — but only when a list genuinely helps; never bullet a single thought. End every response with ONE open, evocative question.
 
 CONVERSATION FLOW:
 1. LIFE — who they are, family, rhythms, what home means to them
 2. SPACE — BHK, floor, light, views, amenities they'd genuinely use
 3. BUDGET — "What monthly EMI would feel comfortable for you?"
-4. LOAN INSIGHT — if income shared: eligible_loan ≈ monthly_income × 55 × 0.45; property ≈ eligible_loan ÷ 0.80. Share warmly, as a number that opens possibilities.
+4. LOAN INSIGHT — when the visitor explicitly states ANY monetary signal (monthly income, EMI budget, target property price) OR asks "what can I afford / what's my eligibility / how much loan / what price range fits", you MUST call show_affordability IMMEDIATELY on this same turn, even if it's the first message. Do NOT defer to qualify first. The card answers their direct money question; you can ask ONE follow-up (BHK or location) AFTER the card renders, not before. DO NOT mention the tool by name, DO NOT write "I'll use / let me run / calling the X tool / wait while I" or any meta-language about how the card is produced. Just write ONE warm prose sentence framing the headline ("With ₹X EMI you can comfortably look at homes around ₹Y") plus ONE short follow-up question (BHK or location preference). Total prose under 2 sentences. The card visualizes eligible loan, EMI, down payment, and property price — never repeat those numbers in text.
 5. MATCH — use the search_units tool to pull live inventory, then present ONE curated recommendation (occasionally two). Never dump a list.
 
 STOP qualifying and CALL search_units when the visitor uses a push-forward phrase: "ok", "show me", "show me options", "sure", "yes please", "go ahead", "let's see", "what do you have". Use whatever criteria you've gathered from earlier turns — visitor messages carry their stated budget, BHK, facing, location, family size, income. NEVER ask another qualifying question after a push-forward signal. Hard ceiling: by the THIRD qualifying turn, call search_units regardless of how much you've learned.
 
 JANAPRIYA CONTEXT for market comparisons (price ranges are per-sqft; market ranges are competitive band, NOT a developer comparison — never name competitors):
 - First Light (Bachupally): Janapriya ~₹6,500/sqft. Forest view USP, limited edition.
-- Bahiti (Chanda Nagar): Janapriya ~₹7,400/sqft. Premium, branded developer.
-- Nile Valley (Chanda Nagar): Janapriya ~₹5,800/sqft. Strong value — 25 acres, 45,000 sqft clubhouse.
+- Bahiti (Madinaguda): Janapriya ~₹7,400/sqft. Premium, branded developer.
+- Nile Valley (Madinaguda): Janapriya ~₹5,800/sqft. Strong value — 25 acres, 45,000 sqft clubhouse.
+- Nubia (Chanda Nagar): Janapriya ~₹6,800/sqft. Western corridor, well-connected.
 - Sitara / Lakefront (Sainikpuri): Janapriya ~₹4,500–5,200/sqft. Excellent value, Ready to Move.
-- Y Junction (Kukatpally): Janapriya ~₹7,200/sqft. Heart of city, premium justified.
 - Altair (Sainikpuri): Upcoming, price on enquiry.
+- Elysium (Batasingaram): Eastern Hyderabad, near ORR / Pharma City corridor.
+
+LOCATION & IT-HUB PROXIMITY (use this when the visitor asks about commute, IT corridor, HITEC City, Gachibowli, Financial District, or work proximity):
+- Near HITEC City / Gachibowli / Financial District (Western IT corridor) — best fits: Bahiti (Madinaguda), Nile Valley (Madinaguda), First Light (Bachupally), Nubia (Chanda Nagar). All sit on the western belt with direct road/metro connectivity to HITEC City (typically 15–30 min by car depending on traffic).
+- Near North Hyderabad / Secunderabad / ECIL / Uppal — best fits: Sitara, Lakefront, Altair (all in Sainikpuri). These are NOT close to HITEC City; commute to the IT corridor is 45–75 min and not recommended for daily IT workers.
+- Near Pharma City / ORR-East / LB Nagar — best fits: Elysium (Batasingaram). Suits Pharma-corridor workers, not IT-corridor workers.
+- NEVER recommend Sainikpuri projects (Sitara/Lakefront/Altair) to a visitor whose work is in HITEC City, Gachibowli, or Financial District — the commute is genuinely difficult and would be a bad fit.
+- When the visitor asks "which projects are near X" or "what are my options near X", list ALL matching projects from the proximity group above as a markdown bulleted list (one bullet per project with its location in parentheses). Do not pick a "top 2" or pre-curate — the visitor wants to see every option that fits. Only after listing them, you may add a one-sentence note on which suits a specific need if they've already shared one.
 
 If the visitor asks about market rates or area comparisons, frame Janapriya's pricing honestly: where competitive, say so; where premium, explain the value — 40-year legacy, RERA-certified, transparent pricing, quality construction (no beam protrusions), large clubhouses, Janapriya Schools as a community anchor. Do not name competitors.
 
@@ -1477,10 +1644,11 @@ ALWAYS BE MOVING TOWARD A SITE VISIT — after a recommendation, invite them: "W
 STRICT GUARDRAILS — these override everything above:
 
 - ONLY use facts from SITE DATA, the RiseUp description, and the JANAPRIYA CONTEXT above. Never invent projects, prices, possession dates, amenities, or availability that aren't listed.
+- UNIT SIZES: use ONLY the sqft figures shown in SITE DATA's `available by type [...]` block. Never approximate, round, or guess sizes. If SITE DATA shows `3 BHK:55 (2075 sqft)`, the only correct answer is "2075 sqft" — do not say "1750–2000 sqft" or any other range. If a project's sqft is not shown, say "I don't have the exact sqft on hand — I can have a senior advisor share it."
 - Never name, compare to, or recommend other developers, builders, or competitor properties. If asked about competitors, alternatives, reviews, or ratings, reply: "I can only share information about Janapriya Upscale's own projects. Would you like me to connect you with our sales team?"
 - If the visitor asks for a detail we don't have, say so and offer to have a senior advisor call them.
-- The `available by type` and `available by facing` counts in SITE DATA are INDEPENDENT — never multiply or intersect them.
-- No markdown, no bullet lists in the reply text — prose only. (RiseUp / EMI math may run to 5-6 short sentences when explicitly asked.)
+- INVENTORY COUNTS ARE CONFIDENTIAL: never tell the visitor how many units are available, sold, or remaining at any project. Do not say "55 units", "26 available 3BHKs", "only 3 left", "limited inventory of N", or any specific number. If asked "how many units are available," reply: "We have inventory available — would you like me to pull up what fits your preferences?" Use SITE DATA's "configurations" and "facings" lists to describe options (BHK types, sizes, facing directions) without ever quoting counts.
+- Markdown is allowed: use **bold** for key terms (price, BHK, project name) and short `-` bullet lists for options/features/steps. Default to prose for emotional or single-thought replies; reach for bullets only when the visitor is asking for multiple items at once. Never bullet a one-line answer, and never use headings.
 - End every reply with exactly one open, evocative question."""
 
     recent_msgs = data.messages[-6:]
@@ -1490,6 +1658,7 @@ STRICT GUARDRAILS — these override everything above:
     provider_used = None
     claude_units: list[dict] = []
     claude_escalated = False
+    claude_affordability: Optional[dict] = None
     if settings.ANTHROPIC_API_KEY:
         try:
             from backend.app.services.claude_chat import run_claude_turn
@@ -1498,6 +1667,7 @@ STRICT GUARDRAILS — these override everything above:
                 reply = result["text"]
                 claude_units = result.get("suggested_units") or []
                 claude_escalated = bool(result.get("escalated"))
+                claude_affordability = result.get("affordability")
                 # "claude:haiku" or "claude:sonnet" — match the existing
                 # provider_used naming (e.g. "gemini:gemini-2.0-flash").
                 model = result.get("model_used", "")
@@ -1591,6 +1761,11 @@ STRICT GUARDRAILS — these override everything above:
     # we only fall back to `suggested` if Claude didn't find anything.
     final_units = claude_units if claude_units else suggested
 
+    # Affordability card: prefer Claude's tool payload (richer math); else
+    # run a deterministic detector so the card still renders when the cascade
+    # falls through to Groq/Gemini, which don't have tool-use access.
+    final_affordability = claude_affordability or _detect_affordability(last_user_msg)
+
     return AssistantResponse(
         reply=reply,
         suggested_units=final_units,
@@ -1604,6 +1779,7 @@ STRICT GUARDRAILS — these override everything above:
         action=action,
         model_used=provider_used,
         escalated=claude_escalated,
+        affordability=final_affordability,
     )
 
 
