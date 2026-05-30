@@ -84,6 +84,28 @@ Return only the JSON object, nothing else."""
                 text = text[4:]
         result = json.loads(text.strip())
 
+        # Strip placeholder/sentinel values. Groq (llama 3.1 8B) often emits the
+        # full JSON template with "Any" for unspecified strings, 0 for unspecified
+        # numerics, and absurdly large ceilings (e.g. max_price=2e12) instead of
+        # omitting fields. Without this, "above 1cr" gets unit_type="Any" and
+        # facing="Any" attached, which produce ilike '%Any%' filters and zero
+        # the result set.
+        _string_fields = ("unit_type", "facing")
+        for f in _string_fields:
+            v = result.get(f)
+            if isinstance(v, str) and v.strip().lower() in ("", "any", "none", "null", "n/a"):
+                result.pop(f, None)
+        # Numeric bound fields — 0 means "not specified" for all of these.
+        for f in ("bedrooms", "min_price", "max_price", "min_area", "max_area",
+                  "max_down_payment", "max_emi", "floor_min", "floor_max"):
+            if result.get(f) in (0, "0", None):
+                result.pop(f, None)
+        # Drop sentinel ceilings Groq invents (e.g. max_price=2_000_000_000_000).
+        if isinstance(result.get("max_price"), (int, float)) and result["max_price"] > 10_000_000_000:
+            result.pop("max_price", None)
+        if isinstance(result.get("max_area"), (int, float)) and result["max_area"] > 1_000_000:
+            result.pop("max_area", None)
+
         # Drop generic unit_type values like "Flats", "Apartment", "Home" — the
         # DB stores specific types only ("1 BHK", "3BHK", "Villa", "Plot"), so
         # an `ilike '%Flats%'` filter would match nothing and zero out the

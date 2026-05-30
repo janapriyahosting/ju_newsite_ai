@@ -16,8 +16,8 @@ const STYLES = `
 .jl-root *{box-sizing:border-box;margin:0;padding:0}
 .jl-root{
   font-family:'Jost',sans-serif;
-  margin-left:22rem;
-  margin-right:22rem;
+  margin-left:12rem;
+  margin-right:12rem;
   background:#0E0C08;
   color:#F0E8D4;
   line-height:1.5;
@@ -44,8 +44,8 @@ const STYLES = `
    NAVBAR
 ══════════════════════════ */
 .jl-nav{
-  margin-left:22rem;
-  margin-right:22rem;
+  margin-left:12rem;
+  margin-right:12rem;
   position:fixed;top:0;left:0;right:0;z-index:200;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 2.5rem;height:56px;
@@ -408,6 +408,9 @@ function statusSpill(status: string): { cls: string; dot: string } {
   return { cls: "jl-spill-hold", dot: "jl-sd-s" };
 }
 
+/** Normalise strings for case/whitespace-insensitive comparison. */
+const norm = (s: string): string => (s || "").toLowerCase().trim();
+
 /**
  * Slug map — add an entry whenever a project gets its own internal page.
  * Key: project name (case-insensitive, trimmed). Value: Next.js route.
@@ -420,7 +423,7 @@ const PROJECT_SLUG_MAP: Record<string, string> = {
 /** Resolve a project's URL: internal page > API slug > Salesforce record. */
 function resolveProjectUrl(p: any): { href: string; internal: boolean } {
   // 1. Name-based slug map (takes priority)
-  const nameKey = (p.name || "").toLowerCase().trim();
+  const nameKey = norm(p.name);
   if (PROJECT_SLUG_MAP[nameKey]) {
     return { href: PROJECT_SLUG_MAP[nameKey], internal: true };
   }
@@ -437,6 +440,13 @@ function resolveProjectUrl(p: any): { href: string; internal: boolean } {
     href: `${SF_BASE}/lightning/r/${SF_OBJECT}/${p.id}/view`,
     internal: false,
   };
+}
+
+/** Resolve a unit's URL — slug-based internal route, mirroring projects pattern. */
+function resolveUnitUrl(u: any): { href: string; internal: boolean } {
+  // Prefer slug, fall back to id
+  const key = u.slug || u.id;
+  return { href: `/units/${key}`, internal: true };
 }
 
 /** Renders an internal <Link> or an external <a> depending on the project URL. */
@@ -484,7 +494,6 @@ function JlNavbar() {
   return (
     <nav className="jl-nav">
       <Link href="/" className="jl-nav-logo">
-        {/* FIX: className instead of class */}
         <img src="/logo-dark.png" alt="Janapriya Upscale" className="h-10 w-auto transition-all duration-300" />
       </Link>
       <div className="jl-nav-links">
@@ -596,7 +605,7 @@ function Ticker({ units }: { units: any[] }) {
           <span className="jl-ticker-item">
             {u.unit_number || u.name} · {u.unit_type || u.bhk_type || "Unit"} · {formatPrice(getPrice(u))}
             <span className="jl-ticker-badge">
-              {(u.status || "").toLowerCase() === "available" ? "Available" : u.status || "Listed"}
+              {norm(u.status) === "available" ? "Available" : u.status || "Listed"}
             </span>
           </span>
         </span>
@@ -644,7 +653,7 @@ function Metrics({ data }: {
 /* ══════════════════════════
    PROJECTS — dynamic from API, each card links to SF record
 ══════════════════════════ */
-function Projects({ projects }: { projects: any[] }) {
+function Projects({ projects, units }: { projects: any[]; units: any[] }) {
   if (projects.length === 0) {
     return (
       <div className="jl-projects">
@@ -677,8 +686,17 @@ function Projects({ projects }: { projects: any[] }) {
       </div>
       <div className="jl-proj-grid">
         {projects.map((p, idx) => {
-          const avail   = p.available_units ?? p.available_count ?? 0;
-          const total   = p.total_units ?? p.unit_count ?? 0;
+          // Calculate available/total from units if not provided by project API
+          const projectUnits = units.filter(u =>
+            norm(u.project_name) === norm(p.name) ||
+            u.project_id === p.id ||
+            u.project === p.id
+          );
+          const availFromUnits = projectUnits.filter(u => norm(u.status) === "available").length;
+          const totalFromUnits = projectUnits.length;
+
+          const avail   = p.available_units ?? p.available_count ?? availFromUnits;
+          const total   = p.total_units ?? p.unit_count ?? totalFromUnits;
           const barCls  = BAR_CLASSES[idx % BAR_CLASSES.length];
           const bigClr  = BIG_COLORS[idx % BIG_COLORS.length];
           const pillCls = PILL_CLASSES[idx % PILL_CLASSES.length];
@@ -692,7 +710,6 @@ function Projects({ projects }: { projects: any[] }) {
           const areaStr = floors ? `sq ft · ${floors}` : "sq ft";
 
           return (
-            /* Each project card links internally if a page exists, else opens SF record */
             <ProjectLink key={p.id} project={p} className="jl-proj-card">
               <div className={`jl-proj-bar ${barCls}`} />
               <div className="jl-proj-name">{p.name}</div>
@@ -720,13 +737,21 @@ function AvailSection({ units, projects }: { units: any[]; projects: any[] }) {
   const [filterStatus, setFilterStatus] = useState("All Status");
   const [filterBudget, setFilterBudget] = useState("Any Budget");
 
-  const unitTypes    = ["All Types", ...Array.from(new Set(units.map(u => u.unit_type || u.bhk_type).filter(Boolean)))];
-  const projectNames = ["All Projects", ...projects.map(p => p.name)];
+  // Build dropdowns from both projects array AND any project_names found in units
+  // (so projects show up even if missing from the projects API)
+  const projectNamesFromUnits = Array.from(new Set(units.map(u => u.project_name).filter(Boolean)));
+  const projectNamesFromProjects = projects.map(p => p.name).filter(Boolean);
+  const allProjectNames = Array.from(
+    new Set([...projectNamesFromProjects, ...projectNamesFromUnits])
+  );
+  const projectNames = ["All Projects", ...allProjectNames];
+
+  const unitTypes = ["All Types", ...Array.from(new Set(units.map(u => u.unit_type || u.bhk_type).filter(Boolean)))];
 
   const filtered = units.filter(u => {
-    if (filterProj   !== "All Projects" && (u.project_name || "") !== filterProj) return false;
-    if (filterType   !== "All Types"    && (u.unit_type || u.bhk_type || "") !== filterType) return false;
-    if (filterStatus !== "All Status"   && (u.status || "").toLowerCase() !== filterStatus.toLowerCase()) return false;
+    if (filterProj !== "All Projects" && norm(u.project_name) !== norm(filterProj)) return false;
+    if (filterType !== "All Types"    && norm(u.unit_type || u.bhk_type) !== norm(filterType)) return false;
+    if (filterStatus !== "All Status" && norm(u.status) !== norm(filterStatus)) return false;
     if (filterBudget !== "Any Budget") {
       const price = getPrice(u);
       if (filterBudget === "Under ₹1 Cr" && price >= 10000000) return false;
@@ -734,7 +759,7 @@ function AvailSection({ units, projects }: { units: any[]; projects: any[] }) {
       if (filterBudget === "Above ₹2 Cr" && price <= 20000000) return false;
     }
     return true;
-  }).slice(0, 20);
+  }).slice(0, 50);
 
   return (
     <div className="jl-avail">
@@ -799,8 +824,14 @@ function AvailSection({ units, projects }: { units: any[]; projects: any[] }) {
                 const updatedAt = u.updated_at
                   ? new Date(u.updated_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
                   : "—";
+                const { href: unitHref } = resolveUnitUrl(u);
                 return (
-                  <tr key={u.id}>
+                  <tr
+                    key={u.id}
+                    onClick={() => window.open(unitHref, "_blank", "noopener,noreferrer")}
+                    style={{ cursor: "pointer" }}
+                    title={`View unit ${u.unit_number || u.name || u.id} (opens in new tab)`}
+                  >
                     <td><span className="jl-unit-id">{u.unit_number || u.name || u.id}</span></td>
                     <td>{u.project_name || "—"}</td>
                     <td>{u.unit_type || u.bhk_type || "—"}</td>
@@ -832,7 +863,6 @@ function JlFooter() {
   return (
     <footer className="jl-footer">
       <Link href="/" className="jl-footer-logo">
-        {/* FIX: className instead of class */}
         <img src="/logo-dark.png" alt="Janapriya Upscale" className="h-10 w-auto transition-all duration-300" />
       </Link>
       <div className="jl-footer-mid">
@@ -853,37 +883,94 @@ function JlFooter() {
    PAGE — data fetching
 ══════════════════════════ */
 export default function JanapriyaHomePage() {
-  const [projects,     setProjects]     = useState<any[]>([]);
-  const [units,        setUnits]        = useState<any[]>([]);
-  const [metrics,      setMetrics]      = useState<any>(null);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [units,    setUnits]    = useState<any[]>([]);
+  const [metrics,  setMetrics]  = useState<any>(null);
 
   useEffect(() => {
+    /**
+     * Fetch ALL units via pagination — many APIs cap page_size at 100 or 200
+     * regardless of the value sent, so we loop until we've drained the list.
+     * This is what was causing Nilevalley / Sitara / Lakefront units to be missing.
+     */
+    async function fetchAllUnits(): Promise<any[]> {
+      const all: any[] = [];
+      const PAGE_SIZE = 200;
+      let page = 1;
+      // Safety cap: 20 pages × 200 = 4,000 units max
+      for (let i = 0; i < 20; i++) {
+        try {
+          const res = await fetch(`${API}/units?page=${page}&page_size=${PAGE_SIZE}`);
+          if (!res.ok) break;
+          const data = await res.json();
+          const items = Array.isArray(data) ? data : (data.items || data.results || []);
+          if (items.length === 0) break;
+          all.push(...items);
+          // If API returned fewer than page size, we're done
+          if (items.length < PAGE_SIZE) break;
+          page += 1;
+        } catch {
+          break;
+        }
+      }
+      return all;
+    }
+
     Promise.all([
       fetch(`${API}/projects`).then(r => r.json()).catch(() => []),
-      fetch(`${API}/units?page_size=200`).then(r => r.json()).catch(() => []),
+      fetchAllUnits(),
       fetch(`${API}/admin/cms/public/settings`).then(r => r.json()).catch(() => ({})),
       fetch(`${API}/analytics/summary`).then(r => r.json()).catch(() => null),
-    ]).then(([proj, unitsData, settings, analytics]) => {
-      const projArr  = Array.isArray(proj)      ? proj      : (proj?.items      || proj?.results || []);
-      const unitsArr = Array.isArray(unitsData) ? unitsData : (unitsData?.items || []);
-      setProjects(projArr);
-      setUnits(unitsArr);
+    ]).then(([proj, unitsArr, settings, analytics]) => {
+      const projArr = Array.isArray(proj) ? proj : (proj?.items || proj?.results || []);
 
-      const available     = unitsArr.filter((u: any) => (u.status || "").toLowerCase() === "available").length;
-      const today         = new Date();
-      const todayBookings = unitsArr.filter((u: any) => {
-        if ((u.status || "").toLowerCase() !== "booked") return false;
+      /**
+       * Build project_id → project_name lookup so we can backfill unit.project_name
+       * when the API only returns project_id (this was making units invisible
+       * to the project filter and the dropdown).
+       */
+      const projMap = new Map<string, string>();
+      projArr.forEach((p: any) => {
+        if (p.id) projMap.set(String(p.id), p.name);
+      });
+
+      const enrichedUnits = unitsArr.map((u: any) => ({
+        ...u,
+        project_name:
+          u.project_name ||
+          projMap.get(String(u.project_id)) ||
+          projMap.get(String(u.project)) ||
+          "—",
+      }));
+
+      // Debug aid: log unit-count by project so missing projects are obvious in console
+      if (typeof window !== "undefined") {
+        const counts: Record<string, number> = {};
+        enrichedUnits.forEach((u: any) => {
+          const k = u.project_name || "UNKNOWN";
+          counts[k] = (counts[k] || 0) + 1;
+        });
+        console.log("[Janapriya] Units loaded by project:", counts, "Total:", enrichedUnits.length);
+      }
+
+      setProjects(projArr);
+      setUnits(enrichedUnits);
+
+      const available = enrichedUnits.filter((u: any) => norm(u.status) === "available").length;
+      const today     = new Date();
+      const todayBookings = enrichedUnits.filter((u: any) => {
+        if (norm(u.status) !== "booked") return false;
         const upd = u.updated_at ? new Date(u.updated_at) : null;
         return upd && upd.toDateString() === today.toDateString();
       }).length;
 
       const fiscalAmount   = analytics?.fiscal_bookings_amount
         ? (analytics.fiscal_bookings_amount / 10000000).toFixed(0)
-        : settings?.fiscal_bookings_cr  || "52";
-      const fiscalDelta    = analytics?.fiscal_delta || settings?.fiscal_delta       || "+18% vs last FY";
+        : settings?.fiscal_bookings_cr || "52";
+      const fiscalDelta    = analytics?.fiscal_delta || settings?.fiscal_delta || "+18% vs last FY";
       const reraCompliant  = settings?.rera_compliant_pct || "98";
-      const yearsLegacy    = parseInt(settings?.years_legacy   || "39");
-      const unitsDelivered = settings?.units_delivered          || "847+";
+      const yearsLegacy    = parseInt(settings?.years_legacy || "39");
+      const unitsDelivered = settings?.units_delivered      || "847+";
 
       setMetrics({
         bookingsAmount: fiscalAmount,
@@ -902,7 +989,7 @@ export default function JanapriyaHomePage() {
     yearsLegacy:    metrics?.yearsLegacy    ?? 39,
     liveProjects:   projects.length         || 4,
     unitsDelivered: metrics?.unitsDelivered ?? "847+",
-    availableNow:   metrics?.availableUnits ?? units.filter(u => (u.status || "").toLowerCase() === "available").length,
+    availableNow:   metrics?.availableUnits ?? units.filter(u => norm(u.status) === "available").length,
   };
 
   const metricsData = metrics ?? {
@@ -921,7 +1008,7 @@ export default function JanapriyaHomePage() {
       <Hero     stats={stats}    projects={projects} />
       <Ticker   units={units} />
       <Metrics  data={metricsData} />
-      <Projects projects={projects} />
+      <Projects projects={projects} units={units} />
       <AvailSection units={units} projects={projects} />
       <JlFooter />
     </div>

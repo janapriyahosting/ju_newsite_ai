@@ -1220,7 +1220,7 @@ function DetailPanel3DImage({
     <div style={{
       width: "100%", height: 150, borderRadius: 2, overflow: "hidden",
       marginBottom: 10, position: "relative",
-      background: "#ffffff",
+      
       border: "1px solid var(--border-gold)",
     }}>
       <img
@@ -1232,10 +1232,10 @@ function DetailPanel3DImage({
       {/* Label strip */}
       <div style={{
         position: "absolute", bottom: 0, left: 0, right: 0,
-        background: "linear-gradient(to top, rgba(14,12,8,0.75) 0%, transparent 100%)",
+        background: "transparent",
         padding: "8px 10px",
         fontSize: 9, letterSpacing: "0.14em", textTransform: "uppercase",
-        color: "var(--gold-lt)", fontFamily: "Jost,sans-serif",
+        color: "var(--muted)", fontFamily: "Jost,sans-serif",
         display: "flex", justifyContent: "space-between", alignItems: "flex-end",
       }}>
         <span>3D Render</span>
@@ -1437,7 +1437,14 @@ function UnitSelector({ units, towers, slug, projectName, onExpressInterest, pro
               Express Interest →
             </button>
             <div className="pd-fp-share-row">
-              <Link href={`/projects/${slug}/units/${sel.id}`} className="pd-fp-share-btn" style={{ textDecoration: "none" }}>Floor Plan</Link>
+             <a 
+  href="#floor-plans" 
+  className="pd-fp-share-btn" 
+  style={{ textDecoration: "none" }}
+  onClick={e => { e.preventDefault(); document.getElementById("floor-plans")?.scrollIntoView({ behavior: "smooth" }); }}
+>
+  Floor Plan
+</a>
               <button className="pd-fp-share-btn" onClick={() => { navigator.share?.({ title: `${sel.unit_number || sel.id} — ${projectName}`, url: window.location.href }); }}>Share</button>
             </div>
           </div>
@@ -1468,7 +1475,7 @@ function FloorPlanSection({ plans, brochureUrl, amenities }: {
     <div className="pd-fps">
       <div className="pd-fps-left">
         <div className="pd-fps-head">
-          <div className="pd-sec-title">Floor <em>Plans</em></div>
+          <div className="pd-sec-title" id="floor-plans">Floor <em>Plans</em></div>
           {brochureUrl && <a href={mUrl(brochureUrl)} target="_blank" rel="noopener noreferrer" className="pd-dl-link">Download PDF →</a>}
         </div>
 

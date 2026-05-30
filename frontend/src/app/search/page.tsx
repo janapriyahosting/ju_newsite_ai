@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { Unit } from '@/types'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import AssistantMarkdown from '@/components/AssistantMarkdown'
 
 function formatPrice(price: string | undefined) {
   if (!price) return 'POA'
@@ -175,9 +176,10 @@ export default function SearchPage() {
                     {query && <span className="text-gray-400 font-normal text-base ml-2">for "{query}"</span>}
                   </h2>
                   {message && (
-                    <p className="text-gray-500 text-sm mt-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 inline-block mt-2">
-                      🤖 {message}
-                    </p>
+                    <div className="text-gray-500 text-sm mt-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 inline-block mt-2 flex gap-2 items-start">
+                      <span>🤖</span>
+                      <AssistantMarkdown text={message} variant="inline" />
+                    </div>
                   )}
                 </div>
                 <button onClick={() => { setResults(null); setQuery('') }}

@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import AiIcon from "@/components/AiIcon";
+import AssistantMarkdown from "@/components/AssistantMarkdown";
+import AffordabilityCard, { type AffordabilityData } from "@/components/AffordabilityCard";
 import { isLoggedIn, saveSession } from "@/lib/customerAuth";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
@@ -696,7 +698,7 @@ export default function ProactiveAssistant({
   const [visible, setVisible]           = useState(immediate);
   const [open, setOpen]                 = useState(false);
   const [tab, setTab]                   = useState<"chat" | "flow" | "riseup" | "callback">("chat");
-  const [messages, setMessages]         = useState<{ role: string; content: string; brochure?: any; floor_plans?: any; media?: any; lead_created?: any; riseup?: any; units?: any[]; action?: AssistantAction }[]>([]);
+  const [messages, setMessages]         = useState<{ role: string; content: string; brochure?: any; floor_plans?: any; media?: any; lead_created?: any; riseup?: any; units?: any[]; action?: AssistantAction; affordability?: AffordabilityData | null }[]>([]);
   const [input, setInput]               = useState("");
   const [loading, setLoading]           = useState(false);
   const [riseupData, setRiseupData]     = useState<any>(null);
@@ -930,7 +932,7 @@ export default function ProactiveAssistant({
     const msgs = [{ role: "user", content: initMsg }];
     const res = await callAssistant(msgs);
     if (res) {
-      setMessages([{ role: "assistant", content: res.reply, brochure: res.brochure, floor_plans: res.floor_plans, media: res.media, lead_created: res.lead_created, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units, action: res.action }]);
+      setMessages([{ role: "assistant", content: res.reply, brochure: res.brochure, floor_plans: res.floor_plans, media: res.media, lead_created: res.lead_created, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units, action: res.action, affordability: res.affordability ?? null }]);
       if (res.suggested_units?.length) setSuggestedUnits(res.suggested_units);
       if (res.riseup_data) setRiseupData(res.riseup_data);
     }
@@ -946,7 +948,7 @@ export default function ProactiveAssistant({
     setLoading(true);
     const res = await callAssistant(newMsgs);
     if (res) {
-      setMessages(m => [...m, { role: "assistant", content: res.reply, brochure: res.brochure, floor_plans: res.floor_plans, media: res.media, lead_created: res.lead_created, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units?.length ? res.suggested_units : undefined, action: res.action }]);
+      setMessages(m => [...m, { role: "assistant", content: res.reply, brochure: res.brochure, floor_plans: res.floor_plans, media: res.media, lead_created: res.lead_created, riseup: res.show_riseup ? res.riseup_data : null, units: res.suggested_units?.length ? res.suggested_units : undefined, action: res.action, affordability: res.affordability ?? null }]);
       if (res.suggested_units?.length) setSuggestedUnits(res.suggested_units);
       if (res.riseup_data) setRiseupData(res.riseup_data);
     }
@@ -1208,8 +1210,13 @@ export default function ProactiveAssistant({
                         color: m.role === "user" ? "white" : "#333",
                         borderRadius: m.role === "user" ? "12px 0 12px 12px" : "0 12px 12px 12px",
                         padding: "9px 12px", fontSize: 13, maxWidth: "82%", lineHeight: 1.5,
-                      }}>{m.content}</div>
+                      }}>
+                        {m.role === "assistant"
+                          ? <AssistantMarkdown text={m.content} variant="bubble" />
+                          : m.content}
+                      </div>
                     </div>
+                    {m.affordability && <div style={{ marginLeft: 34, marginTop: 8 }}><AffordabilityCard data={m.affordability} variant="compact" /></div>}
                     {m.brochure && <div style={{ marginLeft: 34 }}><BrochureCard brochure={m.brochure} /></div>}
                     {m.floor_plans && <div style={{ marginLeft: 34 }}><FloorPlansCard plans={m.floor_plans} /></div>}
                     {m.media && <div style={{ marginLeft: 34 }}><MediaCard media={m.media} /></div>}

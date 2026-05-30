@@ -1,5 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import AssistantMarkdown from "@/components/AssistantMarkdown";
+import AffordabilityCard, { type AffordabilityData } from "@/components/AffordabilityCard";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -215,7 +217,7 @@ function adaptUnits(units: BackendUnit[] | null | undefined): CardUnit[] {
 }
 
 // ─── Backend message type ─────────────────────────────────────────────────────
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; affordability?: AffordabilityData | null };
 
 // ─── Property card ─────────────────────────────────────────────────────────────
 function PropCard({ u, i }: { u: CardUnit; i: number }) {
@@ -531,7 +533,11 @@ export default function HomeChat() {
       if (adapted.length) setUnits(adapted);
 
       setResponse(reply);
-      setHistory(prev => [...prev, { role: "assistant", content: reply }]);
+      setHistory(prev => [...prev, {
+        role: "assistant",
+        content: reply,
+        affordability: (data.affordability as AffordabilityData | null | undefined) ?? null,
+      }]);
     } catch {
       setResponse("A brief pause — could you send that again?");
     } finally {
@@ -603,15 +609,35 @@ export default function HomeChat() {
           )}
         </div>
 
-        {(response || loading) && (
+        {(history.length > 0 || loading) && (
           <div style={{ maxWidth: 640, width: "100%", marginBottom: 28,
+            display: "flex", flexDirection: "column", gap: 18,
             animation: "fadeUp 0.4s cubic-bezier(0.2,0,0,1)" }}>
-            {loading ? <Thinking /> : (
-              <p style={{ fontSize: "clamp(15px,2vw,18px)", lineHeight: 1.82,
-                color: "rgba(245,240,232,0.82)", fontWeight: 300, letterSpacing: "0.005em" }}>
-                {response}
-              </p>
-            )}
+            {history.map((m, i) => (
+              m.role === "user" ? (
+                <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%",
+                  padding: "9px 16px", borderRadius: "18px 18px 4px 18px",
+                  background: "rgba(196,151,58,0.10)",
+                  border: "1px solid rgba(196,151,58,0.18)",
+                  color: "rgba(245,240,232,0.92)",
+                  fontSize: "clamp(14px,1.8vw,16px)", lineHeight: 1.55, fontWeight: 300 }}>
+                  {m.content}
+                </div>
+              ) : (
+                <div key={i} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <AssistantMarkdown
+                    text={m.content}
+                    variant="hero"
+                    style={{ fontSize: "clamp(15px,2vw,18px)", lineHeight: 1.82,
+                      color: "rgba(245,240,232,0.82)", fontWeight: 300, letterSpacing: "0.005em" }}
+                  />
+                  {m.affordability && (
+                    <AffordabilityCard data={m.affordability} variant="hero" />
+                  )}
+                </div>
+              )
+            ))}
+            {loading && <Thinking />}
           </div>
         )}
 
