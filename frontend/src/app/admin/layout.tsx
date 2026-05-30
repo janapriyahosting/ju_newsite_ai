@@ -31,6 +31,7 @@ const navItems = [
   { href: '/admin/nlp-training', label: 'NLP Training', icon: '🧠' },
   { href: '/admin/users',      label: 'Admin Users', icon: '🔐' },
   { href: '/admin/backups',    label: 'Backups',     icon: '💾' },
+  { href: '/admin/ops',        label: 'Ops Credentials', icon: '🔑' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
