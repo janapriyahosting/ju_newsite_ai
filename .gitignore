@@ -38,3 +38,10 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Large media — served from disk, not tracked in git (GitHub 100MB hard limit)
+*.mp4
+*.mov
+*.webm
+backend/media/series/Nilevalley/Block-6/Model_Flat_Video/Nilevalley.mp4
+frontend/public/RiseUpExplainer.mp4
