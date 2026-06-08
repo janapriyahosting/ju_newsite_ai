@@ -157,7 +157,33 @@ async def _do_search_units(args: dict, db: AsyncSession) -> list[dict]:
         # and use it for both filtering and the returned price. JSONB number/string
         # cases are handled in a CASE expression.
         params: dict[str, Any] = {}
-        where_clauses: list[str] = ["status = 'available'"]
+        where_clauses: list[str] = []
+
+        # Availability + curation. Salesforce is the AUTHORITY on which units are
+        # available; the local DB only supplies the rich card fields, matched by
+        # (normalised project, unit number). When SF is unconfigured/unreachable
+        # we fall back to the local `status='available'` flag so the homepage
+        # never breaks. The curated project/block allowlist is ALWAYS enforced.
+        from backend.app.services.salesforce import allowlist_where, get_available_unit_keys
+
+        proj_norm_expr = "regexp_replace(lower(project_name), '[^a-z0-9]+', '', 'g')"
+        sf_keys = await get_available_unit_keys()
+        if sf_keys is not None:
+            # Live SF gate: only units present in the SF available set survive.
+            # Ignore the local status flag entirely — SF wins on availability.
+            params["sf_np"] = [k[0] for k in sf_keys]
+            params["sf_un"] = [k[1] for k in sf_keys]
+            where_clauses.append(
+                "EXISTS (SELECT 1 FROM unnest(CAST(:sf_np AS text[]), CAST(:sf_un AS text[])) "
+                f"AS s(np, un) WHERE s.np = {proj_norm_expr} AND s.un = upper(trim(unit_number)))"
+            )
+        else:
+            where_clauses.append("status = 'available'")
+
+        # Curated allowlist (project + block) — applied in both SF and fallback modes.
+        allow_sql, allow_params = allowlist_where(proj_norm_expr, "tower_name")
+        where_clauses.append(allow_sql)
+        params.update(allow_params)
 
         ut = args.get("unit_type")
         if isinstance(ut, str) and ut.strip():

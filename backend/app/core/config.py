@@ -84,6 +84,23 @@ class Settings(BaseSettings):
     SF_PASSWORD: str = ""
     SF_SECURITY_TOKEN: str = ""
     SF_DOMAIN: str = "login"
+    # --- Live unit-availability (homepage assistant search) -----------------
+    # Salesforce is the AUTHORITY on which curated units are available; the
+    # local DB supplies the rich card fields, matched by (project, unit no).
+    # The Unit object + field API names are configurable because they cannot be
+    # introspected ahead of time — confirm them against your org with
+    # salesforce_service.describe_unit_fields() once creds are set, then adjust.
+    SF_UNIT_OBJECT: str = "Unit__c"
+    SF_UNIT_NAME_FIELD: str = "Name"           # the unit number, e.g. "B-1001"
+    SF_UNIT_PROJECT_FIELD: str = "Project__c"  # CONFIRM: may be a lookup → "Project__r.Name"
+    SF_UNIT_BLOCK_FIELD: str = "Block__c"      # CONFIRM: may be "Tower__c" / "Block__r.Name"
+    SF_UNIT_STATUS_FIELD: str = "Unit_Status__c"   # confirmed via get_configured_filters
+    # Comma-separated statuses that count as "available". Strict "Available" by
+    # default (matches the org's units picklist); add "Resale available" etc. here.
+    SF_AVAILABLE_STATUSES: str = "Available"
+    # Cache the availability key-set in-process for this many seconds. SF queries
+    # are slow + rate-limited; the homepage tolerates minutes-stale availability.
+    SF_CACHE_TTL_SECONDS: int = 300
 
     # Razorpay
     RAZORPAY_KEY_ID: str = ""
